@@ -51,10 +51,10 @@ export function TrainingPlayer({
 
   // Load completed items
   useEffect(() => {
-    const completed = new Set(
+    const completed = new Set<string>(
       enrollment.itemProgress
         .filter((p: any) => p.completed)
-        .map((p: any) => p.contentItemId)
+        .map((p: any) => p.contentItemId as string)
     )
     setCompletedItems(completed)
   }, [enrollment.itemProgress])
