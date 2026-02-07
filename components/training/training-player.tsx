@@ -78,7 +78,7 @@ export function TrainingPlayer({
       )
 
       if (response.ok) {
-        setCompletedItems((prev) => new Set([...prev, itemId]))
+        setCompletedItems((prev) => new Set(Array.from(prev).concat(itemId)))
         
         // If all items completed, mark enrollment as completed
         const allCompleted = navigationItems.every((item) =>
