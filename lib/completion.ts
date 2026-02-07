@@ -197,7 +197,7 @@ export async function issueCertificate(
 
   // Prepare certificate data
   const issuedDate = format(new Date(), "MMMM d, yyyy")
-  const userName = enrollment.user.name || enrollment.user.email
+  const userName = enrollment.user?.name ?? enrollment.user?.email ?? "User"
   const curriculumTitle =
     enrollment.assignment.type === "CURRICULUM"
       ? enrollment.assignment.curriculum?.title
