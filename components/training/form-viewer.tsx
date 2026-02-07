@@ -14,7 +14,7 @@ interface FormViewerProps {
   userId: string
   onComplete: () => void
   isCompleted: boolean
-  isSubmitting: boolean
+  isSubmitting?: boolean
 }
 
 interface FormField {
@@ -38,10 +38,12 @@ export function FormViewer({
   userId,
   onComplete,
   isCompleted,
-  isSubmitting,
+  isSubmitting: isSubmittingProp = false,
 }: FormViewerProps) {
   const [formData, setFormData] = useState<Record<string, any>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submitting = isSubmitting || isSubmittingProp
 
   if (!formTemplate) {
     return <div>Form not found</div>
@@ -276,10 +278,10 @@ export function FormViewer({
               <div className="flex justify-end pt-4 border-t">
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={submitting}
                   type="button"
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Form"}
+                  {submitting ? "Submitting..." : "Submit Form"}
                 </Button>
               </div>
             )}

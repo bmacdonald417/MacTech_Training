@@ -12,7 +12,7 @@ interface QuizViewerProps {
   userId: string
   onComplete: () => void
   isCompleted: boolean
-  isSubmitting: boolean
+  isSubmitting?: boolean
 }
 
 export function QuizViewer({
@@ -22,7 +22,7 @@ export function QuizViewer({
   userId,
   onComplete,
   isCompleted,
-  isSubmitting,
+  isSubmitting: isSubmittingProp = false,
 }: QuizViewerProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -32,6 +32,8 @@ export function QuizViewer({
   const [attemptId, setAttemptId] = useState<string | null>(null)
   const [showExplanations, setShowExplanations] = useState(false)
   const [canRetry, setCanRetry] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submitting = isSubmitting || isSubmittingProp
 
   // Load previous attempts to check retry eligibility
   useEffect(() => {
@@ -238,9 +240,9 @@ export function QuizViewer({
               {isLast ? (
                 <Button
                   onClick={handleSubmit}
-                  disabled={!allAnswered || isSubmitting}
+                  disabled={!allAnswered || submitting}
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Quiz"}
+                  {submitting ? "Submitting..." : "Submit Quiz"}
                 </Button>
               ) : (
                 <Button onClick={handleNext} disabled={!answers[currentQuestion.id]}>
