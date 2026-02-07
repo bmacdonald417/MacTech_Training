@@ -12,7 +12,7 @@ interface AttestationViewerProps {
   userId: string
   onComplete: () => void
   isCompleted: boolean
-  isSubmitting: boolean
+  isSubmitting?: boolean
 }
 
 export function AttestationViewer({
@@ -22,10 +22,12 @@ export function AttestationViewer({
   userId,
   onComplete,
   isCompleted,
-  isSubmitting,
+  isSubmitting: isSubmittingProp = false,
 }: AttestationViewerProps) {
   const [acknowledged, setAcknowledged] = useState(false)
   const [signature, setSignature] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submitting = isSubmitting || isSubmittingProp
 
   if (!attestation) {
     return <div>Attestation not found</div>
@@ -102,11 +104,11 @@ export function AttestationViewer({
                 disabled={
                   !acknowledged ||
                   (attestation.requireTypedName !== false && !signature.trim()) ||
-                  isSubmitting
+                  submitting
                 }
                 className="w-full"
               >
-                {isSubmitting ? "Submitting..." : "Sign and Complete"}
+                {submitting ? "Submitting..." : "Sign and Complete"}
               </Button>
             )}
 
