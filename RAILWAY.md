@@ -1,17 +1,42 @@
 # Deploying to Railway
 
-Set these **Variables** in your Railway project (Settings → Variables) so the app runs correctly in production.
+## Fixing the "NO_SECRET" / "Please define a secret in production" error
 
-## Required
+The app **must** have these variables set **on the service that runs your app** (the MacTech_Training service), and you **must redeploy** after adding them.
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXTAUTH_SECRET` | Secret used to sign cookies/tokens. **Required in production.** | Generate with: `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | Full URL of your app (no trailing slash). | `https://mactechtraining-production.up.railway.app` |
-| `DATABASE_URL` | PostgreSQL connection string. | From Railway Postgres or your own DB (e.g. `postgresql://user:pass@host:5432/dbname`) |
+### Step 1: Open your service
 
-## Optional
+- In Railway, open your **project** (e.g. heartfelt-passion).
+- Click the **MacTech_Training** **service** (the one that runs the Next.js app), not the Postgres plugin or the project root.
 
-- Add any other env vars your app uses (e.g. from `.env.example`).
+### Step 2: Add variables
 
-After adding or changing variables, redeploy the service so the new values are picked up. The `NO_SECRET` error goes away once `NEXTAUTH_SECRET` and `NEXTAUTH_URL` are set.
+- Go to the **Variables** tab for that service.
+- Click **+ New Variable** or **Add variable** and add:
+
+| Variable | Value |
+|----------|--------|
+| `NEXTAUTH_SECRET` | A long random string. In a terminal run: `openssl rand -base64 32` and paste the output. |
+| `NEXTAUTH_URL` | `https://mactechtraining-production.up.railway.app` (no trailing slash) |
+| `DATABASE_URL` | Your production Postgres URL (from Railway Postgres or your own database) |
+
+- **Name must be exactly** `NEXTAUTH_SECRET` (no typos, no spaces).
+- Save the variables.
+
+### Step 3: Redeploy
+
+- Variables only apply when a **new deployment** starts.
+- Go to **Deployments**, open the **⋮** menu on the latest deployment, and choose **Redeploy**.
+- Or push a new commit to trigger a deploy.
+
+After the new deployment is running, the `NO_SECRET` errors should stop and login should work.
+
+---
+
+## Reference: required variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXTAUTH_SECRET` | Secret for signing cookies/tokens. Required in production. |
+| `NEXTAUTH_URL` | Full public URL of your app. |
+| `DATABASE_URL` | PostgreSQL connection string. |
