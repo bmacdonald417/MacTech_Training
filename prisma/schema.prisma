@@ -1,0 +1,514 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE TENANT & USER MODELS
+// ============================================
+
+model Organization {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  groups       Group[]
+  content      ContentItem[]
+  curricula    Curriculum[]
+  assignments  Assignment[]
+  certificates CertificateTemplate[]
+  eventLogs    EventLog[]
+
+  @@index([slug])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String // hashed
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  groupMembers GroupMember[]
+  formSubmissions FormSubmission[]
+  quizAttempts QuizAttempt[]
+  attestationRecords AttestationRecord[]
+  enrollments Enrollment[]
+  certificatesIssued CertificateIssued[]
+  eventLogs EventLog[]
+
+  @@index([email])
+}
+
+model Membership {
+  id     String   @id @default(cuid())
+  userId String
+  orgId  String
+  role   String // "ADMIN" | "TRAINER" | "TRAINEE"
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, orgId])
+  @@index([orgId, role])
+}
+
+// ============================================
+// GROUPS
+// ============================================
+
+model Group {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members    GroupMember[]
+  enrollments Enrollment[]
+
+  @@index([orgId])
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+// ============================================
+// LEARNING OBJECTS (MODULAR)
+// ============================================
+
+enum ContentType {
+  ARTICLE
+  SLIDE_DECK
+  VIDEO
+  FORM
+  QUIZ
+  ATTESTATION
+}
+
+model ContentItem {
+  id          String      @id @default(cuid())
+  orgId       String
+  type        ContentType
+  title       String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  org           Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  article       Article?
+  slideDeck     SlideDeck?
+  video         Video?
+  formTemplate  FormTemplate?
+  quiz          Quiz?
+  attestationTemplate AttestationTemplate?
+  curriculumItems CurriculumItem[]
+  enrollmentItemProgress EnrollmentItemProgress[]
+  assignments Assignment[]
+
+  @@index([orgId, type])
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  contentItemId String @unique
+  content     String   // rich text (markdown or HTML)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+}
+
+model SlideDeck {
+  id          String   @id @default(cuid())
+  contentItemId String @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  slides      Slide[]
+}
+
+model Slide {
+  id          String   @id @default(cuid())
+  slideDeckId String
+  title       String
+  content     String   // rich text
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slideDeck SlideDeck @relation(fields: [slideDeckId], references: [id], onDelete: Cascade)
+
+  @@index([slideDeckId, order])
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  contentItemId String @unique
+  url         String
+  duration    Int?     // seconds
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+}
+
+model FormTemplate {
+  id          String   @id @default(cuid())
+  contentItemId String @unique
+  description String?
+  schemaJson  String   // JSON schema for form fields
+  required    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  submissions FormSubmission[]
+}
+
+model FormSubmission {
+  id            String   @id @default(cuid())
+  formTemplateId String
+  userId        String
+  enrollmentId  String?  // link to enrollment if part of training
+  answersJson  String   // JSON: field answers
+  submittedAt   DateTime @default(now())
+
+  formTemplate FormTemplate @relation(fields: [formTemplateId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([formTemplateId])
+  @@index([userId])
+  @@index([enrollmentId])
+}
+
+model Quiz {
+  id          String   @id @default(cuid())
+  contentItemId String @unique
+  passingScore Int     @default(70) // percentage
+  allowRetry  Boolean  @default(false)
+  showAnswersAfter Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  attempts    QuizAttempt[]
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  quizId      String
+  text        String
+  type        String   // "MULTIPLE_CHOICE" | "TRUE_FALSE"
+  explanation String?  // shown after submission if showAnswersAfter is true
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  choices Choice[]
+
+  @@index([quizId, order])
+}
+
+model Choice {
+  id         String   @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean
+  order      Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, order])
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String
+  userId      String
+  score       Int?     // percentage
+  passed      Boolean?
+  answers     String   // JSON: { questionId: choiceId }
+  submittedAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@index([userId])
+}
+
+model AttestationTemplate {
+  id          String   @id @default(cuid())
+  contentItemId String @unique
+  text        String   // acknowledgment text
+  requireTypedName Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  records     AttestationRecord[]
+}
+
+model AttestationRecord {
+  id            String   @id @default(cuid())
+  templateId    String
+  userId        String
+  typedName     String?  // typed name if requireTypedName is true
+  signature     String?  // signature data
+  ipAddress     String?  // IP address if available
+  signedAt      DateTime @default(now())
+
+  template AttestationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([userId])
+}
+
+// ============================================
+// CURRICULA
+// ============================================
+
+model Curriculum {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  sections CurriculumSection[]
+  assignments Assignment[]
+
+  @@index([orgId])
+}
+
+model CurriculumSection {
+  id          String   @id @default(cuid())
+  curriculumId String
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  curriculum Curriculum      @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  items      CurriculumItem[]
+
+  @@index([curriculumId, order])
+}
+
+model CurriculumItem {
+  id          String   @id @default(cuid())
+  sectionId   String
+  contentItemId String
+  required    Boolean  @default(true)
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  section     CurriculumSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  contentItem ContentItem       @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId, order])
+  @@index([contentItemId])
+}
+
+// ============================================
+// ASSIGNMENTS & PROGRESS
+// ============================================
+
+enum AssignmentType {
+  CONTENT_ITEM
+  CURRICULUM
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+model Assignment {
+  id          String          @id @default(cuid())
+  orgId       String
+  type        AssignmentType
+  contentItemId String?       // if type is CONTENT_ITEM
+  curriculumId  String?       // if type is CURRICULUM
+  title       String
+  description String?
+  dueDate     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contentItem ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  curriculum  Curriculum?  @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+
+  @@index([orgId])
+  @@index([contentItemId])
+  @@index([curriculumId])
+}
+
+model Enrollment {
+  id          String   @id @default(cuid())
+  assignmentId String
+  userId      String?
+  groupId     String?
+  status      AssignmentStatus @default(ASSIGNED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group      Group?      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  itemProgress EnrollmentItemProgress[]
+  certificatesIssued CertificateIssued[]
+
+  @@index([assignmentId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model EnrollmentItemProgress {
+  id          String   @id @default(cuid())
+  enrollmentId String
+  contentItemId String
+  status      ProgressStatus @default(NOT_STARTED)
+  completed   Boolean  @default(false) // legacy, kept for compatibility
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollment  Enrollment  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  contentItem ContentItem  @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, contentItemId])
+  @@index([enrollmentId])
+  @@index([contentItemId])
+}
+
+// ============================================
+// CERTIFICATES
+// ============================================
+
+model CertificateTemplate {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  htmlTemplateRichText String // HTML template with placeholders
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  issued    CertificateIssued[]
+
+  @@index([orgId])
+}
+
+model CertificateIssued {
+  id          String   @id @default(cuid())
+  templateId  String
+  userId      String
+  enrollmentId String? // link to enrollment if from training
+  certificateNumber String @unique // unique certificate number
+  issuedAt    DateTime @default(now())
+
+  template   CertificateTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollment Enrollment?        @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  @@index([templateId])
+  @@index([userId])
+  @@index([enrollmentId])
+  @@index([certificateNumber])
+}
+
+// ============================================
+// AUDIT & RETENTION
+// ============================================
+
+enum EventType {
+  LOGIN
+  LOGOUT
+  CONTENT_CREATED
+  CONTENT_UPDATED
+  CONTENT_DELETED
+  CURRICULUM_CREATED
+  CURRICULUM_UPDATED
+  ASSIGNMENT_CREATED
+  ASSIGNMENT_UPDATED
+  ENROLLMENT_STARTED
+  ENROLLMENT_COMPLETED
+  QUIZ_SUBMITTED
+  QUIZ_FAILED
+  FORM_SUBMITTED
+  ATTESTATION_SIGNED
+  CERTIFICATE_ISSUED
+  USER_CREATED
+  USER_UPDATED
+  GROUP_CREATED
+  GROUP_UPDATED
+}
+
+model EventLog {
+  id        String    @id @default(cuid())
+  orgId     String?
+  userId    String?
+  type      EventType
+  metadata  String?   // JSON
+  createdAt DateTime  @default(now())
+
+  org  Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  user User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt])
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+}
