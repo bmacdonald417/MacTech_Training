@@ -33,6 +33,20 @@ After the new deployment is running, the `NO_SECRET` errors should stop and logi
 
 ---
 
+## If the container crashes with "run: command not found"
+
+Railway is trying to run the wrong start command. Fix it:
+
+1. Open your **MacTech_Training** service.
+2. Go to **Settings** (or the service’s config).
+3. Find **Start Command** / **Deploy** / **Run** (wording may vary).
+4. Set it to **`npm run start`** (or leave it empty so Railway uses `package.json`’s `start` script).
+5. Redeploy.
+
+The repo includes a **Procfile** with `web: npm run start` so Railway can pick the correct command if it uses Procfile.
+
+---
+
 ## Reference: required variables
 
 | Variable | Description |
