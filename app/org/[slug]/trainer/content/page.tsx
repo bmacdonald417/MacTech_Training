@@ -77,7 +77,7 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
         description="Manage your training content"
         action={
           <Button asChild>
-            <Link href={`${basePath}/new`}>
+            <Link href={tab !== "all" ? `${basePath}/new?type=${tab}` : `${basePath}/new`}>
               <Plus className="h-4 w-4" />
               Create Content
             </Link>
@@ -98,7 +98,7 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
           description="Create your first content item to get started."
           action={
             <Button asChild>
-              <Link href={`${basePath}/new`}>
+              <Link href={tab !== "all" ? `${basePath}/new?type=${tab}` : `${basePath}/new`}>
                 <Plus className="h-4 w-4" />
                 Create content
               </Link>
