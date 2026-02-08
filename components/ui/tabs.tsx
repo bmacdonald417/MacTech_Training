@@ -29,7 +29,7 @@ export function TabNav({
       role="tablist"
       aria-label="Content categories"
       className={cn(
-        "inline-flex rounded-lg bg-muted/50 p-0.5",
+        "inline-flex rounded-xl bg-muted/50 p-0.5",
         className
       )}
     >
@@ -44,7 +44,7 @@ export function TabNav({
             role="tab"
             aria-selected={isActive}
             className={cn(
-              "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+              "rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150",
               isActive
                 ? "bg-card text-foreground shadow-soft"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"

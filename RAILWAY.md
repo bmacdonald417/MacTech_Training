@@ -1,5 +1,48 @@
 # Deploying to Railway
 
+## Connecting Railway Postgres to your app
+
+After you create a PostgreSQL database in Railway:
+
+### 1. Get the connection URL
+
+- In Railway, open your **project**.
+- Click the **PostgreSQL service** (the database you created).
+- Open **Variables** or **Connect**.
+- Copy **`DATABASE_URL`** (the full `postgresql://...` connection string).
+
+### 2. Point the app at it
+
+- Open the **MacTech_Training** service (your Next.js app).
+- Go to **Variables**.
+- Set **`DATABASE_URL`** to the URL you copied (or use Railway’s variable reference to the Postgres service if available).
+- **Redeploy** the MacTech_Training service so the new variable is used.
+
+### 3. Create tables and seed data (one-time)
+
+Run this **once** against the Railway database so the app has tables and demo users:
+
+From your project folder, with the **Railway Postgres** URL set as `DATABASE_URL`:
+
+```powershell
+# PowerShell (replace with your actual Railway Postgres URL)
+$env:DATABASE_URL="postgresql://postgres:xxxxx@xxxxx.railway.app:5432/railway?schema=public"
+npx prisma db push
+npm run db:seed
+```
+
+Or install [Railway CLI](https://docs.railway.app/develop/cli) and run:
+
+```bash
+railway link
+railway run npx prisma db push
+railway run npm run db:seed
+```
+
+After that, the production app and login (e.g. `admin@demo.com` / `password123`) will use the Railway Postgres database.
+
+---
+
 ## Fixing the "NO_SECRET" / "Please define a secret in production" error
 
 The app **must** have these variables set **on the service that runs your app** (the MacTech_Training service), and you **must redeploy** after adding them.

@@ -1,7 +1,10 @@
+import Link from "next/link"
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Users, Plus, Shield, GraduationCap, User } from "lucide-react"
 
 interface UsersPageProps {
@@ -29,22 +32,18 @@ export default async function UsersPage({ params }: UsersPageProps) {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Users
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Manage organization users and roles
-          </p>
-        </div>
-        <Button asChild>
-          <a href={`/org/${params.slug}/admin/users/new`}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
-          </a>
-        </Button>
-      </div>
+      <PageHeader
+        title="Users"
+        description="Manage organization users and roles"
+        action={
+          <Button asChild className="gap-2">
+            <Link href={`/org/${params.slug}/admin/users/new`}>
+              <Plus className="h-4 w-4" />
+              Add User
+            </Link>
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -61,7 +60,7 @@ export default async function UsersPage({ params }: UsersPageProps) {
               return (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between rounded-lg border border-transparent px-4 py-4 transition-colors hover:border-border/60 hover:bg-muted/30"
+                  className="flex items-center justify-between rounded-xl border border-transparent px-5 py-4 transition-colors duration-150 hover:border-border/60 hover:bg-muted/30"
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted/60">
@@ -75,9 +74,7 @@ export default async function UsersPage({ params }: UsersPageProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                      {m.role}
-                    </span>
+                    <StatusBadge variant="muted">{m.role}</StatusBadge>
                     <Button variant="outline" size="sm">
                       Edit Role
                     </Button>

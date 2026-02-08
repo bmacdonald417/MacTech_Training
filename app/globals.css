@@ -4,28 +4,40 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98.5%;
-    --foreground: 220 15% 12%;
+    /* Background: very light neutral (near-white) */
+    --background: 220 14% 98%;
+    --foreground: 222 18% 14%;
+    /* Surface cards: white with subtle elevation */
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 12%;
+    --card-foreground: 222 18% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 12%;
-    --primary: 221.2 83.2% 53.3%;
+    --popover-foreground: 222 18% 14%;
+    /* Primary: deep blue / indigo */
+    --primary: 230 55% 42%;
     --primary-foreground: 210 40% 98%;
+    /* Secondary: cool slate / graphite */
     --secondary: 220 14% 96%;
-    --secondary-foreground: 220 15% 25%;
+    --secondary-foreground: 222 18% 22%;
     --muted: 220 14% 96%;
     --muted-foreground: 220 10% 46%;
-    --accent: 220 14% 96%;
-    --accent-foreground: 220 15% 25%;
+    --accent: 220 14% 94%;
+    --accent-foreground: 222 18% 22%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 221.2 83.2% 53.3%;
+    /* Success: muted green / Warning: amber */
+    --success: 142 45% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 220 13% 92%;
+    --input: 220 13% 92%;
+    --ring: 230 55% 42%;
     --radius: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
     --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.03), 0 2px 8px -2px rgb(0 0 0 / 0.05);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 4px 12px -2px rgb(0 0 0 / 0.06);
+    --shadow-card-hover: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 6px -2px rgb(0 0 0 / 0.04);
   }
 }
 

@@ -53,11 +53,13 @@ export function Sidebar({ orgSlug, role }: SidebarProps) {
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-white">
-      <div className="flex h-16 items-center border-b px-6">
-        <h1 className="text-lg font-semibold">MacTech Training</h1>
+    <aside className="flex h-full w-56 flex-col border-r border-border/60 bg-card">
+      <div className="flex h-14 items-center px-5">
+        <span className="text-sm font-semibold tracking-tight text-foreground">
+          MacTech Training
+        </span>
       </div>
-      <nav className="flex-1 space-y-1 p-4">
+      <nav className="flex-1 space-y-0.5 px-3 py-4">
         {getLinks().map((link) => {
           const Icon = link.icon
           const isActive = pathname === link.href
@@ -66,18 +68,24 @@ export function Sidebar({ orgSlug, role }: SidebarProps) {
               key={link.href}
               href={link.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               )}
             >
-              <Icon className="h-5 w-5" />
+              {isActive && (
+                <span className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+              )}
+              <Icon
+                className="h-[18px] w-[18px] shrink-0"
+                strokeWidth={isActive ? 2.25 : 1.75}
+              />
               {link.label}
             </Link>
           )
         })}
       </nav>
-    </div>
+    </aside>
   )
 }

@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { OrganizationProfileForm } from "./organization-profile-form"
 
@@ -20,14 +21,10 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
 
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Settings
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Manage organization settings and preferences
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Manage organization settings and preferences"
+      />
 
       <div className="grid gap-6">
         <OrganizationProfileForm

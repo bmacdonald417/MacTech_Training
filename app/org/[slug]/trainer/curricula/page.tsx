@@ -1,6 +1,8 @@
 import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { GraduationCap, Plus } from "lucide-react"
@@ -32,36 +34,33 @@ export default async function CurriculaPage({ params }: CurriculaPageProps) {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Curricula
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Build structured training paths and add library modules to each section
-          </p>
-        </div>
-        <Button asChild>
-          <Link href={`/org/${params.slug}/trainer/curricula/new`}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Curriculum
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Curricula"
+        description="Build structured training paths and add library modules to each section"
+        action={
+          <Button asChild>
+            <Link href={`/org/${params.slug}/trainer/curricula/new`}>
+              <Plus className="h-4 w-4" />
+              Create Curriculum
+            </Link>
+          </Button>
+        }
+      />
 
       {curricula.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">No curricula yet.</p>
+        <EmptyState
+          icon={GraduationCap}
+          title="No curricula yet"
+          description="Create a curriculum to group content into sections and learning paths."
+          action={
             <Button asChild>
               <Link href={`/org/${params.slug}/trainer/curricula/new`}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Curriculum
+                <Plus className="h-4 w-4" />
+                Create curriculum
               </Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {curricula.map((curriculum) => {

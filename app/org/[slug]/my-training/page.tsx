@@ -1,8 +1,11 @@
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 import { BookOpen, Clock, CheckCircle2, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 
@@ -62,26 +65,26 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "COMPLETED":
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />
+        return <CheckCircle2 className="h-5 w-5 text-emerald-600" />
       case "IN_PROGRESS":
-        return <Clock className="h-5 w-5 text-blue-600" />
+        return <Clock className="h-5 w-5 text-primary" />
       case "OVERDUE":
-        return <AlertCircle className="h-5 w-5 text-red-600" />
+        return <AlertCircle className="h-5 w-5 text-amber-600" />
       default:
-        return <BookOpen className="h-5 w-5 text-gray-600" />
+        return <BookOpen className="h-5 w-5 text-muted-foreground" />
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "COMPLETED":
-        return "border-green-200 bg-green-50"
+        return "border-emerald-200/80 bg-emerald-50/50"
       case "IN_PROGRESS":
-        return "border-blue-200 bg-blue-50"
+        return "border-primary/20 bg-primary/5"
       case "OVERDUE":
-        return "border-red-200 bg-red-50"
+        return "border-amber-200/80 bg-amber-50/50"
       default:
-        return "border-gray-200 bg-white"
+        return ""
     }
   }
 
@@ -104,21 +107,18 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">My Training</h1>
-        <p className="mt-2 text-gray-600">
-          View and complete your assigned training
-        </p>
-      </div>
+    <div className="space-y-10">
+      <PageHeader
+        title="My Training"
+        description="View and complete your assigned training"
+      />
 
       {enrollments.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No training assignments yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={BookOpen}
+          title="No training assignments yet"
+          description="When your admin assigns training, it will appear here."
+        />
       ) : (
         <div className="grid gap-4">
           {enrollments.map((enrollment) => {
@@ -131,7 +131,7 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
             return (
               <Card
                 key={enrollment.id}
-                className={getStatusColor(enrollment.status)}
+                className={cn(getStatusColor(enrollment.status), "transition-shadow duration-200")}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -150,10 +150,10 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
                   <div className="space-y-4">
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-600">Progress</span>
+                        <span className="text-muted-foreground">Progress</span>
                         <span className="font-medium">{progress}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-muted rounded-full h-2">
                         <div
                           className="bg-primary h-2 rounded-full transition-all"
                           style={{ width: `${progress}%` }}
@@ -161,7 +161,7 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm text-gray-600">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <div>
                         {enrollment.assignment.dueDate && (
                           <span>

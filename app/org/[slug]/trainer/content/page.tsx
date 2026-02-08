@@ -1,6 +1,8 @@
 import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { TabNav } from "@/components/ui/tabs"
 import Link from "next/link"
@@ -70,22 +72,18 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Content Library
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Manage your training content
-          </p>
-        </div>
-        <Button asChild>
-          <Link href={`${basePath}/new`}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Content
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Content"
+        description="Manage your training content"
+        action={
+          <Button asChild>
+            <Link href={`${basePath}/new`}>
+              <Plus className="h-4 w-4" />
+              Create Content
+            </Link>
+          </Button>
+        }
+      />
 
       <TabNav
         tabs={TAB_ITEMS}
@@ -94,22 +92,19 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
       />
 
       {contentItems.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">
-              {tab === "all"
-                ? "No content items yet."
-                : `No ${TAB_ITEMS.find((t) => t.value === tab)?.label?.toLowerCase() ?? tab} yet.`}
-            </p>
+        <EmptyState
+          icon={FileText}
+          title={tab === "all" ? "No content yet" : `No ${TAB_ITEMS.find((t) => t.value === tab)?.label?.toLowerCase() ?? tab} yet`}
+          description="Create your first content item to get started."
+          action={
             <Button asChild>
               <Link href={`${basePath}/new`}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 Create content
               </Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {contentItems.map((item) => {

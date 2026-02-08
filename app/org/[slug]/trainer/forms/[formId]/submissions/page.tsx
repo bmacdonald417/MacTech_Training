@@ -1,7 +1,8 @@
 import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
 import { notFound } from "next/navigation"
 import { FileText } from "lucide-react"
 import { format } from "date-fns"
@@ -48,28 +49,27 @@ export default async function FormSubmissionsPage({
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Form Submissions</h1>
-          <p className="mt-2 text-gray-600">{formTemplate.contentItem.title}</p>
-        </div>
-        {formTemplate.submissions.length > 0 && (
-          <ExportButton
-            formTitle={formTemplate.contentItem.title}
-            submissions={formTemplate.submissions}
-            fields={fields}
-          />
-        )}
-      </div>
+    <div className="space-y-10">
+      <PageHeader
+        title="Form Submissions"
+        description={formTemplate.contentItem.title}
+        action={
+          formTemplate.submissions.length > 0 ? (
+            <ExportButton
+              formTitle={formTemplate.contentItem.title}
+              submissions={formTemplate.submissions}
+              fields={fields}
+            />
+          ) : undefined
+        }
+      />
 
       {formTemplate.submissions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No submissions yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title="No submissions yet"
+          description="Submissions will appear here when users complete this form."
+        />
       ) : (
         <Card>
           <CardHeader>
@@ -89,25 +89,25 @@ export default async function FormSubmissionsPage({
                 return (
                   <div
                     key={submission.id}
-                    className="border rounded-lg p-4 space-y-3"
+                    className="rounded-xl border border-border/60 bg-card p-5 space-y-3 transition-colors hover:bg-muted/20"
                   >
-                    <div className="flex items-center justify-between border-b pb-2">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-3">
                       <div>
-                        <div className="font-medium">
+                        <div className="font-medium text-foreground">
                           {submission.user.name || submission.user.email}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-muted-foreground">
                           Submitted: {format(new Date(submission.submittedAt), "MMM d, yyyy 'at' h:mm a")}
                         </div>
                       </div>
                     </div>
-                    <div className="grid gap-2 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       {fields.map((field) => (
                         <div key={field.id}>
-                          <div className="text-sm font-medium text-gray-700">
+                          <div className="text-sm font-medium text-muted-foreground">
                             {field.label}
                           </div>
-                          <div className="text-sm text-gray-900 mt-1">
+                          <div className="text-sm text-foreground mt-1">
                             {answers[field.id] !== undefined && answers[field.id] !== null
                               ? String(answers[field.id])
                               : "—"}

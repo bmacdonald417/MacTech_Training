@@ -26,7 +26,7 @@ export default async function OrgLayout({
       <Sidebar orgSlug={params.slug} role={membership.role} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar userName={session.user.name} userEmail={session.user.email} />
-        <main className="flex-1 overflow-y-auto bg-background p-8">
+        <main className="flex-1 overflow-y-auto bg-background px-6 py-8 sm:px-8 lg:px-10">
           {children}
         </main>
       </div>

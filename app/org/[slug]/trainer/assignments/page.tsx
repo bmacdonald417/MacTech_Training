@@ -1,6 +1,8 @@
 import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { BookOpen, Plus, Users, Calendar } from "lucide-react"
@@ -31,36 +33,33 @@ export default async function AssignmentsPage({ params }: AssignmentsPageProps) 
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Assignments
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Manage training assignments
-          </p>
-        </div>
-        <Button asChild>
-          <Link href={`/org/${params.slug}/trainer/assignments/new`}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Assignment
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Assignments"
+        description="Manage training assignments"
+        action={
+          <Button asChild>
+            <Link href={`/org/${params.slug}/trainer/assignments/new`}>
+              <Plus className="h-4 w-4" />
+              Create Assignment
+            </Link>
+          </Button>
+        }
+      />
 
       {assignments.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">No assignments yet.</p>
+        <EmptyState
+          icon={BookOpen}
+          title="No assignments yet"
+          description="Create an assignment to assign training to users or groups."
+          action={
             <Button asChild>
               <Link href={`/org/${params.slug}/trainer/assignments/new`}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Assignment
+                <Plus className="h-4 w-4" />
+                Create assignment
               </Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid gap-4">
           {assignments.map((assignment) => {

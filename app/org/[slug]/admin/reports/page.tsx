@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BarChart3, Users, BookOpen, Award, CheckCircle2, Download, AlertTriangle } from "lucide-react"
@@ -117,13 +118,11 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
   })
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-        <p className="mt-2 text-gray-600">
-          View organization training statistics
-        </p>
-      </div>
+    <div className="space-y-10">
+      <PageHeader
+        title="Reports"
+        description="View organization training statistics"
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

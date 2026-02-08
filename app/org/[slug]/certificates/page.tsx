@@ -1,6 +1,8 @@
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { Award, ExternalLink } from "lucide-react"
 import { format } from "date-fns"
@@ -32,26 +34,21 @@ export default async function CertificatesPage({
 
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          My Certificates
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          View your earned certificates
-        </p>
-      </div>
+      <PageHeader
+        title="Certificates"
+        description="View your earned certificates"
+      />
 
       {certificates.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <Award className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No certificates earned yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Award}
+          title="No certificates yet"
+          description="Complete training to earn certificates."
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {certificates.map((cert) => (
-            <Card key={cert.id} className="border-2">
+            <Card key={cert.id}>
               <CardHeader>
                 <div className="flex items-center gap-2 mb-2">
                   <Award className="h-6 w-6 text-primary" />

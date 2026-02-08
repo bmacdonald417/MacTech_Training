@@ -1,6 +1,9 @@
+import Link from "next/link"
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { Users, Plus } from "lucide-react"
 
@@ -27,36 +30,33 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Groups
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Manage user groups for bulk assignments
-          </p>
-        </div>
-        <Button asChild>
-          <a href={`/org/${params.slug}/admin/groups/new`}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Group
-          </a>
-        </Button>
-      </div>
+      <PageHeader
+        title="Groups"
+        description="Manage user groups for bulk assignments"
+        action={
+          <Button asChild className="gap-2">
+            <Link href={`/org/${params.slug}/admin/groups/new`}>
+              <Plus className="h-4 w-4" />
+              Create Group
+            </Link>
+          </Button>
+        }
+      />
 
       {groups.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">No groups yet.</p>
-            <Button asChild>
-              <a href={`/org/${params.slug}/admin/groups/new`}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Group
-              </a>
+        <EmptyState
+          icon={Users}
+          title="No groups yet"
+          description="Create a group to assign training to multiple users at once."
+          action={
+            <Button asChild className="gap-2">
+              <Link href={`/org/${params.slug}/admin/groups/new`}>
+                <Plus className="h-4 w-4" />
+                Create group
+              </Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => (
