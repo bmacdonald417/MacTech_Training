@@ -2,15 +2,22 @@
 
 import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
+import { NarrationPlayer } from "./narration-player"
 
 interface ArticleViewerProps {
   article: any
+  contentItemId: string
+  orgSlug: string
+  canGenerateNarration?: boolean
   onComplete: () => void
   isCompleted: boolean
 }
 
 export function ArticleViewer({
   article,
+  contentItemId,
+  orgSlug,
+  canGenerateNarration = false,
   onComplete,
   isCompleted,
 }: ArticleViewerProps) {
@@ -40,6 +47,12 @@ export function ArticleViewer({
 
   return (
     <div className="space-y-4">
+      <NarrationPlayer
+        orgSlug={orgSlug}
+        entityType="ARTICLE"
+        entityId={contentItemId}
+        canGenerate={canGenerateNarration}
+      />
       <div
         className="prose max-w-none"
         dangerouslySetInnerHTML={{ __html: renderContent(article.content) }}

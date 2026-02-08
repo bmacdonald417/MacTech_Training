@@ -3,15 +3,20 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
+import { NarrationPlayer } from "./narration-player"
 
 interface SlideDeckViewerProps {
   slideDeck: any
+  orgSlug: string
+  canGenerateNarration?: boolean
   onComplete: () => void
   isCompleted: boolean
 }
 
 export function SlideDeckViewer({
   slideDeck,
+  orgSlug,
+  canGenerateNarration = false,
   onComplete,
   isCompleted,
 }: SlideDeckViewerProps) {
@@ -65,6 +70,13 @@ export function SlideDeckViewer({
           />
         </div>
       </div>
+
+      <NarrationPlayer
+        orgSlug={orgSlug}
+        entityType="SLIDE"
+        entityId={slides[currentSlide].id}
+        canGenerate={canGenerateNarration}
+      />
 
       {/* Navigation: subdued, readable */}
       <div className="flex items-center justify-between border-t border-border/40 pt-4">

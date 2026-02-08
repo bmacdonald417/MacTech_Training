@@ -127,6 +127,35 @@ The application uses a comprehensive Prisma schema with:
 - **Assignments & Enrollments** - Training assignments
 - **Certificates** - Certificate templates and issuance
 - **Event Logs** - Audit trail
+- **Narration (TTS)** - Text-to-speech for slides and articles, stored on a persistent volume
+
+## Text-to-Speech (Narration) & Railway Volume
+
+Narration generates MP3 audio from slide or article text via OpenAI TTS. Audio files are stored on a **persistent volume** (not in `/public` or the repo).
+
+### Environment variables
+
+- **`OPENAI_API_KEY`** (required for TTS) – Used only from the environment; never hardcode.
+- **`RAILWAY_VOLUME_MOUNT_PATH`** (optional) – Base path for the persistent volume. Defaults to `/data` in production. In local dev, if unset, the app uses `./tmp/narration` and logs a warning.
+
+### Railway deployment
+
+1. Attach a **Railway Volume** to your service.
+2. Set the volume mount path (e.g. `/data`) in the service settings.
+3. Set **`RAILWAY_VOLUME_MOUNT_PATH=/data`** in your Railway environment variables so the app uses the same path in code.
+4. Set **`OPENAI_API_KEY`** so Admins/Trainers can generate narration.
+
+Storage layout on the volume: `{mount}/narration/{orgId}/{entityType}/{entityId}.mp3`. Regenerating overwrites the file; playback uses a cache-busting query param (`?v=updatedAt`).
+
+### Local development
+
+- If no Railway volume is available, the app uses **`RAILWAY_VOLUME_MOUNT_PATH`** when set (e.g. `/data` if you create that folder), or falls back to **`./tmp/narration`** when the env is unset.
+- Use the same env name in both environments so behavior is consistent; ensure the path is writable or the fallback dir exists.
+
+### Permissions
+
+- **Admin / Trainer**: Can **Generate** (overwrites existing) and **Play** narration.
+- **Trainee**: **Play** only (no access to `POST /api/org/[slug]/tts/generate`).
 
 ## Development
 

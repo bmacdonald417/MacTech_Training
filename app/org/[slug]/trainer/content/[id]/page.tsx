@@ -54,7 +54,11 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
           </Button>
         }
       />
-      <ContentPreview contentItem={contentItem} />
+      <ContentPreview
+        contentItem={contentItem}
+        orgSlug={params.slug}
+        canGenerateNarration={true}
+      />
     </div>
   )
 }

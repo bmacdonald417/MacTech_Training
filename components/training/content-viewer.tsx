@@ -18,6 +18,7 @@ interface ContentViewerProps {
   enrollmentId: string
   orgSlug: string
   userId: string
+  canGenerateNarration?: boolean
 }
 
 export function ContentViewer({
@@ -28,6 +29,7 @@ export function ContentViewer({
   enrollmentId,
   orgSlug,
   userId,
+  canGenerateNarration = false,
 }: ContentViewerProps) {
   if (!contentItem) {
     return <div>Content not found</div>
@@ -39,6 +41,9 @@ export function ContentViewer({
         return (
           <ArticleViewer
             article={contentItem.article}
+            contentItemId={contentItem.id}
+            orgSlug={orgSlug}
+            canGenerateNarration={canGenerateNarration}
             onComplete={onComplete}
             isCompleted={isCompleted}
           />
@@ -47,6 +52,8 @@ export function ContentViewer({
         return (
           <SlideDeckViewer
             slideDeck={contentItem.slideDeck}
+            orgSlug={orgSlug}
+            canGenerateNarration={canGenerateNarration}
             onComplete={onComplete}
             isCompleted={isCompleted}
           />

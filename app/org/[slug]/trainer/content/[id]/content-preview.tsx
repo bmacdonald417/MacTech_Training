@@ -16,9 +16,15 @@ interface ContentPreviewProps {
     quiz: unknown
     attestationTemplate: unknown
   }
+  orgSlug: string
+  canGenerateNarration?: boolean
 }
 
-export function ContentPreview({ contentItem }: ContentPreviewProps) {
+export function ContentPreview({
+  contentItem,
+  orgSlug,
+  canGenerateNarration = true,
+}: ContentPreviewProps) {
   const previewable = ["ARTICLE", "SLIDE_DECK", "VIDEO"].includes(contentItem.type)
 
   if (previewable) {
@@ -29,8 +35,9 @@ export function ContentPreview({ contentItem }: ContentPreviewProps) {
         isCompleted={true}
         isSubmitting={false}
         enrollmentId=""
-        orgSlug=""
+        orgSlug={orgSlug}
         userId=""
+        canGenerateNarration={canGenerateNarration}
       />
     )
   }

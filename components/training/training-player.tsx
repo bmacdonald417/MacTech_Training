@@ -11,12 +11,14 @@ interface TrainingPlayerProps {
   enrollment: any
   orgSlug: string
   userId: string
+  canGenerateNarration?: boolean
 }
 
 export function TrainingPlayer({
   enrollment,
   orgSlug,
   userId,
+  canGenerateNarration = false,
 }: TrainingPlayerProps) {
   const router = useRouter()
   const [currentItemIndex, setCurrentItemIndex] = useState(0)
@@ -167,6 +169,7 @@ export function TrainingPlayer({
                 enrollmentId={enrollment.id}
                 orgSlug={orgSlug}
                 userId={userId}
+                canGenerateNarration={canGenerateNarration}
               />
             )}
           </CardContent>

@@ -28,6 +28,7 @@ model Organization {
   assignments  Assignment[]
   certificates CertificateTemplate[]
   eventLogs    EventLog[]
+  narrationAssets NarrationAsset[]
 
   @@index([slug])
 }
@@ -300,6 +301,34 @@ model AttestationRecord {
 }
 
 // ============================================
+// NARRATION (TTS)
+// ============================================
+
+enum NarrationEntityType {
+  SLIDE
+  SLIDE_DECK
+  ARTICLE
+}
+
+model NarrationAsset {
+  id          String   @id @default(cuid())
+  orgId       String
+  entityType  NarrationEntityType
+  entityId    String
+  voice       String   @default("alloy")
+  format      String   @default("mp3")
+  storagePath String   // path relative to volume mount or absolute
+  updatedAt   DateTime @updatedAt
+  updatedByMembershipId String?
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, entityType, entityId])
+  @@index([orgId])
+  @@index([orgId, entityType, entityId])
+}
+
+// ============================================
 // CURRICULA
 // ============================================
 
@@ -499,6 +528,7 @@ enum EventType {
   USER_UPDATED
   GROUP_CREATED
   GROUP_UPDATED
+  NARRATION_GENERATED
 }
 
 model EventLog {
