@@ -170,13 +170,19 @@ export async function issueCertificate(
     return null
   }
 
-  // Find certificate template for this org
-  const template = await prisma.certificateTemplate.findFirst({
-    where: { orgId },
+  // Find certificate template: curriculum-specific if assignment is curriculum, else first for org
+  const isCurriculum = enrollment.assignment.type === "CURRICULUM" && enrollment.assignment.curriculumId
+  let template = await prisma.certificateTemplate.findFirst({
+    where: isCurriculum
+      ? { orgId, curriculumId: enrollment.assignment.curriculumId }
+      : { orgId },
   })
-
+  if (!template && isCurriculum) {
+    template = await prisma.certificateTemplate.findFirst({
+      where: { orgId },
+    })
+  }
   if (!template) {
-    // No template configured, skip issuance
     return null
   }
 
