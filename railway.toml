@@ -1,7 +1,8 @@
-# Railway config: overrides dashboard. Stops "Deploy: $ run" crash.
-# https://docs.railway.com/config-as-code/reference
+# Railway config (config-as-code). See: https://docs.railway.com/config-as-code/reference
+# Secrets (NEXTAUTH_SECRET, DATABASE_URL, etc.) must be set in Railway dashboard → Variables, not here.
+
 [build]
-# Use default npm build (next build)
+# Uses default: npm ci, npm run build
 
 [deploy]
 startCommand = "npm start"
