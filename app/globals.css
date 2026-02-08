@@ -2,42 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   MACTECH DESIGN TOKENS — Edgy Dark Default
+   ============================================ */
 @layer base {
   :root {
-    /* Background: very light neutral (near-white) */
-    --background: 220 14% 98%;
-    --foreground: 222 18% 14%;
-    /* Surface cards: white with subtle elevation */
-    --card: 0 0% 100%;
-    --card-foreground: 222 18% 14%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 18% 14%;
-    /* Primary: deep blue / indigo */
-    --primary: 230 55% 42%;
-    --primary-foreground: 210 40% 98%;
-    /* Secondary: cool slate / graphite */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 18% 22%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 10% 46%;
-    --accent: 220 14% 94%;
-    --accent-foreground: 222 18% 22%;
+    /* Background: deep charcoal */
+    --background: 222 18% 7%;
+    --foreground: 210 18% 98%;
+    /* Surfaces: glassy elevated */
+    --card: 222 14% 10%;
+    --card-foreground: 210 18% 98%;
+    --popover: 222 14% 10%;
+    --popover-foreground: 210 18% 98%;
+    /* Primary: crisp accent */
+    --primary: 238 84% 61%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 12% 16%;
+    --secondary-foreground: 210 18% 90%;
+    --muted: 222 12% 14%;
+    --muted-foreground: 215 14% 52%;
+    --accent: 222 12% 18%;
+    --accent-foreground: 210 18% 98%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    /* Success: muted green / Warning: amber */
-    --success: 142 45% 38%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 52% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 220 13% 92%;
-    --input: 220 13% 92%;
-    --ring: 230 55% 42%;
+    --border: 220 12% 16%;
+    --input: 220 12% 16%;
+    --ring: 238 84% 61%;
     --radius: 0.75rem;
     --radius-xl: 1rem;
     --radius-2xl: 1.25rem;
-    --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 4px 12px -2px rgb(0 0 0 / 0.06);
-    --shadow-card-hover: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 6px -2px rgb(0 0 0 / 0.04);
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.25);
+    --shadow-card: 0 2px 12px rgb(0 0 0 / 0.3);
+    --shadow-card-hover: 0 8px 28px rgb(0 0 0 / 0.4);
   }
 }
 
@@ -46,19 +47,41 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
+  /* Typography hierarchy: bigger headers, tighter tracking */
+  h1 {
+    @apply tracking-tighter;
+  }
+  h2 {
+    @apply tracking-tight;
+  }
+}
+
+/* Subtle background texture: faint gradient + noise */
+.bg-app-canvas {
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, hsl(238 84% 61% / 0.06), transparent 50%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+.transition-app {
+  transition-duration: 150ms;
+}
+.transition-app-slow {
+  transition-duration: 200ms;
 }
 
 @media print {
   body * {
     visibility: hidden;
   }
-  .print\\:p-12,
-  .print\\:p-12 * {
+  .print\:p-12,
+  .print\:p-12 * {
     visibility: visible;
   }
-  .print\\:p-12 {
+  .print\:p-12 {
     position: absolute;
     left: 0;
     top: 0;
@@ -66,9 +89,9 @@
   }
 }
 
-/* Grid pattern for login background */
+/* Login: keep grid subtle on dark */
 .bg-grid-slate-100 {
-  background-image: linear-gradient(to right, rgb(241 245 249 / 0.3) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(241 245 249 / 0.3) 1px, transparent 1px);
+  background-image: linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
 }

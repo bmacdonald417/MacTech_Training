@@ -1,0 +1,46 @@
+"use client"
+
+import { useState } from "react"
+import { Sidebar } from "./sidebar"
+import { Topbar } from "./topbar"
+
+interface AppShellProps {
+  orgSlug: string
+  role: string
+  userName?: string | null
+  userEmail?: string | null
+  children: React.ReactNode
+}
+
+export function AppShell({
+  orgSlug,
+  role,
+  userName,
+  userEmail,
+  children,
+}: AppShellProps) {
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar
+        orgSlug={orgSlug}
+        role={role}
+        mobileOpen={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+      />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Topbar
+          userName={userName}
+          userEmail={userEmail}
+          onMenuClick={() => setMobileOpen(true)}
+        />
+        <main className="flex-1 overflow-y-auto bg-app-canvas px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          {children}
+        </div>
+        </main>
+      </div>
+    </div>
+  )
+}

@@ -1,28 +1,29 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-[color,background-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-[color,background-color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/92 active:bg-primary/88",
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/92 active:bg-destructive/88",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background hover:bg-muted/80 hover:border-input active:bg-muted",
+          "border border-border bg-transparent hover:bg-muted/50 hover:border-border",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/90 active:bg-secondary/80",
-        ghost: "hover:bg-muted/70 active:bg-muted",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-5 py-2",
+        default: "h-10 px-5",
         sm: "h-9 rounded-lg px-3.5",
-        lg: "h-11 rounded-lg px-6",
+        lg: "h-11 rounded-xl px-6",
         icon: "h-10 w-10",
       },
     },
@@ -37,17 +38,29 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  loading?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, loading, disabled, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    const isDisabled = disabled || loading
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        disabled={isDisabled}
         {...props}
-      />
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="sr-only">Loading</span>
+          </>
+        ) : (
+          children
+        )}
+      </Comp>
     )
   }
 )

@@ -13,23 +13,25 @@ export function StatCard({ label, value, icon: Icon, trend, className }: StatCar
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 text-card-foreground shadow-card transition-all duration-200 hover:border-border hover:shadow-card-hover",
+        "group relative overflow-hidden rounded-2xl border border-border/40 bg-card/80 p-6 text-card-foreground shadow-card backdrop-blur-sm transition-shadow duration-150 hover:shadow-card-hover sm:p-7",
         className
       )}
     >
       {Icon && (
-        <div className="absolute right-4 top-4 opacity-[0.07] transition-opacity duration-200 group-hover:opacity-[0.12]">
-          <Icon className="h-12 w-12 text-foreground" strokeWidth={1.25} />
+        <div className="absolute right-5 top-5 opacity-[0.07] transition-opacity duration-150 group-hover:opacity-[0.1]">
+          <Icon className="h-11 w-11 text-foreground sm:h-12 sm:w-12" strokeWidth={1.25} />
         </div>
       )}
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-semibold tracking-tight">{value}</span>
+      <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="text-2xl font-semibold tracking-tight sm:text-3xl">{value}</span>
         {trend && (
           <span
             className={cn(
               "text-xs font-medium",
-              trend.positive === false ? "text-amber-600" : "text-emerald-600"
+              trend.positive === false ? "text-destructive" : "text-success"
             )}
           >
             {trend.value}

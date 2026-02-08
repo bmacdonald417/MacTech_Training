@@ -1,8 +1,7 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { requireAuth } from "@/lib/rbac"
-import { Sidebar } from "./sidebar"
-import { Topbar } from "./topbar"
+import { AppShell } from "./app-shell"
 import { redirect } from "next/navigation"
 
 interface OrgLayoutProps {
@@ -22,14 +21,13 @@ export default async function OrgLayout({
   const membership = await requireAuth(params.slug)
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar orgSlug={params.slug} role={membership.role} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar userName={session.user.name} userEmail={session.user.email} />
-        <main className="flex-1 overflow-y-auto bg-background px-6 py-8 sm:px-8 lg:px-10">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AppShell
+      orgSlug={params.slug}
+      role={membership.role}
+      userName={session.user.name}
+      userEmail={session.user.email}
+    >
+      {children}
+    </AppShell>
   )
 }

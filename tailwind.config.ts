@@ -73,6 +73,9 @@ const config = {
         card: "var(--shadow-card)",
         "card-hover": "var(--shadow-card-hover)",
       },
+      ringOffsetColor: {
+        background: "hsl(var(--background))",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

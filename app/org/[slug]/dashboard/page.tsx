@@ -71,16 +71,16 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     stats.certificates = certs.length
   }
 
-  const isAdmin = membership.role === "ADMIN"
   const isTrainerOrAdmin = membership.role === "TRAINER" || membership.role === "ADMIN"
+  const isAdmin = membership.role === "ADMIN"
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 sm:space-y-10">
       <PageHeader
         title="Dashboard"
-        description="Training activity and completion at a glance"
+        description="Training activity at a glance"
         action={
-          isAdmin ? (
+          isTrainerOrAdmin ? (
             <Button asChild>
               <Link href={`/org/${params.slug}/trainer/assignments/new`}>
                 <PlusCircle className="h-4 w-4" />
@@ -114,59 +114,55 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard
-          title="Recent Activity"
-          description="Latest assignments and completions"
-        >
-          <EmptyState
-            icon={Activity}
-            title="No recent activity"
-            description="New assignments and completions will appear here."
-          />
-        </SectionCard>
-
-        <SectionCard
-          title="Upcoming Deadlines"
-          description="Due soon"
-        >
-          <EmptyState
-            icon={Calendar}
-            title="No upcoming deadlines"
-            description="Assignments with due dates will show here."
-          />
-        </SectionCard>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <SectionCard
+            title="Recent Activity"
+            description="Latest assignments and completions"
+          >
+            <EmptyState
+              icon={Activity}
+              title="No recent activity"
+              hint="New assignments and completions will appear here."
+            />
+          </SectionCard>
+        </div>
+        <div className="space-y-6">
+          <SectionCard title="Upcoming Deadlines" description="Due soon">
+            <EmptyState
+              icon={Calendar}
+              title="No upcoming deadlines"
+              hint="Assignments with due dates will show here."
+            />
+          </SectionCard>
+          {isTrainerOrAdmin && (
+            <SectionCard title="Quick Actions" description="Shortcuts">
+              <div className="space-y-2">
+                <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>
+                  <Link href={`/org/${params.slug}/trainer/content`}>
+                    <FileText className="h-4 w-4 shrink-0" />
+                    Create content
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>
+                  <Link href={`/org/${params.slug}/trainer/assignments/new`}>
+                    <ClipboardList className="h-4 w-4 shrink-0" />
+                    Assign training
+                  </Link>
+                </Button>
+                {isAdmin && (
+                  <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>
+                    <Link href={`/org/${params.slug}/admin/users`}>
+                      <UserPlus className="h-4 w-4 shrink-0" />
+                      Manage users
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </SectionCard>
+          )}
+        </div>
       </div>
-
-      {isTrainerOrAdmin && (
-        <SectionCard
-          title="Quick Actions"
-          description="Shortcuts for common tasks"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Button variant="outline" className="h-auto justify-start gap-3 py-3" asChild>
-              <Link href={`/org/${params.slug}/trainer/content`}>
-                <FileText className="h-4 w-4 shrink-0" />
-                Create content
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-auto justify-start gap-3 py-3" asChild>
-              <Link href={`/org/${params.slug}/trainer/assignments/new`}>
-                <ClipboardList className="h-4 w-4 shrink-0" />
-                Assign training
-              </Link>
-            </Button>
-            {isAdmin && (
-              <Button variant="outline" className="h-auto justify-start gap-3 py-3" asChild>
-                <Link href={`/org/${params.slug}/admin/users`}>
-                  <UserPlus className="h-4 w-4 shrink-0" />
-                  Manage users
-                </Link>
-              </Button>
-            )}
-          </div>
-        </SectionCard>
-      )}
     </div>
   )
 }

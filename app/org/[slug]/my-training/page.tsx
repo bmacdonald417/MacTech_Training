@@ -4,10 +4,19 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
+import { Badge, type BadgeStatus } from "@/components/ui/badge"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { BookOpen, Clock, CheckCircle2, AlertCircle } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import { format } from "date-fns"
+
+function enrollmentStatusToBadge(s: string): BadgeStatus {
+  if (s === "COMPLETED") return "Completed"
+  if (s === "IN_PROGRESS") return "In Progress"
+  if (s === "OVERDUE") return "Overdue"
+  return "Assigned"
+}
 
 interface MyTrainingPageProps {
   params: { slug: string }
@@ -62,27 +71,14 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
     },
   })
 
-  const getStatusIcon = (status: string) => {
+  const getStatusTint = (status: string) => {
     switch (status) {
       case "COMPLETED":
-        return <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-      case "IN_PROGRESS":
-        return <Clock className="h-5 w-5 text-primary" />
-      case "OVERDUE":
-        return <AlertCircle className="h-5 w-5 text-amber-600" />
-      default:
-        return <BookOpen className="h-5 w-5 text-muted-foreground" />
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return "border-emerald-200/80 bg-emerald-50/50"
+        return "border-success/20 bg-success/5"
       case "IN_PROGRESS":
         return "border-primary/20 bg-primary/5"
       case "OVERDUE":
-        return "border-amber-200/80 bg-amber-50/50"
+        return "border-destructive/20 bg-destructive/5"
       default:
         return ""
     }
@@ -131,19 +127,28 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
             return (
               <Card
                 key={enrollment.id}
-                className={cn(getStatusColor(enrollment.status), "transition-shadow duration-200")}
+                variant="interactive"
+                className={getStatusTint(enrollment.status)}
               >
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-xl">{title}</CardTitle>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-lg sm:text-xl">{title}</CardTitle>
                       {enrollment.assignment.description && (
-                        <CardDescription className="mt-2">
+                        <CardDescription className="mt-1.5">
                           {enrollment.assignment.description}
                         </CardDescription>
                       )}
                     </div>
-                    <div className="ml-4">{getStatusIcon(enrollment.status)}</div>
+                    <Badge status={enrollmentStatusToBadge(enrollment.status)} className="shrink-0">
+                      {enrollment.status === "COMPLETED"
+                        ? "Completed"
+                        : enrollment.status === "IN_PROGRESS"
+                        ? "In Progress"
+                        : enrollment.status === "OVERDUE"
+                        ? "Overdue"
+                        : "Assigned"}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -153,12 +158,7 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
                         <span className="text-muted-foreground">Progress</span>
                         <span className="font-medium">{progress}%</span>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
+                      <ProgressBar value={progress} />
                     </div>
 
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
