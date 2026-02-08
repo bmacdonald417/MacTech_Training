@@ -1,0 +1,7 @@
+# Railway config: overrides dashboard. Stops "Deploy: $ run" crash.
+# https://docs.railway.com/config-as-code/reference
+[build]
+# Use default npm build (next build)
+
+[deploy]
+startCommand = "npm start"
