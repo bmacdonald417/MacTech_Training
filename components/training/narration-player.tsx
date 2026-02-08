@@ -21,6 +21,7 @@ export function NarrationPlayer({
   const [streamUrl, setStreamUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const fetchStatus = async () => {
@@ -50,21 +51,34 @@ export function NarrationPlayer({
 
   const handleGenerate = async () => {
     setGenerating(true)
+    setGenerateError(null)
     try {
       const res = await fetch(`/api/org/${orgSlug}/tts/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entityType, entityId }),
       })
-      const data = await res.json()
+      let data: { ok?: boolean; streamUrl?: string; error?: string } = {}
+      try {
+        data = await res.json()
+      } catch {
+        data = { error: "Request failed. Please try again." }
+      }
       if (res.ok && data.ok && data.streamUrl) {
         setHasNarration(true)
         setStreamUrl(data.streamUrl)
+        setGenerateError(null)
         if (audioRef.current) {
           audioRef.current.src = data.streamUrl
           audioRef.current.load()
         }
+      } else {
+        setGenerateError(
+          data.error || (res.status === 503 ? "Narration service is not configured. Ask your admin to set OPENAI_API_KEY." : "Generation failed. Please try again.")
+        )
       }
+    } catch {
+      setGenerateError("Network error. Please try again.")
     } finally {
       setGenerating(false)
     }
@@ -87,24 +101,31 @@ export function NarrationPlayer({
             Narration not available yet.
           </p>
           {canGenerate && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Generating…
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Generate narration
-                </>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleGenerate}
+                disabled={generating}
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Generate narration
+                  </>
+                )}
+              </Button>
+              {generateError && (
+                <p className="text-sm text-amber-600 dark:text-amber-500 mt-2">
+                  {generateError}
+                </p>
               )}
-            </Button>
+            </>
           )}
         </>
       )}
