@@ -4,6 +4,9 @@ import { prisma } from "./prisma"
 
 export type Role = "ADMIN" | "TRAINER" | "TRAINEE"
 
+// Admin has access to all features: everything a trainer can do (Content, Curricula, Assignments,
+// Documents, Competency, etc.) plus admin-only (Users, Groups, Reports, Settings, Archive).
+
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
@@ -49,6 +52,7 @@ export async function requireAdmin(orgSlug: string) {
   return requireRole(orgSlug, ["ADMIN"])
 }
 
+/** Trainer or Admin. Admin has full access to all trainer features. */
 export async function requireTrainerOrAdmin(orgSlug: string) {
   return requireRole(orgSlug, ["ADMIN", "TRAINER"])
 }

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { OrganizationProfileForm } from "./organization-profile-form"
+import { InstallCmmcCard } from "./install-cmmc-card"
+import { seedCmmcAt } from "@/prisma/seed-cmmc-at"
 
 interface SettingsPageProps {
   params: { slug: string }
@@ -19,6 +21,18 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     return null
   }
 
+  // Ensure CMMC slide deck is in the content library (same list as other slide decks)
+  const hasCmmc = await prisma.contentItem.findFirst({
+    where: {
+      orgId: membership.orgId,
+      type: "SLIDE_DECK",
+      title: { contains: "CMMC Level 2" },
+    },
+  })
+  if (!hasCmmc) {
+    await seedCmmcAt(prisma, membership.orgId)
+  }
+
   return (
     <div className="space-y-10">
       <PageHeader
@@ -32,6 +46,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           initialName={org.name}
           orgSlugDisplay={org.slug}
         />
+
+        <InstallCmmcCard orgSlug={params.slug} />
 
         <Card>
           <CardHeader>
