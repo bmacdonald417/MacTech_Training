@@ -29,6 +29,7 @@ model Organization {
   certificates CertificateTemplate[]
   eventLogs    EventLog[]
   narrationAssets NarrationAsset[]
+  controlledDocuments ControlledDocument[]
 
   @@index([slug])
 }
@@ -49,6 +50,7 @@ model User {
   enrollments Enrollment[]
   certificatesIssued CertificateIssued[]
   eventLogs EventLog[]
+  documentAcknowledgments DocumentAcknowledgment[]
 
   @@index([email])
 }
@@ -504,6 +506,113 @@ model CertificateIssued {
 }
 
 // ============================================
+// QMS DOCUMENT CONTROL (ISO 17025 / GDP)
+// ============================================
+
+enum DocumentType {
+  QAM    // Quality Manual
+  POL    // Policy
+  SOP    // Standard Operating Procedure
+  WIP    // Work Instruction
+  FRM    // Form
+  RTP    // Record / Template
+  METHOD // Test Method / Technical Procedure
+}
+
+enum DocumentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  EFFECTIVE
+  OBSOLETE
+}
+
+enum DocumentChangeType {
+  MINOR
+  MAJOR
+}
+
+model ControlledDocument {
+  id                    String    @id @default(cuid())
+  orgId                 String
+  documentId            String    // Unique per org, immutable (e.g. QAM-001, SOP-DOC-01)
+  title                 String
+  documentType          DocumentType
+  currentVersionId      String?   // FK to DocumentVersion (current effective/draft version)
+  status                DocumentStatus @default(DRAFT)
+  effectiveDate         DateTime?
+  reviewDueDate         DateTime?
+  authorMembershipId    String
+  controlledDistribution Boolean  @default(true)
+  supersededByDocumentId String?   // Self-reference when obsolete
+  retentionPeriodYears  Int       @default(7)
+  requiresAcknowledgment Boolean  @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  org                    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  versions               DocumentVersion[]
+  currentVersion         DocumentVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  supersededBy           ControlledDocument?  @relation("Supersedes", fields: [supersededByDocumentId], references: [id], onDelete: SetNull)
+  supersedes             ControlledDocument[] @relation("Supersedes")
+
+  @@unique([orgId, documentId])
+  @@index([orgId])
+  @@index([orgId, documentType])
+  @@index([orgId, status])
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     String   // e.g. "1.0", "1.1"
+  changeType  DocumentChangeType
+  changeSummary String
+  changedSections String? // Free text description of changed sections
+  content     String   // Full document body (rich text)
+  createdByMembershipId String
+  createdAt   DateTime @default(now())
+
+  document   ControlledDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentAsCurrent ControlledDocument[] @relation("CurrentVersion")
+  approvals  DocumentApprovalRecord[]
+  acknowledgments DocumentAcknowledgment[]
+
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+model DocumentApprovalRecord {
+  id                  String   @id @default(cuid())
+  documentVersionId   String
+  approverMembershipId String
+  typedName           String
+  role                String   // e.g. "Quality Manager"
+  meaningOfSignature  String   @default("Approval for use")
+  signedAt            DateTime @default(now())
+
+  documentVersion DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+
+  @@index([documentVersionId])
+}
+
+model DocumentAcknowledgment {
+  id                String   @id @default(cuid())
+  documentVersionId String
+  userId            String
+  acknowledgedAt    DateTime @default(now())
+  typedName         String?
+  trainerMembershipId String? // If training was delivered
+
+  documentVersion DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentVersionId, userId])
+  @@index([documentVersionId])
+  @@index([userId])
+}
+
+// ============================================
 // AUDIT & RETENTION
 // ============================================
 
@@ -529,6 +638,13 @@ enum EventType {
   GROUP_CREATED
   GROUP_UPDATED
   NARRATION_GENERATED
+  DOCUMENT_CREATED
+  DOCUMENT_REVISED
+  DOCUMENT_VERSION_APPROVED
+  DOCUMENT_EFFECTIVE
+  DOCUMENT_OBSOLETED
+  DOCUMENT_TRAINING_TRIGGERED
+  DOCUMENT_ACKNOWLEDGMENT_COMPLETED
 }
 
 model EventLog {

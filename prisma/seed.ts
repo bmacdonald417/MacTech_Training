@@ -1,6 +1,7 @@
 import "dotenv/config"
 import { PrismaClient, ContentType } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import { seedQms } from "./seed-qms"
 
 const prisma = new PrismaClient()
 
@@ -1013,6 +1014,9 @@ Use this checklist alongside the slide deck's 30/60/90 roadmap. Adjust to your s
       },
     ],
   })
+
+  // ISO/IEC 17025 QMS document set (controlled documents, approved and effective)
+  await seedQms(prisma, org.id, admin.id, trainer.id)
 
   console.log("Seeding completed!")
   console.log("\n=== Login Credentials ===")
