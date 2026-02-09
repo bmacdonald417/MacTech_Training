@@ -78,20 +78,39 @@ export async function GET(
       headers["Content-Range"] = `bytes ${chunkStart}-${chunkEnd}/${fileSize}`
       headers["Content-Length"] = String(chunkLength)
 
-      const stream = fs.createReadStream(absolutePath, {
+      const nodeStream = fs.createReadStream(absolutePath, {
         start: chunkStart,
         end: chunkEnd,
       })
-
-      return new NextResponse(stream as any, {
+      const webStream = new ReadableStream({
+        start(controller) {
+          nodeStream.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)))
+          nodeStream.on("end", () => controller.close())
+          nodeStream.on("error", (err) => controller.error(err))
+        },
+        cancel() {
+          nodeStream.destroy()
+        },
+      })
+      return new NextResponse(webStream, {
         status: 206,
         headers,
       })
     }
 
     headers["Content-Length"] = String(fileSize)
-    const stream = fs.createReadStream(absolutePath)
-    return new NextResponse(stream as any, {
+    const nodeStream = fs.createReadStream(absolutePath)
+    const webStream = new ReadableStream({
+      start(controller) {
+        nodeStream.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)))
+        nodeStream.on("end", () => controller.close())
+        nodeStream.on("error", (err) => controller.error(err))
+      },
+      cancel() {
+        nodeStream.destroy()
+      },
+    })
+    return new NextResponse(webStream, {
       status: 200,
       headers,
     })

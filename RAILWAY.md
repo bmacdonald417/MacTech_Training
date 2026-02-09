@@ -1,6 +1,14 @@
 # Deploying to Railway
 
-## Connecting Railway Postgres to your app
+This app is intended to **run on Railway** (not just local). Follow the steps below to deploy and configure it.
+
+## 1. Create the app and database
+
+- Create a new **Railway project** (or use an existing one).
+- Add a **PostgreSQL** service (Railway will set `DATABASE_URL` on the project).
+- Add a **new service** from your GitHub repo (this repo). Railway will detect Next.js and use `npm install`, `npm run build`, and `npm start` (see `railway.toml`).
+
+## 2. Connecting Railway Postgres to your app
 
 After you create a PostgreSQL database in Railway:
 
@@ -90,10 +98,34 @@ The repo includes a **Procfile** with `web: npm run start` so Railway can pick t
 
 ---
 
+## Narration (TTS) and persistent storage
+
+For **Generate narration** (text-to-speech) to work on Railway:
+
+1. **OpenAI API key**  
+   In your app service **Variables**, add:
+   - **`OPENAI_API_KEY`** = your OpenAI API key (from [platform.openai.com](https://platform.openai.com/api-keys)).
+
+2. **Persistent volume for audio files**  
+   Narration saves MP3 files to disk; on Railway that must be a **Volume** so files survive redeploys.
+   - In your **MacTech_Training** service, go to **Settings** (or **Variables**).
+   - Add a **Volume** and note the **mount path** (e.g. `/data`).
+   - In **Variables**, add:
+   - **`RAILWAY_VOLUME_MOUNT_PATH`** = the volume mount path (e.g. `/data`).
+   - Redeploy so the app uses the volume for narration storage.
+
+Without a volume, the app will try to write to `/data` (or the path you set). If that path is not writable, generation will fail with a clear error in the UI.
+
+---
+
 ## Reference: required variables
 
-| Variable | Description |
-|----------|-------------|
-| `NEXTAUTH_SECRET` | Secret for signing cookies/tokens. Required in production. |
-| `NEXTAUTH_URL` | Full public URL of your app. |
-| `DATABASE_URL` | PostgreSQL connection string. |
+Set these on the **MacTech_Training** service (Variables tab). Redeploy after changing them.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string (from Railway Postgres or your DB). |
+| `NEXTAUTH_SECRET` | Yes | Secret for signing cookies/tokens. Generate with: `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | Yes | Full public URL of your app, e.g. `https://your-app.up.railway.app` (no trailing slash). |
+| `OPENAI_API_KEY` | For TTS | OpenAI API key so Admins/Trainers can generate narration. |
+| `RAILWAY_VOLUME_MOUNT_PATH` | For TTS | Mount path of the Railway Volume for narration files (e.g. `/data`). |

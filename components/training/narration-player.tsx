@@ -29,8 +29,13 @@ export function NarrationPlayer({
       const res = await fetch(
         `/api/org/${orgSlug}/narration?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`
       )
-      const data = await res.json()
-      if (data.hasNarration && data.streamUrl) {
+      let data: { hasNarration?: boolean; streamUrl?: string } = {}
+      try {
+        data = await res.json()
+      } catch {
+        data = {}
+      }
+      if (res.ok && data.hasNarration && data.streamUrl) {
         setHasNarration(true)
         setStreamUrl(data.streamUrl)
       } else {

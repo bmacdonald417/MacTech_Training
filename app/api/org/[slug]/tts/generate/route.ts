@@ -161,12 +161,22 @@ export async function POST(
       )
     }
 
-    const storagePath = await writeNarrationFile(
-      membership.orgId,
-      entityType,
-      entityId,
-      buffer
-    )
+    let storagePath: string
+    try {
+      storagePath = await writeNarrationFile(
+        membership.orgId,
+        entityType,
+        entityId,
+        buffer
+      )
+    } catch (storageErr) {
+      const message = storageErr instanceof Error ? storageErr.message : "Narration storage failed."
+      console.error("[tts/generate] Storage error:", storageErr)
+      return NextResponse.json(
+        { error: message },
+        { status: 503 }
+      )
+    }
 
     const now = new Date()
     const asset = await prisma.narrationAsset.upsert({
