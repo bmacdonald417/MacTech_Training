@@ -82,7 +82,7 @@ export default async function DocumentsPage({ params, searchParams }: DocumentsP
               <Plus className="h-4 w-4" />
               New document
             </Link>
-          }
+          </Button>
         }
       />
 

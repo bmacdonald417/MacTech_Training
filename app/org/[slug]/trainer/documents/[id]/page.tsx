@@ -53,7 +53,7 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
               <ArrowLeft className="h-4 w-4" />
               Back to list
             </Link>
-          }
+          </Button>
         }
       />
 

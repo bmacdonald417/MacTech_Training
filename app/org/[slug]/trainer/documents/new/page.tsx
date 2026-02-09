@@ -24,7 +24,7 @@ export default async function NewDocumentPage({ params }: NewDocumentPageProps) 
               <ArrowLeft className="h-4 w-4" />
               Back to list
             </Link>
-          }
+          </Button>
         }
       />
       <Card>
