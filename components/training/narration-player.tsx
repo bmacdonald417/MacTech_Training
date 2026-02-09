@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Volume2, Loader2, RefreshCw } from "lucide-react"
 
@@ -24,7 +24,7 @@ export function NarrationPlayer({
   const [generateError, setGenerateError] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch(
         `/api/org/${orgSlug}/narration?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`
@@ -48,11 +48,11 @@ export function NarrationPlayer({
     } finally {
       setLoading(false)
     }
-  }
+  }, [orgSlug, entityType, entityId])
 
   useEffect(() => {
     fetchStatus()
-  }, [orgSlug, entityType, entityId])
+  }, [fetchStatus])
 
   const handleGenerate = async () => {
     setGenerating(true)

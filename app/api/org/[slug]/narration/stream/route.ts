@@ -84,7 +84,13 @@ export async function GET(
       })
       const webStream = new ReadableStream({
         start(controller) {
-          nodeStream.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)))
+          nodeStream.on("data", (chunk: string | Buffer) => {
+            const bytes =
+              chunk instanceof Buffer
+                ? new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+                : new Uint8Array(Buffer.from(chunk as string, "binary"))
+            controller.enqueue(bytes)
+          })
           nodeStream.on("end", () => controller.close())
           nodeStream.on("error", (err) => controller.error(err))
         },
@@ -102,7 +108,13 @@ export async function GET(
     const nodeStream = fs.createReadStream(absolutePath)
     const webStream = new ReadableStream({
       start(controller) {
-        nodeStream.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)))
+        nodeStream.on("data", (chunk: string | Buffer) => {
+            const bytes =
+              chunk instanceof Buffer
+                ? new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+                : new Uint8Array(Buffer.from(chunk as string, "binary"))
+            controller.enqueue(bytes)
+          })
         nodeStream.on("end", () => controller.close())
         nodeStream.on("error", (err) => controller.error(err))
       },
