@@ -94,7 +94,7 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
       ? (searchParams.tab ?? "all")
       : "all"
 
-  const contentItems =
+  const contentItemsRaw =
     category === "public"
       ? await prisma.contentItem.findMany({
           where: {
@@ -111,6 +111,15 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
           orderBy: { createdAt: "desc" },
         })
       : []
+
+  // Show only one version per module (type + title); keep the most recent (first after desc sort)
+  const seenKey = new Set<string>()
+  const contentItems = contentItemsRaw.filter((item) => {
+    const key = `${item.type}|${item.title}`
+    if (seenKey.has(key)) return false
+    seenKey.add(key)
+    return true
+  })
 
   const basePath = `/org/${params.slug}/trainer/content`
   const contentDescription =

@@ -14,7 +14,7 @@ interface CurriculaPageProps {
 export default async function CurriculaPage({ params }: CurriculaPageProps) {
   const membership = await requireTrainerOrAdmin(params.slug)
 
-  const curricula = await prisma.curriculum.findMany({
+  const curriculaRaw = await prisma.curriculum.findMany({
     where: { orgId: membership.orgId },
     include: {
       sections: {
@@ -30,6 +30,14 @@ export default async function CurriculaPage({ params }: CurriculaPageProps) {
     orderBy: {
       createdAt: "desc",
     },
+  })
+
+  // Show only one version per curriculum (by title); keep the most recent
+  const seenTitle = new Set<string>()
+  const curricula = curriculaRaw.filter((c) => {
+    if (seenTitle.has(c.title)) return false
+    seenTitle.add(c.title)
+    return true
   })
 
   return (
