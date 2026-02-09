@@ -1,9 +1,12 @@
 /**
- * Remove duplicate modules from the database.
- * Duplicates are identified by:
- * - ContentItem: same orgId + type + title (keep oldest by createdAt)
- * - Curriculum: same orgId + title (keep oldest by createdAt)
- * - CertificateTemplate: same orgId + name (keep oldest by createdAt)
+ * Remove duplicate modules from the database and remove "Government Contracting
+ * Compliance Fundamentals" content/slides.
+ *
+ * 1. Removes all ContentItems titled "Government Contracting Compliance Fundamentals"
+ * 2. Removes all Slide records titled "Government Contracting Compliance Fundamentals"
+ * 3. Removes duplicate ContentItems (orgId + type + title)
+ * 4. Removes duplicate Curricula (orgId + title)
+ * 5. Removes duplicate CertificateTemplates (orgId + name)
  *
  * Run: npx tsx prisma/remove-duplicate-modules.ts
  */
@@ -12,12 +15,48 @@ import { PrismaClient } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
+const TITLE_TO_REMOVE = "Government Contracting Compliance Fundamentals"
+
 type ContentItemRow = { id: string; orgId: string; type: string; title: string; createdAt: Date }
 type CurriculumRow = { id: string; orgId: string; title: string; createdAt: Date }
 type CertificateTemplateRow = { id: string; orgId: string; name: string; curriculumId: string | null; createdAt: Date }
 
 async function main() {
-  console.log("Scanning for duplicate modules...\n")
+  console.log("Removing specified content and duplicates...\n")
+
+  // --- 0. Remove all ContentItems titled "Government Contracting Compliance Fundamentals" ---
+  const toRemove = await prisma.contentItem.findMany({
+    where: { title: TITLE_TO_REMOVE },
+    select: { id: true, title: true, type: true },
+  })
+  let governmentFundamentalsRemoved = 0
+  for (const item of toRemove) {
+    console.log(`Removing ContentItem "${item.title}" (${item.type}) id=${item.id}`)
+    await prisma.$transaction(async (tx) => {
+      await tx.curriculumItem.deleteMany({ where: { contentItemId: item.id } })
+      await tx.assignment.deleteMany({ where: { contentItemId: item.id } })
+      await tx.enrollmentItemProgress.deleteMany({ where: { contentItemId: item.id } })
+      await tx.contentItem.delete({ where: { id: item.id } })
+    })
+    governmentFundamentalsRemoved++
+  }
+  if (governmentFundamentalsRemoved > 0) {
+    console.log(`Removed ${governmentFundamentalsRemoved} ContentItem(s) titled "${TITLE_TO_REMOVE}".\n`)
+  }
+
+  // --- 0b. Remove all Slide records with that exact title ---
+  const slidesToRemove = await prisma.slide.findMany({
+    where: { title: TITLE_TO_REMOVE },
+    select: { id: true, slideDeckId: true, title: true },
+  })
+  let slidesRemoved = 0
+  for (const slide of slidesToRemove) {
+    await prisma.slide.delete({ where: { id: slide.id } })
+    slidesRemoved++
+  }
+  if (slidesRemoved > 0) {
+    console.log(`Removed ${slidesRemoved} Slide(s) titled "${TITLE_TO_REMOVE}".\n`)
+  }
 
   // --- 1. Duplicate ContentItems (orgId + type + title) ---
   const contentItems = await prisma.contentItem.findMany({
@@ -128,7 +167,10 @@ async function main() {
   }
 
   console.log("Done.")
-  console.log(`Summary: ${contentRemoved} content, ${curriculumRemoved} curricula, ${certRemoved} certificate templates removed.`)
+  console.log(
+    `Summary: ${governmentFundamentalsRemoved} "${TITLE_TO_REMOVE}" content, ${slidesRemoved} slides; ` +
+      `${contentRemoved} duplicate content, ${curriculumRemoved} duplicate curricula, ${certRemoved} duplicate certificate templates removed.`
+  )
 }
 
 main()
