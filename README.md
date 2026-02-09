@@ -157,6 +157,27 @@ Storage layout on the volume: `{mount}/narration/{orgId}/{entityType}/{entityId}
 - **Admin / Trainer**: Can **Generate** (overwrites existing) and **Play** narration.
 - **Trainee**: **Play** only (no access to `POST /api/org/[slug]/tts/generate`).
 
+## CMMC Level 2 Security Awareness & Training Course
+
+The **CMMC Level 2 AT course** (AT.L2-3.2.1 / 3.2.2 / 3.2.3) is included in the repo and created when you seed the database.
+
+### Where it lives in the repo
+
+- **`prisma/seed-cmmc-at.ts`** – Full course: 40 slides (with instructor notes), 20-question quiz (80% pass), attestation, curriculum, certificate template.
+- **`prisma/CMMC-AT-Instructor-Package.md`** – Instructor package: evidence checklist, attestation text, role breakouts, scenario bank.
+- **`prisma/seed.ts`** – Calls `seedCmmcAt(prisma, org.id)` for the demo org so the course is created during seed.
+
+### Seeing the CMMC course in the app
+
+The course appears in the app only **after the database has been seeded**. Pushing to Git does not run the seed.
+
+- **Local:** Run `npm run db:seed`, then log in as Trainer or Admin, go to **Curricula** or **Content** in the **demo** org. The course is **“CMMC Level 2 Security Awareness, Role-Based Cyber Duties, and Insider Threat Training (AT.L2-3.2.1/3.2.2/3.2.3)”**.
+- **Production (e.g. Railway):** Run the seed **once** against the production database. From your machine with `DATABASE_URL` set to the production Postgres URL:
+  ```bash
+  DATABASE_URL="postgresql://..." npm run db:seed
+  ```
+  Or use Railway’s shell/CLI and run `npm run db:seed` there. After that, the CMMC curriculum and content will show in the app for the demo org.
+
 ## Development
 
 ### Database Commands
