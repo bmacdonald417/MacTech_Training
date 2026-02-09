@@ -35,7 +35,8 @@ export function TabNav({
     >
       {tabs.map((tab) => {
         const isActive = currentValue === tab.value
-        const href = tab.value === "all" ? basePath : `${basePath}?tab=${tab.value}`
+        const sep = basePath.includes("?") ? "&" : "?"
+        const href = tab.value === "all" ? basePath : `${basePath}${sep}tab=${tab.value}`
 
         return (
           <Link
