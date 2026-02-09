@@ -33,7 +33,7 @@ async function main() {
     contentGroups.get(key)!.push(c)
   }
 
-  const contentDuplicates = [...contentGroups.values()].filter((g) => g.length > 1)
+  const contentDuplicates = Array.from(contentGroups.values()).filter((g) => g.length > 1)
   let contentRemoved = 0
 
   for (const group of contentDuplicates) {
@@ -70,7 +70,7 @@ async function main() {
     curriculumGroups.get(key)!.push(c)
   }
 
-  const curriculumDuplicates = [...curriculumGroups.values()].filter((g) => g.length > 1)
+  const curriculumDuplicates = Array.from(curriculumGroups.values()).filter((g) => g.length > 1)
   let curriculumRemoved = 0
 
   for (const group of curriculumDuplicates) {
@@ -106,7 +106,7 @@ async function main() {
     certGroups.get(key)!.push(c)
   }
 
-  const certDuplicates = [...certGroups.values()].filter((g) => g.length > 1)
+  const certDuplicates = Array.from(certGroups.values()).filter((g) => g.length > 1)
   let certRemoved = 0
 
   for (const group of certDuplicates) {
