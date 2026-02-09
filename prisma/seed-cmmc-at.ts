@@ -712,7 +712,7 @@ export async function seedCmmcAt(prisma: PrismaClient, orgId: string) {
   const slidesData = buildSlides()
   const quizData = buildQuizData()
 
-  // 1) Slide deck (40 slides)
+  // 1) Slide deck (40 slides) — appears in Trainer → Content → Public → Slide decks with other modules
   const slideDeckContent = await prisma.contentItem.create({
     data: {
       orgId,

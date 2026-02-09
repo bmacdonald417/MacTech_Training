@@ -506,6 +506,28 @@ model CertificateIssued {
 }
 
 // ============================================
+// ARCHIVED MODULES (data retention log for deduplication)
+// ============================================
+// When duplicate content/curricula/certificates are removed, one version is kept
+// and the others are logged here so only the current version appears in the UI.
+
+model ArchivedModuleLog {
+  id             String   @id @default(cuid())
+  orgId          String
+  entityType     String   // "CONTENT_ITEM" | "CURRICULUM" | "CERTIFICATE_TEMPLATE"
+  entityId       String   // id of the archived (removed) record
+  titleOrName    String   // title (content/curriculum) or name (cert template)
+  contentType    String?  // for CONTENT_ITEM: ARTICLE, SLIDE_DECK, QUIZ, etc.
+  archivedAt     DateTime @default(now())
+  supersededById String   // id of the kept (current) version
+  reason         String   @default("DUPLICATE") // e.g. DUPLICATE, SUPERSEDED
+
+  @@index([orgId])
+  @@index([entityType])
+  @@index([archivedAt])
+}
+
+// ============================================
 // QMS DOCUMENT CONTROL (ISO 17025 / GDP)
 // ============================================
 

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Users, BookOpen, Award, CheckCircle2, Download, AlertTriangle } from "lucide-react"
+import { BarChart3, Users, BookOpen, Award, CheckCircle2, Download, AlertTriangle, Archive } from "lucide-react"
 import { format } from "date-fns"
 import Link from "next/link"
 
@@ -216,6 +216,25 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
           </CardHeader>
         </Card>
       )}
+
+      {/* Archived modules (deduplication log) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Archive className="h-5 w-5 text-muted-foreground" />
+            Archived modules
+          </CardTitle>
+          <CardDescription>
+            Log of previous versions removed during deduplication; only the current version of each
+            module appears in Content and Curricula.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/org/${params.slug}/admin/archive`}>View archive log</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Completion by Curriculum */}
       <Card>

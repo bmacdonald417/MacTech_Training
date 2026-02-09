@@ -1,12 +1,13 @@
 /**
- * Remove duplicate modules from the database and remove "Government Contracting
- * Compliance Fundamentals" content/slides.
+ * Remove duplicate modules and keep only one current version per module.
+ * Previous versions are logged to ArchivedModuleLog for data retention;
+ * the UI shows only the single active (kept) version.
  *
- * 1. Removes all ContentItems titled "Government Contracting Compliance Fundamentals"
- * 2. Removes all Slide records titled "Government Contracting Compliance Fundamentals"
- * 3. Removes duplicate ContentItems (orgId + type + title)
- * 4. Removes duplicate Curricula (orgId + title)
- * 5. Removes duplicate CertificateTemplates (orgId + name)
+ * 1. Removes ContentItems titled "Government Contracting Compliance Fundamentals"
+ * 2. Removes Slide records with that title
+ * 3. Duplicate ContentItems (orgId + type + title): keep oldest, log rest to archive, delete
+ * 4. Duplicate Curricula (orgId + title): keep oldest, log rest, delete
+ * 5. Duplicate CertificateTemplates (orgId + name): keep oldest, log rest, delete
  *
  * Run: npx tsx prisma/remove-duplicate-modules.ts
  */
@@ -80,6 +81,17 @@ async function main() {
     console.log(`ContentItem duplicates for "${keep.title}" (${keep.type}): keeping ${keep.id}, removing ${duplicates.length}`)
     for (const dup of duplicates) {
       await prisma.$transaction(async (tx) => {
+        await tx.archivedModuleLog.create({
+          data: {
+            orgId: dup.orgId,
+            entityType: "CONTENT_ITEM",
+            entityId: dup.id,
+            titleOrName: dup.title,
+            contentType: dup.type,
+            supersededById: keep.id,
+            reason: "DUPLICATE",
+          },
+        })
         await tx.curriculumItem.updateMany({ where: { contentItemId: dup.id }, data: { contentItemId: keep.id } })
         await tx.assignment.updateMany({ where: { contentItemId: dup.id }, data: { contentItemId: keep.id } })
         await tx.enrollmentItemProgress.deleteMany({ where: { contentItemId: dup.id } })
@@ -117,6 +129,16 @@ async function main() {
     console.log(`Curriculum duplicates for "${keep.title}": keeping ${keep.id}, removing ${duplicates.length}`)
     for (const dup of duplicates) {
       await prisma.$transaction(async (tx) => {
+        await tx.archivedModuleLog.create({
+          data: {
+            orgId: dup.orgId,
+            entityType: "CURRICULUM",
+            entityId: dup.id,
+            titleOrName: dup.title,
+            supersededById: keep.id,
+            reason: "DUPLICATE",
+          },
+        })
         await tx.certificateTemplate.updateMany({ where: { curriculumId: dup.id }, data: { curriculumId: keep.id } })
         await tx.assignment.updateMany({ where: { curriculumId: dup.id }, data: { curriculumId: keep.id } })
         await tx.curriculum.delete({ where: { id: dup.id } })
@@ -153,6 +175,16 @@ async function main() {
     console.log(`CertificateTemplate duplicates for "${keep.name}": keeping ${keep.id}, removing ${duplicates.length}`)
     for (const dup of duplicates) {
       await prisma.$transaction(async (tx) => {
+        await tx.archivedModuleLog.create({
+          data: {
+            orgId: dup.orgId,
+            entityType: "CERTIFICATE_TEMPLATE",
+            entityId: dup.id,
+            titleOrName: dup.name,
+            supersededById: keep.id,
+            reason: "DUPLICATE",
+          },
+        })
         await tx.certificateIssued.updateMany({ where: { templateId: dup.id }, data: { templateId: keep.id } })
         await tx.certificateTemplate.delete({ where: { id: dup.id } })
       })

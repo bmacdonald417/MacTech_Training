@@ -171,7 +171,7 @@ The **CMMC Level 2 AT course** (AT.L2-3.2.1 / 3.2.2 / 3.2.3) is included in the 
 
 The course appears in the app only **after the database has been seeded**. Pushing to Git does not run the seed.
 
-- **Local:** Run `npm run db:seed`, then log in as Trainer or Admin, go to **Curricula** or **Content** in the **demo** org. The course is **“CMMC Level 2 Security Awareness, Role-Based Cyber Duties, and Insider Threat Training (AT.L2-3.2.1/3.2.2/3.2.3)”**.
+- **Local:** Run `npm run db:seed`, then log in as Trainer or Admin, go to **Trainer → Content → Public → Slide decks** (or **Curricula**) in the **demo** org. The course is **“CMMC Level 2 Security Awareness, Role-Based Cyber Duties, and Insider Threat Training (AT.L2-3.2.1/3.2.2/3.2.3)”**.
 - **Production (e.g. Railway):** Run the seed **once** against the production database. From your machine with `DATABASE_URL` set to the production Postgres URL:
   ```bash
   DATABASE_URL="postgresql://..." npm run db:seed
