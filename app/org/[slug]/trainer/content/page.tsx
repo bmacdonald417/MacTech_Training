@@ -1,5 +1,6 @@
 import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { seedCmmcAt } from "@/prisma/seed-cmmc-at"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -93,6 +94,25 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
     searchParams.tab === "all" || isValidTab(searchParams.tab)
       ? (searchParams.tab ?? "all")
       : "all"
+
+  // Ensure CMMC slide deck exists in the library so it appears with the other slide decks (no separate install)
+  if (category === "public") {
+    const hasCmmc = await prisma.contentItem.findFirst({
+      where: {
+        orgId: membership.orgId,
+        type: "SLIDE_DECK",
+        title: { contains: "CMMC Level 2" },
+      },
+    })
+    if (!hasCmmc) {
+      try {
+        await seedCmmcAt(prisma, membership.orgId)
+      } catch (err) {
+        console.error("[Content] CMMC deck seed failed:", err)
+        // Don’t break the page; other decks still show
+      }
+    }
+  }
 
   const contentItemsRaw =
     category === "public"
