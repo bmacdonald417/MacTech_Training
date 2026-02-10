@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -78,6 +78,7 @@ const FORM_FIELD_TYPES = [
 
 export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState(contentItem.title)
   const [description, setDescription] = useState(contentItem.description ?? "")
@@ -105,6 +106,7 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
   const [exporting, setExporting] = useState(false)
   const [editSlideIndex, setEditSlideIndex] = useState<number | null>(null)
   const [dragActive, setDragActive] = useState(false)
+  const [importSuccess, setImportSuccess] = useState<string | null>(null)
 
   let parsedForm: FormFieldInput[] = []
   try {
@@ -152,6 +154,7 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
     }
     setImporting(true)
     setError(null)
+    setImportSuccess(null)
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -179,8 +182,10 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
             notesRichText: s.notesRichText ?? null,
           }))
         )
+        setImportSuccess(`Imported ${slideList.length} slide${slideList.length === 1 ? "" : "s"}.`)
+        setTimeout(() => setImportSuccess(null), 4000)
       }
-      if (data.redirectUrl) {
+      if (data.redirectUrl && data.redirectUrl !== pathname) {
         router.push(data.redirectUrl)
         router.refresh()
       }
@@ -348,6 +353,11 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}
+            </p>
+          )}
+          {importSuccess && (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+              {importSuccess}
             </p>
           )}
 
