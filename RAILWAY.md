@@ -58,6 +58,43 @@ After that, the production app and login (e.g. `admin@demo.com` / `password123`)
 
 ---
 
+## "Invalid email or password" or 401 on login
+
+If you see **Invalid email or password** (or 401 on `/api/auth/callback/credentials`), the app is reaching the DB but either the user doesn’t exist or the password doesn’t match. For the **demo** account, seed must have been run against production. Do this once (you need to be logged in to Railway):
+
+**You must use the public database URL.**  
+`postgres.railway.internal` only works **inside** Railway (e.g. your app at runtime). From your PC, use the **public** URL so your machine can reach the DB.
+
+**Steps:**
+
+1. In **Railway** → your project → click the **Postgres** service (not MacTech_Training).
+2. Open **Variables** or **Connect** / **Public Networking**. Copy the **public** `DATABASE_URL` (host should be `*.railway.app` or `containers-*.railway.app`, **not** `postgres.railway.internal`). If you only see an internal URL, enable **Public Networking** for the Postgres service (Settings or Connect) and copy the new URL.
+3. In your project folder, set that URL and run deploy (Command Prompt):
+
+```cmd
+cd "C:\Users\bmacd\.cursor\MacTech Training"
+set DATABASE_URL=postgresql://postgres:PASSWORD@HOST.railway.app:PORT/railway
+npx prisma db push
+npm run db:seed
+```
+
+Replace `PASSWORD`, `HOST`, and `PORT` with the values from the URL you copied (or paste the whole URL after `set DATABASE_URL=`).
+
+**PowerShell:**
+
+```powershell
+cd "C:\Users\bmacd\.cursor\MacTech Training"
+$env:DATABASE_URL = "postgresql://postgres:xxx@containers-xxx.railway.app:5432/railway"
+npx prisma db push
+npm run db:seed
+```
+
+After that, log in with **admin@demo.com** / **password123**.
+
+After that, **demo credentials** are: `admin@demo.com` / `password123`. If you signed up via **Create account**, use that email and password instead.
+
+---
+
 ## Fixing the "NO_SECRET" / "Please define a secret in production" error
 
 The app **must** have these variables set **on the service that runs your app** (the MacTech_Training service), and you **must redeploy** after adding them.
