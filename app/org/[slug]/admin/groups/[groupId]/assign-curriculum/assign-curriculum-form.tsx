@@ -30,6 +30,7 @@ export function AssignCurriculumForm({
 }: AssignCurriculumFormProps) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
   const groupsUrl = `/org/${orgSlug}/admin/groups`
@@ -59,8 +60,16 @@ export function AssignCurriculumForm({
       return
     }
 
-    router.push(groupsUrl)
-    router.refresh()
+    const count = result.enrolledCount ?? 0
+    const message =
+      count > 0
+        ? `Assigned to ${count} member${count === 1 ? "" : "s"}. They will see it in My Training (refresh the page if already open).`
+        : "Assignment created, but this group has no members yet. Add users to the group under Users; they will see the curriculum in My Training after you assign again or you can assign this same curriculum again after adding members."
+    setSuccess(message)
+    setTimeout(() => {
+      router.push(groupsUrl)
+      router.refresh()
+    }, 2000)
   }
 
   return (
@@ -96,6 +105,14 @@ export function AssignCurriculumForm({
                 className="rounded-lg border border-red-200/80 bg-red-50/70 px-4 py-3 text-sm text-red-700"
               >
                 {error}
+              </div>
+            )}
+            {success && (
+              <div
+                role="status"
+                className="rounded-lg border border-green-200/80 bg-green-50/70 px-4 py-3 text-sm text-green-800"
+              >
+                {success}
               </div>
             )}
             <div className="space-y-2">

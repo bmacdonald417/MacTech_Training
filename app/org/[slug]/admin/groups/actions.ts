@@ -84,7 +84,7 @@ export async function assignCurriculumToGroup(
   curriculumId: string,
   title: string,
   dueDate?: string | null
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; enrolledCount?: number }> {
   try {
     const membership = await requireAdmin(orgSlug)
     const [group, curriculum] = await Promise.all([
@@ -100,17 +100,19 @@ export async function assignCurriculumToGroup(
     if (!curriculum) return { error: "Curriculum not found." }
     const assignmentTitle = title?.trim() || curriculum.title
 
+    const userIds = group.members.map((m) => m.userId)
+
     const assignment = await prisma.assignment.create({
       data: {
         orgId: membership.orgId,
         type: "CURRICULUM",
         curriculumId: curriculum.id,
+        groupId: group.id,
         title: assignmentTitle,
         dueDate: dueDate ? new Date(dueDate) : null,
       },
     })
 
-    const userIds = group.members.map((m) => m.userId)
     if (userIds.length > 0) {
       await prisma.enrollment.createMany({
         data: userIds.map((userId) => ({
@@ -124,7 +126,7 @@ export async function assignCurriculumToGroup(
     revalidatePath(`/org/${orgSlug}/admin/groups/${groupId}/assign-curriculum`)
     revalidatePath(`/org/${orgSlug}/trainer/assignments`)
     revalidatePath(`/org/${orgSlug}/my-training`)
-    return {}
+    return { enrolledCount: userIds.length }
   } catch (err) {
     if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
       return { error: "You don't have permission to assign curricula." }

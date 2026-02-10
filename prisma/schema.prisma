@@ -85,9 +85,10 @@ model Group {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  members    GroupMember[]
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members     GroupMember[]
   enrollments Enrollment[]
+  assignments Assignment[]
 
   @@index([orgId])
   @@index([joinCode])
@@ -402,25 +403,28 @@ enum AssignmentStatus {
 }
 
 model Assignment {
-  id          String          @id @default(cuid())
-  orgId       String
-  type        AssignmentType
-  contentItemId String?       // if type is CONTENT_ITEM
-  curriculumId  String?       // if type is CURRICULUM
-  title       String
-  description String?
-  dueDate     DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id             String          @id @default(cuid())
+  orgId          String
+  type           AssignmentType
+  contentItemId  String?         // if type is CONTENT_ITEM
+  curriculumId   String?         // if type is CURRICULUM
+  groupId        String?         // when assigned via "assign curriculum to group"
+  title          String
+  description    String?
+  dueDate        DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   contentItem ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
   curriculum  Curriculum?  @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  group       Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
   enrollments Enrollment[]
 
   @@index([orgId])
   @@index([contentItemId])
   @@index([curriculumId])
+  @@index([groupId])
 }
 
 model Enrollment {

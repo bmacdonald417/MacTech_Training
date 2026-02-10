@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { GroupJoinQR } from "@/components/group-join-qr"
 import { GroupJoinCodeGenerateButton } from "./group-join-code-button"
-import { Users, Plus, BookOpen } from "lucide-react"
+import { Users, Plus, BookOpen, GraduationCap } from "lucide-react"
 
 interface GroupsPageProps {
   params: Promise<{ slug: string }>
@@ -37,6 +37,13 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
         include: {
           user: true,
         },
+      },
+      assignments: {
+        where: { type: "CURRICULUM", curriculumId: { not: null } },
+        include: {
+          curriculum: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: "desc" },
       },
     },
     orderBy: {
@@ -103,6 +110,19 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
                   </div>
                 ) : (
                   <GroupJoinCodeGenerateButton groupId={group.id} orgSlug={slug} />
+                )}
+                {group.assignments.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium text-muted-foreground">Assigned curricula</span>
+                    <ul className="space-y-1">
+                      {group.assignments.map((a) => (
+                        <li key={a.id} className="flex items-center gap-2 text-sm text-foreground">
+                          <GraduationCap className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          {a.curriculum?.title ?? a.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 <div className="flex flex-wrap gap-2">
                   <Button variant="default" size="sm" asChild>
