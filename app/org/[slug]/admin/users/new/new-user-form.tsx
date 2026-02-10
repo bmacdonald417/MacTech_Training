@@ -15,7 +15,12 @@ const ROLES = [
   { value: "ADMIN", label: "Admin" },
 ] as const
 
-export function NewUserForm({ slug }: { slug: string }) {
+interface GroupOption {
+  id: string
+  name: string
+}
+
+export function NewUserForm({ slug, groups }: { slug: string; groups: GroupOption[] }) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -33,6 +38,7 @@ export function NewUserForm({ slug }: { slug: string }) {
     const name = (formData.get("name") as string)?.trim()
     const password = formData.get("password") as string
     const role = (formData.get("role") as string) || "TRAINEE"
+    const groupId = (formData.get("groupId") as string)?.trim() || null
 
     if (!email) {
       setError("Email is required.")
@@ -44,7 +50,13 @@ export function NewUserForm({ slug }: { slug: string }) {
       const res = await fetch(`/api/org/${slug}/admin/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name: name || undefined, password: password || undefined, role }),
+        body: JSON.stringify({
+          email,
+          name: name || undefined,
+          password: password || undefined,
+          role,
+          groupId: groupId || undefined,
+        }),
       })
       const data = await res.json().catch(() => ({}))
 
@@ -155,6 +167,24 @@ export function NewUserForm({ slug }: { slug: string }) {
                 {ROLES.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="groupId" className="text-foreground">
+                Add to group <span className="font-normal">(optional)</span>
+              </Label>
+              <select
+                id="groupId"
+                name="groupId"
+                disabled={loading}
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3.5 py-2 text-sm text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground hover:border-input/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">None</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
                   </option>
                 ))}
               </select>

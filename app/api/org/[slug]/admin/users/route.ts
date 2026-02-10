@@ -20,6 +20,7 @@ export async function POST(
     const name = typeof body.name === "string" ? body.name.trim() || null : null
     const password = typeof body.password === "string" ? body.password : ""
     const role = VALID_ROLES.includes(body.role) ? body.role : "TRAINEE"
+    const groupId = typeof body.groupId === "string" ? body.groupId.trim() || null : null
 
     if (!email) {
       return NextResponse.json({ error: "Email is required." }, { status: 400 })
@@ -33,6 +34,8 @@ export async function POST(
         },
       },
     })
+
+    let userId: string
 
     if (existingUser) {
       if (existingUser.memberships.length > 0) {
@@ -48,33 +51,46 @@ export async function POST(
           role,
         },
       })
-      return NextResponse.json({ ok: true })
+      userId = existingUser.id
+    } else {
+      if (!password || password.length < 6) {
+        return NextResponse.json(
+          { error: "Password is required (at least 6 characters) for new users." },
+          { status: 400 }
+        )
+      }
+      const hashedPassword = await bcrypt.hash(password, 10)
+      const newUser = await prisma.user.create({
+        data: {
+          email,
+          name,
+          password: hashedPassword,
+        },
+      })
+      await prisma.membership.create({
+        data: {
+          userId: newUser.id,
+          orgId,
+          role,
+        },
+      })
+      userId = newUser.id
     }
 
-    if (!password || password.length < 6) {
-      return NextResponse.json(
-        { error: "Password is required (at least 6 characters) for new users." },
-        { status: 400 }
-      )
+    if (groupId) {
+      const group = await prisma.group.findFirst({
+        where: { id: groupId, orgId },
+      })
+      if (group) {
+        await prisma.groupMember.upsert({
+          where: {
+            groupId_userId: { groupId: group.id, userId },
+          },
+          update: {},
+          create: { groupId: group.id, userId },
+        })
+      }
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        name,
-        password: hashedPassword,
-      },
-    })
-
-    await prisma.membership.create({
-      data: {
-        userId: newUser.id,
-        orgId,
-        role,
-      },
-    })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
