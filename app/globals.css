@@ -95,3 +95,15 @@
     linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* Auth (login/signup) right panel is white: force dark text in inputs so you can see what you type */
+.auth-form-panel input,
+.auth-form-panel select {
+  color: rgb(15 23 42) !important;
+}
+.auth-form-panel input::placeholder {
+  color: rgb(100 116 139) !important;
+}
+.auth-form-panel select option {
+  color: rgb(15 23 42);
+}

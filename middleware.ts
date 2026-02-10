@@ -61,6 +61,6 @@ export default withAuth(
 )
 
 export const config = {
-  // Public: /login, /signup, /join/* (no auth). Protected: /, /org/*
-  matcher: ["/", "/org/:path*", "/signup", "/join/:path*"],
+  // Only run auth middleware on protected routes. /login, /signup, /join/* are NOT in matcher so they load without redirect.
+  matcher: ["/", "/org/:path*"],
 }

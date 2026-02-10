@@ -21,8 +21,8 @@ export function LoginLayout({ leftPanel, rightPanel }: LoginLayoutProps) {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-200/20 rounded-full blur-3xl -z-0" />
       </div>
 
-      {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-white">
+      {/* Right Panel - Login Form (light panel: force dark input text for readability) */}
+      <div className="auth-form-panel flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-white">
         <div className="w-full max-w-md">
           {/* Mobile: Show brand at top */}
           <div className="lg:hidden mb-8">

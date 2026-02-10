@@ -112,6 +112,7 @@ export default function NewUserPage({ params }: NewUserPageProps) {
                 autoComplete="email"
                 disabled={loading}
                 aria-invalid={!!error}
+                className="text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-2">
@@ -125,6 +126,7 @@ export default function NewUserPage({ params }: NewUserPageProps) {
                 placeholder="Display name"
                 autoComplete="name"
                 disabled={loading}
+                className="text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-2">
@@ -138,6 +140,7 @@ export default function NewUserPage({ params }: NewUserPageProps) {
                 placeholder="Leave blank if user already exists"
                 autoComplete="new-password"
                 disabled={loading}
+                className="text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-2">
@@ -148,7 +151,7 @@ export default function NewUserPage({ params }: NewUserPageProps) {
                 id="role"
                 name="role"
                 disabled={loading}
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3.5 py-2 text-sm transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground hover:border-input/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3.5 py-2 text-sm text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground hover:border-input/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
                 defaultValue="TRAINEE"
               >
                 {ROLES.map((r) => (
