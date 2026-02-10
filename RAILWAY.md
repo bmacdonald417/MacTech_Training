@@ -28,7 +28,14 @@ After you create a PostgreSQL database in Railway:
 
 ### 3. Create tables and seed data (one-time)
 
-The **build** script runs `prisma db push` before `next build`, so each deploy keeps the production schema in sync (e.g. so sign-up works). Ensure `DATABASE_URL` is set on your app service so the build can reach the DB. You still need to **seed** once (and again if you want to reset or add demo data):
+Railway’s **build** runs in an isolated environment and cannot reach the database (`postgres.railway.internal` is only available at runtime). So schema updates are **not** run during build. After you deploy schema changes (e.g. new columns for sign-up), run **once** from your machine (with Railway CLI or with `DATABASE_URL` set to your **public** Postgres URL from Railway):
+
+```bash
+railway link
+railway run npx prisma db push
+```
+
+Use the **public** `DATABASE_URL` from the Postgres service (Variables → copy the URL that uses `*.railway.app`, not `postgres.railway.internal`) if you run from local without the CLI. Then **seed** once (and again if you want to reset or add demo data):
 
 From your project folder, with the **Railway Postgres** URL set as `DATABASE_URL`:
 
