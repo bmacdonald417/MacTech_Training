@@ -17,14 +17,15 @@ import {
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string; id: string } }
+  context: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, id } = await context.params
+    const membership = await requireAuth(slug)
     const role = normalizeDocumentRole(membership.role)
 
     const doc = await prisma.controlledDocument.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id, orgId: membership.orgId },
       include: {
         currentVersion: true,
         versions: {
@@ -62,16 +63,17 @@ export async function GET(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { slug: string; id: string } }
+  context: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, id } = await context.params
+    const membership = await requireAuth(slug)
     const role = normalizeDocumentRole(membership.role)
     const body = await req.json()
     const { action } = body as { action?: string }
 
     const doc = await prisma.controlledDocument.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id, orgId: membership.orgId },
       include: { currentVersion: true, versions: { include: { approvals: true } } },
     })
     if (!doc) {
@@ -91,7 +93,7 @@ export async function PATCH(
           return NextResponse.json({ error: "Forbidden" }, { status: 403 })
         }
         await prisma.controlledDocument.update({
-          where: { id: params.id },
+          where: { id: id },
           data: { status: "IN_REVIEW" },
         })
         await prisma.eventLog.create({
@@ -162,7 +164,7 @@ export async function PATCH(
         })
         if (approvalCount >= 1) {
           await prisma.controlledDocument.update({
-            where: { id: params.id },
+            where: { id: id },
             data: { status: "APPROVED" },
           })
         }
@@ -189,7 +191,7 @@ export async function PATCH(
           ? new Date(body.effectiveDate)
           : new Date()
         await prisma.controlledDocument.update({
-          where: { id: params.id },
+          where: { id: id },
           data: { status: "EFFECTIVE", effectiveDate },
         })
         await prisma.eventLog.create({
@@ -212,7 +214,7 @@ export async function PATCH(
         }
         const { supersededByDocumentId } = body as { supersededByDocumentId?: string }
         await prisma.controlledDocument.update({
-          where: { id: params.id },
+          where: { id: id },
           data: {
             status: "OBSOLETE",
             supersededByDocumentId: supersededByDocumentId || null,
@@ -249,7 +251,7 @@ export async function PATCH(
         if (typeof requiresAcknowledgment === "boolean") updateData.requiresAcknowledgment = requiresAcknowledgment
         if (Object.keys(updateData).length > 0) {
           await prisma.controlledDocument.update({
-            where: { id: params.id },
+            where: { id: id },
             data: updateData,
           })
         }
@@ -257,7 +259,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.controlledDocument.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id: id, orgId: membership.orgId },
       include: {
         currentVersion: true,
         versions: {

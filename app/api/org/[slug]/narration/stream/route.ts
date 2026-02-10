@@ -6,10 +6,11 @@ import fs from "fs"
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug } = await context.params
+    const membership = await requireAuth(slug)
     const { searchParams } = new URL(req.url)
     const entityType = searchParams.get("entityType")
     const entityId = searchParams.get("entityId")

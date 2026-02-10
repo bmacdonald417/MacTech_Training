@@ -15,10 +15,11 @@ import type { DocumentStatus, DocumentType } from "@prisma/client"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug } = await context.params
+    const membership = await requireAuth(slug)
     const role = normalizeDocumentRole(membership.role)
     const { searchParams } = new URL(req.url)
     const documentType = searchParams.get("documentType") as DocumentType | null
@@ -77,10 +78,11 @@ export async function GET(
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug } = await context.params
+    const membership = await requireAuth(slug)
     const role = normalizeDocumentRole(membership.role)
     if (!canEditDocument(role, "DRAFT")) {
       return NextResponse.json(

@@ -11,12 +11,12 @@ import { GroupJoinCodeGenerateButton } from "./group-join-code-button"
 import { Users, Plus } from "lucide-react"
 
 interface GroupsPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
-function getBaseUrl() {
+async function getBaseUrl() {
   try {
-    const h = headers()
+    const h = await headers()
     const host = h.get("host") ?? ""
     const proto = h.get("x-forwarded-proto") === "https" ? "https" : "http"
     return `${proto}://${host}`
@@ -26,8 +26,9 @@ function getBaseUrl() {
 }
 
 export default async function GroupsPage({ params }: GroupsPageProps) {
-  const membership = await requireAdmin(params.slug)
-  const baseUrl = getBaseUrl()
+  const { slug } = await params
+  const membership = await requireAdmin(slug)
+  const baseUrl = await getBaseUrl()
 
   const groups = await prisma.group.findMany({
     where: { orgId: membership.orgId },
@@ -50,7 +51,7 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
         description="Manage user groups for bulk assignments"
         action={
           <Button asChild className="gap-2">
-            <Link href={`/org/${params.slug}/admin/groups/new`}>
+            <Link href={`/org/${slug}/admin/groups/new`}>
               <Plus className="h-4 w-4" />
               Create Group
             </Link>
@@ -65,7 +66,7 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
           description="Create a group to assign training to multiple users at once."
           action={
             <Button asChild className="gap-2">
-              <Link href={`/org/${params.slug}/admin/groups/new`}>
+              <Link href={`/org/${slug}/admin/groups/new`}>
                 <Plus className="h-4 w-4" />
                 Create group
               </Link>
@@ -101,7 +102,7 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
                     </div>
                   </div>
                 ) : (
-                  <GroupJoinCodeGenerateButton groupId={group.id} orgSlug={params.slug} />
+                  <GroupJoinCodeGenerateButton groupId={group.id} orgSlug={slug} />
                 )}
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" disabled>

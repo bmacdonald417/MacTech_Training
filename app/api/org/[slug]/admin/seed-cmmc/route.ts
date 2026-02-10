@@ -8,10 +8,11 @@ const CMMC_CURRICULUM_TITLE =
 
 export async function POST(
   _req: Request,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const membership = await requireAdmin(params.slug)
+    const { slug } = await context.params
+    const membership = await requireAdmin(slug)
     const orgId = membership.orgId
 
     const existing = await prisma.curriculum.findFirst({

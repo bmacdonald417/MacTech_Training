@@ -5,15 +5,16 @@ import { checkEnrollmentCompletion, issueCertificate } from "@/lib/completion"
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; enrollmentId: string } }
+  context: { params: Promise<{ slug: string; enrollmentId: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, enrollmentId } = await context.params
+    const membership = await requireAuth(slug)
     const { contentItemId } = await req.json()
 
     // Verify enrollment belongs to user
     const enrollment = await prisma.enrollment.findUnique({
-      where: { id: params.enrollmentId },
+      where: { id: enrollmentId },
       include: {
         assignment: true,
       },
@@ -27,7 +28,7 @@ export async function POST(
     await prisma.enrollmentItemProgress.upsert({
       where: {
         enrollmentId_contentItemId: {
-          enrollmentId: params.enrollmentId,
+          enrollmentId: enrollmentId,
           contentItemId,
         },
       },
@@ -37,7 +38,7 @@ export async function POST(
         completedAt: new Date(),
       },
       create: {
-        enrollmentId: params.enrollmentId,
+        enrollmentId: enrollmentId,
         contentItemId,
         status: "COMPLETED",
         completed: true,
@@ -48,7 +49,7 @@ export async function POST(
     // Update enrollment status if needed
     if (enrollment.status === "ASSIGNED") {
       await prisma.enrollment.update({
-        where: { id: params.enrollmentId },
+        where: { id: enrollmentId },
         data: {
           status: "IN_PROGRESS",
           startedAt: enrollment.startedAt || new Date(),
@@ -57,11 +58,11 @@ export async function POST(
     }
 
     // Check if enrollment is fully complete
-    const completionCheck = await checkEnrollmentCompletion(params.enrollmentId)
+    const completionCheck = await checkEnrollmentCompletion(enrollmentId)
 
     if (completionCheck.isComplete) {
       await prisma.enrollment.update({
-        where: { id: params.enrollmentId },
+        where: { id: enrollmentId },
         data: {
           status: "COMPLETED",
           completedAt: new Date(),
@@ -69,7 +70,7 @@ export async function POST(
       })
 
       // Issue certificate
-      await issueCertificate(params.enrollmentId, membership.orgId, membership.userId)
+      await issueCertificate(enrollmentId, membership.orgId, membership.userId)
     }
 
     // Log event
@@ -79,7 +80,7 @@ export async function POST(
         userId: membership.userId,
         type: "ENROLLMENT_COMPLETED",
         metadata: JSON.stringify({
-          enrollmentId: params.enrollmentId,
+          enrollmentId: enrollmentId,
           contentItemId,
         }),
       },

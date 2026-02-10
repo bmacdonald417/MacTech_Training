@@ -1,11 +1,12 @@
 import OrgLayout from "@/components/layout/org-layout"
 
-export default function Layout({
+export default async function Layout({
   children,
   params,
 }: {
   children: React.ReactNode
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
-  return <OrgLayout params={params}>{children}</OrgLayout>
+  const resolved = await params
+  return <OrgLayout params={resolved}>{children}</OrgLayout>
 }

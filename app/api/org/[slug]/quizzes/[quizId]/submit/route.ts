@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; quizId: string } }
+  context: { params: Promise<{ slug: string; quizId: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, quizId } = await context.params
+    const membership = await requireAuth(slug)
     const { answers, enrollmentId, userId } = await req.json()
 
     if (userId !== membership.userId) {
@@ -16,7 +17,7 @@ export async function POST(
 
     // Get quiz with questions and correct answers
     const quiz = await prisma.quiz.findUnique({
-      where: { id: params.quizId },
+      where: { id: quizId },
       include: {
         questions: {
           include: {
@@ -48,7 +49,7 @@ export async function POST(
     // Save attempt
     const attempt = await prisma.quizAttempt.create({
       data: {
-        quizId: params.quizId,
+        quizId,
         userId: membership.userId,
         score,
         passed,
@@ -63,7 +64,7 @@ export async function POST(
         userId: membership.userId,
         type: passed ? "QUIZ_SUBMITTED" : "QUIZ_FAILED",
         metadata: JSON.stringify({
-          quizId: params.quizId,
+          quizId,
           attemptId: attempt.id,
           score,
           passed,

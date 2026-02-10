@@ -8,10 +8,11 @@ const VALID_ROLES: Role[] = ["ADMIN", "TRAINER", "TRAINEE"]
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const membership = await requireAdmin(params.slug)
+    const { slug } = await context.params
+    const membership = await requireAdmin(slug)
     const orgId = membership.orgId
 
     const body = await req.json()

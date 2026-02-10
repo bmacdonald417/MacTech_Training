@@ -10,17 +10,18 @@ import { canAcknowledgeDocument, canSeeDocument, normalizeDocumentRole } from "@
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; id: string } }
+  context: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, id } = await context.params
+    const membership = await requireAuth(slug)
     const role = normalizeDocumentRole(membership.role)
     if (!canAcknowledgeDocument(role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const doc = await prisma.controlledDocument.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id, orgId: membership.orgId },
       include: { currentVersion: true },
     })
     if (!doc) {

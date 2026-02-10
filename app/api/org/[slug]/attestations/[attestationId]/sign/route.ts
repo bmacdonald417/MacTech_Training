@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; attestationId: string } }
+  context: { params: Promise<{ slug: string; attestationId: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, attestationId } = await context.params
+    const membership = await requireAuth(slug)
     const { typedName, enrollmentId, userId } = await req.json()
 
     if (userId !== membership.userId) {
@@ -23,7 +24,7 @@ export async function POST(
     // Create attestation record
     await prisma.attestationRecord.create({
       data: {
-        templateId: params.attestationId,
+        templateId: attestationId,
         userId: membership.userId,
         typedName: typedName || null,
         ipAddress,
@@ -37,7 +38,7 @@ export async function POST(
         userId: membership.userId,
         type: "ATTESTATION_SIGNED",
         metadata: JSON.stringify({
-          attestationId: params.attestationId,
+          attestationId,
           enrollmentId,
         }),
       },

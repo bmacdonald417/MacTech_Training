@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string; quizId: string } }
+  context: { params: Promise<{ slug: string; quizId: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, quizId } = await context.params
+    const membership = await requireAuth(slug)
     const userId = req.nextUrl.searchParams.get("userId")
 
     if (!userId || userId !== membership.userId) {
@@ -16,7 +17,7 @@ export async function GET(
 
     const attempts = await prisma.quizAttempt.findMany({
       where: {
-        quizId: params.quizId,
+        quizId,
         userId: membership.userId,
       },
       orderBy: {

@@ -10,14 +10,15 @@ import type { DocumentChangeType } from "@prisma/client"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string; id: string } }
+  context: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, id } = await context.params
+    const membership = await requireAuth(slug)
     const role = normalizeDocumentRole(membership.role)
 
     const doc = await prisma.controlledDocument.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id, orgId: membership.orgId },
     })
     if (!doc) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 })
@@ -44,14 +45,15 @@ export async function GET(
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; id: string } }
+  context: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, id } = await context.params
+    const membership = await requireAuth(slug)
     const role = normalizeDocumentRole(membership.role)
 
     const doc = await prisma.controlledDocument.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id, orgId: membership.orgId },
       include: { currentVersion: true, versions: { orderBy: { createdAt: "desc" }, take: 1 } },
     })
     if (!doc) {
@@ -100,7 +102,7 @@ export async function POST(
 
     const existingVersion = await prisma.documentVersion.findUnique({
       where: {
-        documentId_version: { documentId: params.id, version: nextVersion },
+        documentId_version: { documentId: id, version: nextVersion },
       },
     })
     if (existingVersion) {
@@ -112,7 +114,7 @@ export async function POST(
 
     const newVersion = await prisma.documentVersion.create({
       data: {
-        documentId: params.id,
+        documentId: id,
         version: nextVersion,
         changeType: changeType || "MINOR",
         changeSummary: changeSummary.trim(),
@@ -123,7 +125,7 @@ export async function POST(
     })
 
     await prisma.controlledDocument.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { currentVersionId: newVersion.id },
     })
 
@@ -142,7 +144,7 @@ export async function POST(
     })
 
     const updated = await prisma.controlledDocument.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id: id, orgId: membership.orgId },
       include: { currentVersion: true, versions: { include: { approvals: true } } },
     })
     return NextResponse.json(updated)

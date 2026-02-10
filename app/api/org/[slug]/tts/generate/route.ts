@@ -12,10 +12,11 @@ const MAX_INPUT_LENGTH = 4096
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const membership = await requireTrainerOrAdmin(params.slug)
+    const { slug } = await context.params
+    const membership = await requireTrainerOrAdmin(slug)
     const body = await req.json()
     const { entityType, entityId } = body as { entityType?: string; entityId?: string }
 
@@ -218,7 +219,7 @@ export async function POST(
       },
     })
 
-    const streamUrl = `/api/org/${params.slug}/narration/stream?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}&v=${now.getTime()}`
+    const streamUrl = `/api/org/${slug}/narration/stream?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}&v=${now.getTime()}`
 
     return NextResponse.json({
       ok: true,

@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; formId: string } }
+  context: { params: Promise<{ slug: string; formId: string }> }
 ) {
   try {
-    const membership = await requireAuth(params.slug)
+    const { slug, formId } = await context.params
+    const membership = await requireAuth(slug)
     const { answersJson, enrollmentId, userId } = await req.json()
 
     if (userId !== membership.userId) {
@@ -16,7 +17,7 @@ export async function POST(
 
     // Verify form template exists and belongs to org
     const formTemplate = await prisma.formTemplate.findUnique({
-      where: { id: params.formId },
+      where: { id: formId },
       include: {
         contentItem: true,
       },
@@ -29,7 +30,7 @@ export async function POST(
     // Create submission
     await prisma.formSubmission.create({
       data: {
-        formTemplateId: params.formId,
+        formTemplateId: formId,
         userId: membership.userId,
         enrollmentId: enrollmentId || null,
         answersJson: JSON.stringify(answersJson),
@@ -43,7 +44,7 @@ export async function POST(
         userId: membership.userId,
         type: "FORM_SUBMITTED",
         metadata: JSON.stringify({
-          formTemplateId: params.formId,
+          formTemplateId: formId,
           enrollmentId,
         }),
       },
