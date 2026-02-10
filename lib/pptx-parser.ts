@@ -36,33 +36,44 @@ export function getMaxPptxSizeBytes(): number {
 }
 
 /**
- * Recursively collect text from XML node. OOXML text is in <a:t> (DrawingML).
- * Handles both prefixed ("a:t") and unprefixed ("t") tags.
+ * Only collect from DrawingML <a:t> (text run) elements so we don't pick up
+ * XML metadata, attribute values, or schema text (e.g. "1.0", "UTF-8", "rect").
+ * When the parser nests content as { "a:t": { "#text": "..." } }, we collect
+ * "#text" only when we're inside an "a:t" or "t" element.
  */
-function collectTextFromNode(node: unknown, texts: string[]): void {
+const TEXT_RUN_KEYS = new Set(["a:t", "t"])
+
+function collectTextFromNode(
+  node: unknown,
+  texts: string[],
+  insideTextRun = false
+): void {
   if (node == null) return
   if (typeof node === "string") {
-    const t = node.trim()
-    if (t) texts.push(t)
+    if (insideTextRun && node.trim()) texts.push(node.trim())
     return
   }
   if (Array.isArray(node)) {
-    node.forEach((n) => collectTextFromNode(n, texts))
+    node.forEach((n) => collectTextFromNode(n, texts, insideTextRun))
     return
   }
   if (typeof node === "object") {
     const obj = node as Record<string, unknown>
     for (const [key, value] of Object.entries(obj)) {
-      if (key === "a:t" || key === "t" || key === "#text" || (key.endsWith && key.endsWith(":t"))) {
+      if (TEXT_RUN_KEYS.has(key)) {
         if (typeof value === "string" && value.trim()) {
           texts.push(value.trim())
         } else if (Array.isArray(value)) {
           value.forEach((v) => {
             if (typeof v === "string" && v.trim()) texts.push(v.trim())
           })
+        } else {
+          collectTextFromNode(value, texts, true)
         }
+      } else if (key === "#text" && insideTextRun && typeof value === "string" && value.trim()) {
+        texts.push(value.trim())
       } else {
-        collectTextFromNode(value, texts)
+        collectTextFromNode(value, texts, false)
       }
     }
   }
