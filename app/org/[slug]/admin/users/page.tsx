@@ -77,8 +77,10 @@ export default async function UsersPage({ params }: UsersPageProps) {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <Badge className="bg-muted text-muted-foreground">{m.role}</Badge>
-                  <Button variant="outline" size="sm">
-                    Edit Role
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/org/${params.slug}/admin/users/${m.id}/edit`}>
+                      Edit Role
+                    </Link>
                   </Button>
                 </div>
               </TableShellRow>
