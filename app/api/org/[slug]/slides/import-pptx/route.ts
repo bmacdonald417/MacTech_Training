@@ -160,11 +160,19 @@ export async function POST(
     })
 
     const redirectUrl = `/org/${slug}/trainer/content/${contentItem.id}/edit`
+    const slidesForClient = parsedSlides.map((s, i) => ({
+      title: s.title,
+      content: s.body,
+      order: i + 1,
+      layoutType: "TITLE_AND_BODY" as const,
+      notesRichText: s.notes || null,
+    }))
 
     return NextResponse.json({
       contentItemId: contentItem.id,
       slideDeckId: slideDeck.id,
       redirectUrl,
+      slides: slidesForClient,
       warnings: warnings?.length ? warnings : undefined,
     })
   } catch (err) {

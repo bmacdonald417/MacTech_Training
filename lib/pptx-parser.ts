@@ -53,7 +53,7 @@ function collectTextFromNode(node: unknown, texts: string[]): void {
   if (typeof node === "object") {
     const obj = node as Record<string, unknown>
     for (const [key, value] of Object.entries(obj)) {
-      if (key === "a:t" || key === "t" || (key.endsWith && key.endsWith(":t"))) {
+      if (key === "a:t" || key === "t" || key === "#text" || (key.endsWith && key.endsWith(":t"))) {
         if (typeof value === "string" && value.trim()) {
           texts.push(value.trim())
         } else if (Array.isArray(value)) {

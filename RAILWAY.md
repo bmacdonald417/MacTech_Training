@@ -28,7 +28,7 @@ After you create a PostgreSQL database in Railway:
 
 ### 3. Create tables and seed data (one-time)
 
-Railway’s **build** runs in an isolated environment and cannot reach the database (`postgres.railway.internal` is only available at runtime). So schema updates are **not** run during build. After you deploy schema changes (e.g. new columns for sign-up), run **once** from your machine (with Railway CLI or with `DATABASE_URL` set to your **public** Postgres URL from Railway):
+Railway’s **build** runs in an isolated environment and cannot reach the database (`postgres.railway.internal` is only available at runtime). So schema updates are **not** run during build. After you deploy schema changes (e.g. new columns for sign-up, or Slide/StoredFile for PPTX import/export), run **once** from your machine (with Railway CLI or with `DATABASE_URL` set to your **public** Postgres URL from Railway):
 
 ```bash
 railway link

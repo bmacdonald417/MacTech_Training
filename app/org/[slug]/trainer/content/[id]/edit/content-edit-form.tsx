@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -76,6 +77,7 @@ const FORM_FIELD_TYPES = [
 ] as const
 
 export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState(contentItem.title)
   const [description, setDescription] = useState(contentItem.description ?? "")
@@ -166,20 +168,21 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
         setError(data.error || "Import failed. Check file format and try again.")
         return
       }
-      if (data.updated && Array.isArray(data.slides)) {
+      const slideList = Array.isArray(data.slides) ? data.slides : []
+      if (slideList.length > 0) {
         setSlides(
-          data.slides.map((s: { title: string; content: string; order: number; layoutType?: string; notesRichText?: string | null }, i: number) => ({
-            title: s.title,
-            content: s.content,
+          slideList.map((s: { title?: string; content?: string; order?: number; layoutType?: string; notesRichText?: string | null }, i: number) => ({
+            title: s.title ?? `Slide ${i + 1}`,
+            content: s.content ?? "",
             order: i + 1,
             layoutType: s.layoutType ?? "TITLE_AND_BODY",
             notesRichText: s.notesRichText ?? null,
           }))
         )
-        return
       }
       if (data.redirectUrl) {
-        window.location.href = data.redirectUrl
+        router.push(data.redirectUrl)
+        router.refresh()
       }
     } catch {
       setError("Import failed. Please try again.")
