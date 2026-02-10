@@ -25,7 +25,14 @@ export default async function ContentEditPage({ params }: ContentEditPageProps) 
       slideDeck: { include: { slides: { orderBy: { order: "asc" } } } },
       video: true,
       formTemplate: true,
-      quiz: true,
+      quiz: {
+        include: {
+          questions: {
+            include: { choices: { orderBy: { order: "asc" } } },
+            orderBy: { order: "asc" },
+          },
+        },
+      },
       attestationTemplate: true,
     },
   })

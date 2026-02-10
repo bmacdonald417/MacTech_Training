@@ -156,6 +156,26 @@ export async function createContent(
   }
 }
 
+export type SlideInput = { id?: string; title: string; content: string; order: number }
+export type FormFieldInput = {
+  id: string
+  type: string
+  label: string
+  required?: boolean
+  placeholder?: string
+  options?: string[]
+  validation?: { min?: number; max?: number; pattern?: string }
+}
+export type QuizChoiceInput = { id?: string; text: string; isCorrect: boolean; order: number }
+export type QuizQuestionInput = {
+  id?: string
+  text: string
+  type: string
+  explanation?: string
+  order: number
+  choices: QuizChoiceInput[]
+}
+
 export async function updateContent(
   orgSlug: string,
   contentItemId: string,
@@ -166,13 +186,26 @@ export async function updateContent(
     videoDuration?: number
     articleContent?: string
     attestationText?: string
+    slides?: SlideInput[]
+    formSchemaJson?: string
+    quizQuestions?: QuizQuestionInput[]
+    quizPassingScore?: number
+    quizAllowRetry?: boolean
+    quizShowAnswersAfter?: boolean
   }
 ) {
   const membership = await requireTrainerOrAdmin(orgSlug)
 
   const existing = await prisma.contentItem.findFirst({
     where: { id: contentItemId, orgId: membership.orgId },
-    include: { video: true, article: true, attestationTemplate: true },
+    include: {
+      video: true,
+      article: true,
+      attestationTemplate: true,
+      slideDeck: true,
+      formTemplate: true,
+      quiz: true,
+    },
   })
 
   if (!existing) {
@@ -209,6 +242,78 @@ export async function updateContent(
       where: { id: existing.attestationTemplate.id },
       data: { text: data.attestationText?.trim() ?? "" },
     })
+  }
+
+  if (existing.type === "SLIDE_DECK" && existing.slideDeck && data.slides != null) {
+    await prisma.slide.deleteMany({ where: { slideDeckId: existing.slideDeck.id } })
+    if (data.slides.length > 0) {
+      await prisma.slide.createMany({
+        data: data.slides.map((s, i) => ({
+          slideDeckId: existing.slideDeck!.id,
+          title: (s.title || `Slide ${i + 1}`).trim(),
+          content: s.content?.trim() ?? "",
+          order: i + 1,
+        })),
+      })
+    }
+  }
+
+  if (existing.type === "FORM" && existing.formTemplate && data.formSchemaJson != null) {
+    await prisma.formTemplate.update({
+      where: { id: existing.formTemplate.id },
+      data: { schemaJson: data.formSchemaJson.trim() || "[]" },
+    })
+  }
+
+  if (existing.type === "QUIZ" && existing.quiz) {
+    if (
+      data.quizPassingScore != null ||
+      data.quizAllowRetry != null ||
+      data.quizShowAnswersAfter != null
+    ) {
+      await prisma.quiz.update({
+        where: { id: existing.quiz.id },
+        data: {
+          ...(data.quizPassingScore != null && { passingScore: data.quizPassingScore }),
+          ...(data.quizAllowRetry != null && { allowRetry: data.quizAllowRetry }),
+          ...(data.quizShowAnswersAfter != null && { showAnswersAfter: data.quizShowAnswersAfter }),
+        },
+      })
+    }
+    if (data.quizQuestions != null && data.quizQuestions.length >= 0) {
+      const quizId = existing.quiz.id
+      const existingQuestions = await prisma.question.findMany({
+        where: { quizId },
+        include: { choices: true },
+      })
+      for (const q of existingQuestions) {
+        await prisma.choice.deleteMany({ where: { questionId: q.id } })
+      }
+      await prisma.question.deleteMany({ where: { quizId } })
+      for (let i = 0; i < data.quizQuestions.length; i++) {
+        const q = data.quizQuestions[i]
+        const question = await prisma.question.create({
+          data: {
+            quizId,
+            text: (q.text || `Question ${i + 1}`).trim(),
+            type: q.type === "TRUE_FALSE" ? "TRUE_FALSE" : "MULTIPLE_CHOICE",
+            explanation: q.explanation?.trim() || null,
+            order: i + 1,
+          },
+        })
+        for (let j = 0; j < (q.choices?.length ?? 0); j++) {
+          const c = q.choices[j]
+          await prisma.choice.create({
+            data: {
+              questionId: question.id,
+              text: (c.text || "").trim(),
+              isCorrect: !!c.isCorrect,
+              order: j + 1,
+            },
+          })
+        }
+      }
+    }
   }
 
   revalidatePath(`/org/${orgSlug}/trainer/content`)
