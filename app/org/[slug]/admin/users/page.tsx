@@ -10,6 +10,7 @@ import {
   TableShellBody,
   TableShellRow,
 } from "@/components/ui/table-shell"
+import { UserGroupSelect } from "./user-group-select"
 import { Plus, Shield, GraduationCap, User } from "lucide-react"
 
 interface UsersPageProps {
@@ -28,19 +29,42 @@ export default async function UsersPage({ params }: UsersPageProps) {
 
   const memberships = await prisma.membership.findMany({
     where: { orgId: membership.orgId },
-    include: {
-      user: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+    include: { user: true },
+    orderBy: { createdAt: "desc" },
   })
+  const userIds = memberships.map((m) => m.userId)
+
+  const [groups, groupMembersInOrg] = await Promise.all([
+    prisma.group.findMany({
+      where: { orgId: membership.orgId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    userIds.length > 0
+      ? prisma.groupMember.findMany({
+          where: {
+            group: { orgId: membership.orgId },
+            userId: { in: userIds },
+          },
+          include: { group: { select: { id: true, name: true } } },
+        })
+      : Promise.resolve([]),
+  ])
+
+  const userIdToGroup = new Map<string, { id: string; name: string }>()
+  for (const gm of groupMembersInOrg) {
+    if (!userIdToGroup.has(gm.userId)) {
+      userIdToGroup.set(gm.userId, { id: gm.group.id, name: gm.group.name })
+    }
+  }
+
+  const groupOptions = groups.map((g) => ({ id: g.id, name: g.name }))
 
   return (
     <div className="space-y-10">
       <PageHeader
         title="Users"
-        description="Manage organization users and roles"
+        description="Manage organization users, roles, and groups"
         action={
           <Button asChild className="gap-2">
             <Link href={`/org/${slug}/admin/users/new`}>
@@ -63,6 +87,7 @@ export default async function UsersPage({ params }: UsersPageProps) {
         <TableShellBody>
           {memberships.map((m) => {
             const RoleIcon = roleIcons[m.role as keyof typeof roleIcons] || User
+            const currentGroup = userIdToGroup.get(m.userId)
             return (
               <TableShellRow key={m.id}>
                 <div className="flex flex-1 items-center gap-4 min-w-0">
@@ -76,8 +101,15 @@ export default async function UsersPage({ params }: UsersPageProps) {
                     <div className="text-sm text-muted-foreground truncate">{m.user.email}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 flex-wrap">
                   <Badge className="bg-muted text-muted-foreground">{m.role}</Badge>
+                  <UserGroupSelect
+                    orgSlug={slug}
+                    userId={m.userId}
+                    groups={groupOptions}
+                    currentGroupId={currentGroup?.id ?? null}
+                    currentGroupName={currentGroup?.name ?? null}
+                  />
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/org/${slug}/admin/users/${m.id}/edit`}>
                       Edit Role

@@ -104,6 +104,26 @@ async function main() {
 
   console.log("Created memberships")
 
+  // Create Demo group and assign demo users to it
+  let demoGroup = await prisma.group.findFirst({
+    where: { orgId: org.id, name: "Demo" },
+  })
+  if (!demoGroup) {
+    demoGroup = await prisma.group.create({
+      data: { orgId: org.id, name: "Demo" },
+    })
+  }
+  for (const user of [admin, trainer, trainee]) {
+    await prisma.groupMember.upsert({
+      where: {
+        groupId_userId: { groupId: demoGroup.id, userId: user.id },
+      },
+      update: {},
+      create: { groupId: demoGroup.id, userId: user.id },
+    })
+  }
+  console.log("Created Demo group and assigned demo users")
+
   // Create slide deck content
   const slideDeckContent = await prisma.contentItem.create({
     data: {
