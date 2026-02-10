@@ -30,6 +30,7 @@ export function SlideDeckViewer({
     )
   }
 
+  // Speaker notes (notesRichText) are not rendered here; they are for trainer use only and hidden from trainees.
   const slides = slideDeck.slides
   const isFirst = currentSlide === 0
   const isLast = currentSlide === slides.length - 1

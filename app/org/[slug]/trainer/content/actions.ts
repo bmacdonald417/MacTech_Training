@@ -156,7 +156,14 @@ export async function createContent(
   }
 }
 
-export type SlideInput = { id?: string; title: string; content: string; order: number }
+export type SlideInput = {
+  id?: string
+  title: string
+  content: string
+  order: number
+  layoutType?: string | null
+  notesRichText?: string | null
+}
 export type FormFieldInput = {
   id: string
   type: string
@@ -253,6 +260,8 @@ export async function updateContent(
           title: (s.title || `Slide ${i + 1}`).trim(),
           content: s.content?.trim() ?? "",
           order: i + 1,
+          layoutType: s.layoutType ?? null,
+          notesRichText: s.notesRichText ?? null,
         })),
       })
     }

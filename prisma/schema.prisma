@@ -30,6 +30,7 @@ model Organization {
   eventLogs    EventLog[]
   narrationAssets NarrationAsset[]
   controlledDocuments ControlledDocument[]
+  storedFiles  StoredFile[]
 
   @@index([slug])
 }
@@ -166,17 +167,40 @@ model SlideDeck {
 }
 
 model Slide {
-  id          String   @id @default(cuid())
-  slideDeckId String
-  title       String
-  content     String   // rich text
-  order       Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  slideDeckId         String
+  title               String
+  content             String   // rich text (body)
+  order               Int
+  layoutType          String?  // TITLE, TITLE_AND_BODY, TWO_COLUMN, IMAGE_LEFT_TEXT_RIGHT, etc.
+  elementsJson        String?  // future: text boxes, positions, fonts, shapes
+  backgroundStyleJson String?  // theme colors, gradient, etc.
+  notesRichText       String?  // speaker notes (trainer-only in viewer)
+  importedFromPptx    Boolean  @default(false)
+  sourceFileId       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  slideDeck SlideDeck @relation(fields: [slideDeckId], references: [id], onDelete: Cascade)
+  slideDeck   SlideDeck   @relation(fields: [slideDeckId], references: [id], onDelete: Cascade)
+  sourceFile  StoredFile? @relation(fields: [sourceFileId], references: [id], onDelete: SetNull)
 
   @@index([slideDeckId, order])
+}
+
+model StoredFile {
+  id                    String   @id @default(cuid())
+  orgId                 String
+  filename              String
+  mimeType              String
+  sizeBytes             Int
+  storagePath           String   // path on volume or bucket
+  createdAt             DateTime @default(now())
+  createdByMembershipId String?
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  slides  Slide[]
+
+  @@index([orgId])
 }
 
 model Video {

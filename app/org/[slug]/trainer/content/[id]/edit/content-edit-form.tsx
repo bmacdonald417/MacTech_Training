@@ -6,11 +6,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { updateContent, type SlideInput, type FormFieldInput, type QuizQuestionInput } from "../../actions"
-import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Plus, Trash2, ChevronUp, ChevronDown, FileDown, FileUp, Pencil } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+
+const SLIDE_LAYOUTS = [
+  { value: "TITLE", label: "Title only" },
+  { value: "TITLE_AND_BODY", label: "Title and body" },
+  { value: "TWO_COLUMN", label: "Two column" },
+  { value: "IMAGE_LEFT_TEXT_RIGHT", label: "Image left, text right" },
+] as const
 
 type SlideDeckWithSlides = {
   id: string
-  slides: { id: string; title: string; content: string; order: number }[]
+  slides: {
+    id: string
+    title: string
+    content: string
+    order: number
+    layoutType?: string | null
+    notesRichText?: string | null
+  }[]
 }
 type QuizWithQuestions = {
   id: string
@@ -71,10 +93,16 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
       title: s.title,
       content: s.content,
       order: s.order,
+      layoutType: s.layoutType ?? null,
+      notesRichText: s.notesRichText ?? null,
     })) ?? []
   const [slides, setSlides] = useState<SlideInput[]>(
-    initialSlides.length > 0 ? initialSlides : [{ title: "Slide 1", content: "", order: 1 }]
+    initialSlides.length > 0 ? initialSlides : [{ title: "Slide 1", content: "", order: 1, layoutType: "TITLE_AND_BODY", notesRichText: null }]
   )
+  const [importing, setImporting] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [editSlideIndex, setEditSlideIndex] = useState<number | null>(null)
+  const [dragActive, setDragActive] = useState(false)
 
   let parsedForm: FormFieldInput[] = []
   try {
@@ -109,7 +137,110 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
   )
 
   function addSlide() {
-    setSlides((prev) => [...prev, { title: `Slide ${prev.length + 1}`, content: "", order: prev.length + 1 }])
+    setSlides((prev) => [
+      ...prev,
+      { title: `Slide ${prev.length + 1}`, content: "", order: prev.length + 1, layoutType: "TITLE_AND_BODY", notesRichText: null },
+    ])
+  }
+
+  async function processPptxFile(file: File) {
+    if (!file.name.toLowerCase().endsWith(".pptx")) {
+      setError("Invalid file type. Please upload a .pptx file.")
+      return
+    }
+    setImporting(true)
+    setError(null)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      if (contentItem.type === "SLIDE_DECK" && contentItem.slideDeck?.id && contentItem.id) {
+        formData.append("contentItemId", contentItem.id)
+        formData.append("slideDeckId", contentItem.slideDeck.id)
+      }
+      const res = await fetch(`/api/org/${orgSlug}/slides/import-pptx`, {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Import failed. Check file format and try again.")
+        return
+      }
+      if (data.updated && Array.isArray(data.slides)) {
+        setSlides(
+          data.slides.map((s: { title: string; content: string; order: number; layoutType?: string; notesRichText?: string | null }, i: number) => ({
+            title: s.title,
+            content: s.content,
+            order: i + 1,
+            layoutType: s.layoutType ?? "TITLE_AND_BODY",
+            notesRichText: s.notesRichText ?? null,
+          }))
+        )
+        return
+      }
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl
+      }
+    } catch {
+      setError("Import failed. Please try again.")
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  function handleImportPptx(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) processPptxFile(file)
+    e.target.value = ""
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragActive(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) processPptxFile(file)
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    setDragActive(true)
+  }
+
+  function handleDragLeave() {
+    setDragActive(false)
+  }
+
+  async function handleExportPptx() {
+    const slideDeckId = contentItem.slideDeck?.id
+    if (!slideDeckId) {
+      setError("No slide deck to export")
+      return
+    }
+    setExporting(true)
+    try {
+      const res = await fetch(
+        `/api/org/${orgSlug}/slides/export-pptx?slideDeckId=${encodeURIComponent(slideDeckId)}`
+      )
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || "Export failed")
+        return
+      }
+      const blob = await res.blob()
+      const disp = res.headers.get("Content-Disposition")
+      const match = disp?.match(/filename="?([^";\n]+)"?/)
+      const filename = match?.[1]?.trim() || "export.pptx"
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError("Export failed")
+    } finally {
+      setExporting(false)
+    }
   }
   function removeSlide(i: number) {
     setSlides((prev) => prev.filter((_, idx) => idx !== i).map((s, idx) => ({ ...s, order: idx + 1 })))
@@ -287,56 +418,238 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
 
           {contentItem.type === "SLIDE_DECK" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label>Slides</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addSlide}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add slide
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pptx"
+                    className="hidden"
+                    id="import-pptx"
+                    onChange={handleImportPptx}
+                    disabled={importing}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPptx}
+                    disabled={exporting || !contentItem.slideDeck?.id || slides.length === 0}
+                  >
+                    <FileDown className="h-4 w-4 mr-1" />
+                    {exporting ? "Exporting…" : "Download as PowerPoint"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPptx}
+                    disabled={exporting || !contentItem.slideDeck?.id || slides.length === 0}
+                    title="Export as template"
+                  >
+                    <FileDown className="h-4 w-4 mr-1" />
+                    Export Template
+                  </Button>
+                </div>
+              </div>
+
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={cn(
+                  "rounded-xl border-2 border-dashed border-border/60 bg-muted/30 p-8 text-center transition-colors",
+                  dragActive && "border-primary/50 bg-muted/50",
+                  importing && "pointer-events-none opacity-70"
+                )}
+              >
+                <p className="text-sm text-muted-foreground mb-3">
+                  Drag and drop a .pptx file here, or click to browse
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById("import-pptx")?.click()}
+                  disabled={importing}
+                >
+                  <FileUp className="h-4 w-4 mr-1" />
+                  {importing ? "Importing…" : "Import PPTX"}
                 </Button>
               </div>
-              <div className="space-y-4">
-                {slides.map((slide, i) => (
-                  <Card key={i}>
-                    <CardHeader className="py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <Input
-                          value={slide.title}
-                          onChange={(e) =>
-                            setSlides((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, title: e.target.value } : s))
-                            )
-                          }
-                          placeholder="Slide title"
-                          className="font-medium"
-                        />
-                        <div className="flex items-center gap-1">
-                          <Button type="button" variant="ghost" size="icon" onClick={() => moveSlide(i, -1)} disabled={i === 0}>
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => moveSlide(i, 1)} disabled={i === slides.length - 1}>
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeSlide(i)} disabled={slides.length <= 1}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+
+              {slides.length > 0 && (
+                <>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Slide overview</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                      Click a slide to edit title, content, and speaker notes. Reorder or remove below.
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {slides.map((slide, i) => (
+                        <Card
+                          key={i}
+                          variant="interactive"
+                          className="cursor-pointer overflow-hidden"
+                          onClick={() => setEditSlideIndex(i)}
+                        >
+                          <div className="flex items-start gap-2 p-3">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
+                              {i + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium truncate text-sm">{slide.title || "Untitled"}</p>
+                              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                {slide.content?.replace(/\n/g, " ").trim() || "No content"}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditSlideIndex(i)
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          <div className="flex border-t border-border/40 px-2 py-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                moveSlide(i, -1)
+                              }}
+                              disabled={i === 0}
+                            >
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                moveSlide(i, 1)
+                              }}
+                              disabled={i === slides.length - 1}
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeSlide(i)
+                              }}
+                              disabled={slides.length <= 1}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={addSlide}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add slide
+                  </Button>
+                </>
+              )}
+
+              <Dialog open={editSlideIndex !== null} onOpenChange={(open) => !open && setEditSlideIndex(null)}>
+                <DialogContent
+                  onClose={() => setEditSlideIndex(null)}
+                  className="max-h-[90vh] overflow-y-auto"
+                >
+                  {editSlideIndex !== null && (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle>Edit slide {editSlideIndex + 1}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-2">
+                        <div>
+                          <Label>Title</Label>
+                          <Input
+                            value={slides[editSlideIndex]?.title ?? ""}
+                            onChange={(e) =>
+                              setSlides((prev) =>
+                                prev.map((s, j) =>
+                                  j === editSlideIndex ? { ...s, title: e.target.value } : s
+                                )
+                              )}
+                            placeholder="Slide title"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Layout</Label>
+                          <select
+                            value={slides[editSlideIndex]?.layoutType ?? "TITLE_AND_BODY"}
+                            onChange={(e) =>
+                              setSlides((prev) =>
+                                prev.map((s, j) =>
+                                  j === editSlideIndex ? { ...s, layoutType: e.target.value || null } : s
+                                )
+                              )}
+                            className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                          >
+                            {SLIDE_LAYOUTS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label>Content (Markdown supported)</Label>
+                          <textarea
+                            className="mt-1 flex min-h-[120px] w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm"
+                            value={slides[editSlideIndex]?.content ?? ""}
+                            onChange={(e) =>
+                              setSlides((prev) =>
+                                prev.map((s, j) =>
+                                  j === editSlideIndex ? { ...s, content: e.target.value } : s
+                                )
+                              )}
+                            placeholder="Bullets: start lines with - or *"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Speaker notes (trainer only)</Label>
+                          <textarea
+                            className="mt-1 flex min-h-[60px] w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm"
+                            value={slides[editSlideIndex]?.notesRichText ?? ""}
+                            onChange={(e) =>
+                              setSlides((prev) =>
+                                prev.map((s, j) =>
+                                  j === editSlideIndex ? { ...s, notesRichText: e.target.value || null } : s
+                                )
+                              )}
+                            placeholder="Notes for presenter"
+                          />
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <textarea
-                        className="flex min-h-[100px] w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm"
-                        value={slide.content}
-                        onChange={(e) =>
-                          setSlides((prev) =>
-                            prev.map((s, j) => (j === i ? { ...s, content: e.target.value } : s))
-                          )
-                        }
-                        placeholder="Slide content (markdown supported)"
-                      />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setEditSlideIndex(null)}>
+                          Done
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 
