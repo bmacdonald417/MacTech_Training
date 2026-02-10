@@ -127,7 +127,7 @@ export default function SignupPage() {
                 type="text"
                 autoComplete="name"
                 placeholder="Your name"
-                className="h-12 text-base rounded-xl border-slate-300 bg-white shadow-sm"
+                className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm"
                 {...register("name")}
               />
               {errors.name && (
@@ -144,7 +144,7 @@ export default function SignupPage() {
                 type="email"
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="h-12 text-base rounded-xl border-slate-300 bg-white shadow-sm"
+                className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm"
                 {...register("email")}
               />
               {errors.email && (
@@ -161,7 +161,7 @@ export default function SignupPage() {
                 type="password"
                 autoComplete="new-password"
                 placeholder="At least 8 characters"
-                className="h-12 text-base rounded-xl border-slate-300 bg-white shadow-sm"
+                className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm"
                 {...register("password")}
               />
               {errors.password && (
@@ -177,7 +177,7 @@ export default function SignupPage() {
               </Label>
               <select
                 id="referralSource"
-                className="flex h-12 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="flex h-12 w-full rounded-xl border border-slate-300 bg-white text-slate-900 px-3 py-2 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20"
                 {...register("referralSource")}
               >
                 <option value="">Select an option</option>

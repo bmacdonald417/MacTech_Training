@@ -82,7 +82,7 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             placeholder="you@example.com"
-            className="h-12 text-base rounded-xl border-slate-300 bg-white shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 hover:border-slate-400"
+            className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 hover:border-slate-400"
             aria-invalid={errors.email ? "true" : "false"}
             aria-describedby={errors.email ? "email-error" : undefined}
             {...register("email")}
@@ -110,7 +110,7 @@ export function LoginForm() {
             id="password"
             type="password"
             autoComplete="current-password"
-            className="h-12 text-base rounded-xl border-slate-300 bg-white shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 hover:border-slate-400"
+            className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 hover:border-slate-400"
             aria-invalid={errors.password ? "true" : "false"}
             aria-describedby={errors.password ? "password-error" : undefined}
             {...register("password")}
