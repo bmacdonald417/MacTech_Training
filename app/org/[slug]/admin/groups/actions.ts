@@ -76,3 +76,60 @@ export async function ensureGroupJoinCode(orgSlug: string, groupId: string) {
     return { error: "Failed to generate join link." }
   }
 }
+
+/** Assign a curriculum to a group: creates one Assignment and one Enrollment per user in the group. */
+export async function assignCurriculumToGroup(
+  orgSlug: string,
+  groupId: string,
+  curriculumId: string,
+  title: string,
+  dueDate?: string | null
+): Promise<{ error?: string }> {
+  try {
+    const membership = await requireAdmin(orgSlug)
+    const [group, curriculum] = await Promise.all([
+      prisma.group.findFirst({
+        where: { id: groupId, orgId: membership.orgId },
+        include: { members: { select: { userId: true } } },
+      }),
+      prisma.curriculum.findFirst({
+        where: { id: curriculumId, orgId: membership.orgId },
+      }),
+    ])
+    if (!group) return { error: "Group not found." }
+    if (!curriculum) return { error: "Curriculum not found." }
+    const assignmentTitle = title?.trim() || curriculum.title
+
+    const assignment = await prisma.assignment.create({
+      data: {
+        orgId: membership.orgId,
+        type: "CURRICULUM",
+        curriculumId: curriculum.id,
+        title: assignmentTitle,
+        dueDate: dueDate ? new Date(dueDate) : null,
+      },
+    })
+
+    const userIds = group.members.map((m) => m.userId)
+    if (userIds.length > 0) {
+      await prisma.enrollment.createMany({
+        data: userIds.map((userId) => ({
+          assignmentId: assignment.id,
+          userId,
+        })),
+      })
+    }
+
+    revalidatePath(`/org/${orgSlug}/admin/groups`)
+    revalidatePath(`/org/${orgSlug}/admin/groups/${groupId}/assign-curriculum`)
+    revalidatePath(`/org/${orgSlug}/trainer/assignments`)
+    revalidatePath(`/org/${orgSlug}/my-training`)
+    return {}
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
+      return { error: "You don't have permission to assign curricula." }
+    }
+    console.error("assignCurriculumToGroup:", err)
+    return { error: "Failed to assign curriculum to group." }
+  }
+}

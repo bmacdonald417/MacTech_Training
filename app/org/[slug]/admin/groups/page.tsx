@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { GroupJoinQR } from "@/components/group-join-qr"
 import { GroupJoinCodeGenerateButton } from "./group-join-code-button"
-import { Users, Plus } from "lucide-react"
+import { Users, Plus, BookOpen } from "lucide-react"
 
 interface GroupsPageProps {
   params: Promise<{ slug: string }>
@@ -104,9 +104,12 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
                 ) : (
                   <GroupJoinCodeGenerateButton groupId={group.id} orgSlug={slug} />
                 )}
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled>
-                    View Members
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="default" size="sm" asChild>
+                    <Link href={`/org/${slug}/admin/groups/${group.id}/assign-curriculum`} className="gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      Assign curriculum
+                    </Link>
                   </Button>
                 </div>
               </CardContent>
