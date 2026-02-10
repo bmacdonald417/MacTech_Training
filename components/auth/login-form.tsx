@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -158,8 +159,18 @@ export function LoginForm() {
         </Button>
       </form>
 
+      {/* Create account link */}
+      <div className="mt-8 pt-6 border-t border-slate-200">
+        <p className="text-sm text-slate-600 text-center">
+          Don’t have an account?{" "}
+          <Link href="/signup" className="font-medium text-primary hover:underline">
+            Create an account
+          </Link>
+        </p>
+      </div>
+
       {/* Footer */}
-      <div className="mt-12 pt-6 border-t border-slate-200">
+      <div className="mt-6 pt-4 border-t border-slate-200">
         <p className="text-xs text-slate-500 text-center">
           Powered by MacTech
         </p>

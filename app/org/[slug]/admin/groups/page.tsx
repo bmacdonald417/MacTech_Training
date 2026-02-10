@@ -1,18 +1,33 @@
 import Link from "next/link"
+import { headers } from "next/headers"
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
+import { GroupJoinQR } from "@/components/group-join-qr"
+import { GroupJoinCodeGenerateButton } from "./group-join-code-button"
 import { Users, Plus } from "lucide-react"
 
 interface GroupsPageProps {
   params: { slug: string }
 }
 
+function getBaseUrl() {
+  try {
+    const h = headers()
+    const host = h.get("host") ?? ""
+    const proto = h.get("x-forwarded-proto") === "https" ? "https" : "http"
+    return `${proto}://${host}`
+  } catch {
+    return ""
+  }
+}
+
 export default async function GroupsPage({ params }: GroupsPageProps) {
   const membership = await requireAdmin(params.slug)
+  const baseUrl = getBaseUrl()
 
   const groups = await prisma.group.findMany({
     where: { orgId: membership.orgId },
@@ -67,16 +82,30 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
                   <CardTitle className="text-lg">{group.name}</CardTitle>
                 </div>
                 <CardDescription>
-                  {group.members.length} members
+                  {[group.groupType?.toLowerCase(), `${group.members.length} members`].filter(Boolean).join(" · ")}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {group.joinCode && baseUrl ? (
+                  <div className="flex flex-col items-start gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">Join link / QR code</span>
+                    <div className="flex items-center gap-4">
+                      <GroupJoinQR
+                        joinUrl={`${baseUrl}/join/${group.joinCode}`}
+                        size={100}
+                        className="rounded border bg-white p-1"
+                      />
+                      <div className="text-xs text-muted-foreground break-all">
+                        {baseUrl}/join/{group.joinCode}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <GroupJoinCodeGenerateButton groupId={group.id} orgSlug={params.slug} />
+                )}
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" disabled>
                     View Members
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Edit
                   </Button>
                 </div>
               </CardContent>

@@ -35,12 +35,13 @@ model Organization {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String // hashed
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String   // hashed
+  name            String?
+  referralSource  String?  // how they heard about us (signup question)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   memberships Membership[]
   groupMembers GroupMember[]
@@ -79,6 +80,8 @@ model Group {
   id        String   @id @default(cuid())
   orgId     String
   name      String
+  groupType String?  // Organization, Event, School, Employer, or custom
+  joinCode  String?  @unique // short code for QR / join URL
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -87,6 +90,7 @@ model Group {
   enrollments Enrollment[]
 
   @@index([orgId])
+  @@index([joinCode])
 }
 
 model GroupMember {

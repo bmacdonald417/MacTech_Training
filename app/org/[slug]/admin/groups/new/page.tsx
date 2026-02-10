@@ -86,6 +86,25 @@ export default function NewGroupPage({ params }: NewGroupPageProps) {
                 aria-invalid={!!error}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="groupType">Group type (optional)</Label>
+              <select
+                id="groupType"
+                name="groupType"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                disabled={pending}
+              >
+                <option value="">None</option>
+                <option value="Organization">Organization</option>
+                <option value="Event">Event</option>
+                <option value="School">School</option>
+                <option value="Employer">Employer</option>
+                <option value="Other">Other</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Helps categorize the group (e.g. for events, schools, employers). A join link and QR code will be generated so users can join after sign-up.
+              </p>
+            </div>
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={pending}>
                 {pending ? "Creating…" : "Create group"}

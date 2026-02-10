@@ -6,8 +6,8 @@ export default withAuth(
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
 
-    // Public routes
-    if (path === "/login") {
+    // Public routes (no auth required)
+    if (path === "/login" || path === "/signup" || path.startsWith("/join/")) {
       return NextResponse.next()
     }
 
@@ -57,6 +57,6 @@ export default withAuth(
 )
 
 export const config = {
-  // Do not match /login — so the login page loads without auth and we avoid redirect loops
-  matcher: ["/", "/org/:path*"],
+  // Public: /login, /signup, /join/* (no auth). Protected: /, /org/*
+  matcher: ["/", "/org/:path*", "/signup", "/join/:path*"],
 }
