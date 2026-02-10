@@ -83,8 +83,25 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, userId: user.id })
-  } catch (e) {
+  } catch (e: unknown) {
     console.error("Register error:", e)
-    return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 })
+
+    const isDev = process.env.NODE_ENV === "development"
+    let message = "Registration failed. Please try again."
+
+    if (e && typeof e === "object" && "code" in e) {
+      const code = (e as { code?: string }).code
+      if (code === "P2002") {
+        message = "An account with this email already exists."
+      } else if (code === "P2003" || code === "P2010") {
+        message = "Database setup issue. Please ensure migrations have been run (e.g. npm run db:push or db:migrate)."
+      } else if (isDev && "message" in e && typeof (e as { message: string }).message === "string") {
+        message = (e as { message: string }).message
+      }
+    } else if (isDev && e instanceof Error) {
+      message = e.message
+    }
+
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
