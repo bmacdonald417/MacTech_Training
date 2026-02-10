@@ -6,12 +6,13 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
 interface NewDocumentPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function NewDocumentPage({ params }: NewDocumentPageProps) {
-  await requireTrainerOrAdmin(params.slug)
-  const basePath = `/org/${params.slug}/trainer/documents`
+  const { slug } = await params
+  await requireTrainerOrAdmin(slug)
+  const basePath = `/org/${slug}/trainer/documents`
 
   return (
     <div className="space-y-10">

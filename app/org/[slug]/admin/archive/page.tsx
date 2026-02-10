@@ -9,11 +9,12 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 interface ArchivePageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function ArchivePage({ params }: ArchivePageProps) {
-  const membership = await requireAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireAdmin(slug)
 
   const archived = await prisma.archivedModuleLog.findMany({
     where: { orgId: membership.orgId },
@@ -89,7 +90,7 @@ export default async function ArchivePage({ params }: ArchivePageProps) {
 
       <div className="flex gap-2">
         <Button variant="outline" asChild>
-          <Link href={`/org/${params.slug}/admin/reports`}>Back to Reports</Link>
+          <Link href={`/org/${slug}/admin/reports`}>Back to Reports</Link>
         </Button>
       </div>
     </div>

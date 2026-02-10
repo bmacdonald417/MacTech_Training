@@ -6,14 +6,15 @@ import { notFound } from "next/navigation"
 import { PrintButton } from "@/components/certificates/print-button"
 
 interface CertificatePageProps {
-  params: { slug: string; certificateId: string }
+  params: Promise<{ slug: string; certificateId: string }>
 }
 
 export default async function CertificatePage({ params }: CertificatePageProps) {
-  const membership = await requireAuth(params.slug)
+  const { slug, certificateId } = await params
+  const membership = await requireAuth(slug)
 
   const certificate = await prisma.certificateIssued.findUnique({
-    where: { id: params.certificateId },
+    where: { id: certificateId },
     include: {
       template: true,
       user: true,

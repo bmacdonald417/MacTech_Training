@@ -4,16 +4,17 @@ import { redirect } from "next/navigation"
 import { TrainingPlayer } from "@/components/training/training-player"
 
 interface TrainingPlayerPageProps {
-  params: { slug: string; enrollmentId: string }
+  params: Promise<{ slug: string; enrollmentId: string }>
 }
 
 export default async function TrainingPlayerPage({
   params,
 }: TrainingPlayerPageProps) {
-  const membership = await requireAuth(params.slug)
+  const { slug, enrollmentId } = await params
+  const membership = await requireAuth(slug)
 
   const enrollment = await prisma.enrollment.findUnique({
-    where: { id: params.enrollmentId },
+    where: { id: enrollmentId },
     include: {
       assignment: {
         include: {
@@ -96,7 +97,7 @@ export default async function TrainingPlayerPage({
   })
 
   if (!enrollment || enrollment.userId !== membership.userId) {
-    redirect(`/org/${params.slug}/my-training`)
+    redirect(`/org/${slug}/my-training`)
   }
 
   const canGenerateNarration =
@@ -105,7 +106,7 @@ export default async function TrainingPlayerPage({
   return (
     <TrainingPlayer
       enrollment={enrollment}
-      orgSlug={params.slug}
+      orgSlug={slug}
       userId={membership.userId}
       canGenerateNarration={canGenerateNarration}
     />

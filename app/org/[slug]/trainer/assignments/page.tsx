@@ -9,11 +9,12 @@ import { BookOpen, Plus, Users, Calendar } from "lucide-react"
 import { format } from "date-fns"
 
 interface AssignmentsPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function AssignmentsPage({ params }: AssignmentsPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const assignments = await prisma.assignment.findMany({
     where: { orgId: membership.orgId },
@@ -38,7 +39,7 @@ export default async function AssignmentsPage({ params }: AssignmentsPageProps) 
         description="Manage training assignments"
         action={
           <Button asChild>
-            <Link href={`/org/${params.slug}/trainer/assignments/new`}>
+            <Link href={`/org/${slug}/trainer/assignments/new`}>
               <Plus className="h-4 w-4" />
               Create Assignment
             </Link>
@@ -53,7 +54,7 @@ export default async function AssignmentsPage({ params }: AssignmentsPageProps) 
           description="Create an assignment to assign training to users or groups."
           action={
             <Button asChild>
-              <Link href={`/org/${params.slug}/trainer/assignments/new`}>
+              <Link href={`/org/${slug}/trainer/assignments/new`}>
                 <Plus className="h-4 w-4" />
                 Create assignment
               </Link>
@@ -107,7 +108,7 @@ export default async function AssignmentsPage({ params }: AssignmentsPageProps) 
 
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/org/${params.slug}/trainer/assignments/${assignment.id}`}>
+                        <Link href={`/org/${slug}/trainer/assignments/${assignment.id}`}>
                           View Details
                         </Link>
                       </Button>

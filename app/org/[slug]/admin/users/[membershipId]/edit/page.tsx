@@ -8,15 +8,16 @@ import { ArrowLeft } from "lucide-react"
 import { EditRoleForm } from "./edit-role-form"
 
 interface EditUserRolePageProps {
-  params: { slug: string; membershipId: string }
+  params: Promise<{ slug: string; membershipId: string }>
 }
 
 export default async function EditUserRolePage({ params }: EditUserRolePageProps) {
-  const membership = await requireAdmin(params.slug)
+  const { slug, membershipId } = await params
+  const membership = await requireAdmin(slug)
 
   const record = await prisma.membership.findFirst({
     where: {
-      id: params.membershipId,
+      id: membershipId,
       orgId: membership.orgId,
     },
     include: { user: true },
@@ -30,7 +31,7 @@ export default async function EditUserRolePage({ params }: EditUserRolePageProps
     <div className="space-y-10">
       <div className="flex items-center gap-5">
         <Button variant="ghost" size="icon" asChild className="-ml-1">
-          <Link href={`/org/${params.slug}/admin/users`}>
+          <Link href={`/org/${slug}/admin/users`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -53,8 +54,8 @@ export default async function EditUserRolePage({ params }: EditUserRolePageProps
         </CardHeader>
         <CardContent>
           <EditRoleForm
-            orgSlug={params.slug}
-            membershipId={params.membershipId}
+            orgSlug={slug}
+            membershipId={membershipId}
             currentRole={record.role}
           />
         </CardContent>

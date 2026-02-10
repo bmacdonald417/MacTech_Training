@@ -8,15 +8,16 @@ import { ContentEditForm } from "./content-edit-form"
 import { ArrowLeft } from "lucide-react"
 
 interface ContentEditPageProps {
-  params: { slug: string; id: string }
+  params: Promise<{ slug: string; id: string }>
 }
 
 export default async function ContentEditPage({ params }: ContentEditPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug, id } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const contentItem = await prisma.contentItem.findFirst({
     where: {
-      id: params.id,
+      id,
       orgId: membership.orgId,
     },
     include: {
@@ -37,7 +38,7 @@ export default async function ContentEditPage({ params }: ContentEditPageProps) 
     <div className="space-y-10">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/org/${params.slug}/trainer/content/${params.id}`}>
+          <Link href={`/org/${slug}/trainer/content/${id}`}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>
@@ -47,7 +48,7 @@ export default async function ContentEditPage({ params }: ContentEditPageProps) 
         title="Edit content"
         description={contentItem.title}
       />
-      <ContentEditForm orgSlug={params.slug} contentItem={contentItem} />
+      <ContentEditForm orgSlug={slug} contentItem={contentItem} />
     </div>
   )
 }

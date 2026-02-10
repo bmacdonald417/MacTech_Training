@@ -7,11 +7,12 @@ import { InstallCmmcCard } from "./install-cmmc-card"
 import { seedCmmcAt } from "@/prisma/seed-cmmc-at"
 
 interface SettingsPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function SettingsPage({ params }: SettingsPageProps) {
-  const membership = await requireAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireAdmin(slug)
 
   const org = await prisma.organization.findUnique({
     where: { id: membership.orgId },
@@ -42,12 +43,12 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
 
       <div className="grid gap-6">
         <OrganizationProfileForm
-          orgSlug={params.slug}
+          orgSlug={slug}
           initialName={org.name}
           orgSlugDisplay={org.slug}
         />
 
-        <InstallCmmcCard orgSlug={params.slug} />
+        <InstallCmmcCard orgSlug={slug} />
 
         <Card>
           <CardHeader>

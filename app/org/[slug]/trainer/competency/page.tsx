@@ -3,11 +3,12 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
 interface CompetencyPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function CompetencyPage({ params }: CompetencyPageProps) {
-  await requireTrainerOrAdmin(params.slug)
+  const { slug } = await params
+  await requireTrainerOrAdmin(slug)
 
   return (
     <div className="space-y-10">

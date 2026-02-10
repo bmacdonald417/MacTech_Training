@@ -13,7 +13,7 @@ import {
 import { Plus, Shield, GraduationCap, User } from "lucide-react"
 
 interface UsersPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 const roleIcons = {
@@ -23,7 +23,8 @@ const roleIcons = {
 }
 
 export default async function UsersPage({ params }: UsersPageProps) {
-  const membership = await requireAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireAdmin(slug)
 
   const memberships = await prisma.membership.findMany({
     where: { orgId: membership.orgId },
@@ -42,7 +43,7 @@ export default async function UsersPage({ params }: UsersPageProps) {
         description="Manage organization users and roles"
         action={
           <Button asChild className="gap-2">
-            <Link href={`/org/${params.slug}/admin/users/new`}>
+            <Link href={`/org/${slug}/admin/users/new`}>
               <Plus className="h-4 w-4" />
               Add User
             </Link>
@@ -78,7 +79,7 @@ export default async function UsersPage({ params }: UsersPageProps) {
                 <div className="flex items-center gap-3 shrink-0">
                   <Badge className="bg-muted text-muted-foreground">{m.role}</Badge>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/org/${params.slug}/admin/users/${m.id}/edit`}>
+                    <Link href={`/org/${slug}/admin/users/${m.id}/edit`}>
                       Edit Role
                     </Link>
                   </Button>

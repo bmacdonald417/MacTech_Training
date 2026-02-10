@@ -9,8 +9,8 @@ import { Plus } from "lucide-react"
 import type { DocumentType, DocumentStatus } from "@prisma/client"
 
 interface DocumentsPageProps {
-  params: { slug: string }
-  searchParams: { documentType?: string; status?: string }
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ documentType?: string; status?: string }>
 }
 
 const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
@@ -32,11 +32,13 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
 }
 
 export default async function DocumentsPage({ params, searchParams }: DocumentsPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const [resolvedParams, resolvedSearch] = await Promise.all([params, searchParams])
+  const { slug } = resolvedParams
+  const membership = await requireTrainerOrAdmin(slug)
   const role = normalizeDocumentRole(membership.role)
 
-  const documentType = searchParams.documentType as DocumentType | undefined
-  const status = searchParams.status as DocumentStatus | undefined
+  const documentType = resolvedSearch.documentType as DocumentType | undefined
+  const status = resolvedSearch.status as DocumentStatus | undefined
 
   const where: {
     orgId: string
@@ -69,7 +71,7 @@ export default async function DocumentsPage({ params, searchParams }: DocumentsP
     orderBy: [{ documentType: "asc" }, { documentId: "asc" }],
   })
 
-  const basePath = `/org/${params.slug}/trainer/documents`
+  const basePath = `/org/${slug}/trainer/documents`
 
   return (
     <div className="space-y-10">

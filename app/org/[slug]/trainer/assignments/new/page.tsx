@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma"
 import { NewAssignmentForm } from "../new-assignment-form"
 
 interface NewAssignmentPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function NewAssignmentPage({ params }: NewAssignmentPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const [curricula, contentItems] = await Promise.all([
     prisma.curriculum.findMany({
@@ -25,7 +26,7 @@ export default async function NewAssignmentPage({ params }: NewAssignmentPagePro
   return (
     <div className="space-y-10">
       <NewAssignmentForm
-        orgSlug={params.slug}
+        orgSlug={slug}
         curricula={curricula}
         contentItems={contentItems.map((c) => ({ id: c.id, title: c.title, type: c.type }))}
       />

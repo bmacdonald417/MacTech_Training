@@ -18,15 +18,16 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
 }
 
 interface DocumentPageProps {
-  params: { slug: string; id: string }
+  params: Promise<{ slug: string; id: string }>
 }
 
 export default async function DocumentPage({ params }: DocumentPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug, id } = await params
+  const membership = await requireTrainerOrAdmin(slug)
   const role = normalizeDocumentRole(membership.role)
 
   const doc = await prisma.controlledDocument.findFirst({
-    where: { id: params.id, orgId: membership.orgId },
+    where: { id, orgId: membership.orgId },
     include: {
       currentVersion: true,
       versions: {
@@ -39,7 +40,7 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
 
   if (!doc || !canSeeDocument(role, doc.status)) notFound()
 
-  const basePath = `/org/${params.slug}/trainer/documents`
+  const basePath = `/org/${slug}/trainer/documents`
   const content = doc.currentVersion?.content ?? "*No content.*"
 
   return (

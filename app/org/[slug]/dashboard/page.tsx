@@ -20,15 +20,16 @@ import {
 } from "lucide-react"
 
 interface DashboardPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
+  const { slug } = await params
   const session = await getServerSession(authOptions)
-  const membership = await requireAuth(params.slug)
+  const membership = await requireAuth(slug)
 
   const org = await prisma.organization.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
   })
 
   let stats = {
@@ -82,7 +83,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         action={
           isTrainerOrAdmin ? (
             <Button asChild>
-              <Link href={`/org/${params.slug}/trainer/assignments/new`}>
+              <Link href={`/org/${slug}/trainer/assignments/new`}>
                 <PlusCircle className="h-4 w-4" />
                 Create Assignment
               </Link>
@@ -139,20 +140,20 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             <SectionCard title="Quick Actions" description="Shortcuts">
               <div className="space-y-2">
                 <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>
-                  <Link href={`/org/${params.slug}/trainer/content`}>
+                  <Link href={`/org/${slug}/trainer/content`}>
                     <FileText className="h-4 w-4 shrink-0" />
                     Create content
                   </Link>
                 </Button>
                 <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>
-                  <Link href={`/org/${params.slug}/trainer/assignments/new`}>
+                  <Link href={`/org/${slug}/trainer/assignments/new`}>
                     <ClipboardList className="h-4 w-4 shrink-0" />
                     Assign training
                   </Link>
                 </Button>
                 {isAdmin && (
                   <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>
-                    <Link href={`/org/${params.slug}/admin/users`}>
+                    <Link href={`/org/${slug}/admin/users`}>
                       <UserPlus className="h-4 w-4 shrink-0" />
                       Manage users
                     </Link>

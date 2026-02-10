@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 
 interface CurriculumViewPageProps {
-  params: { slug: string; id: string }
+  params: Promise<{ slug: string; id: string }>
 }
 
 const contentTypeIcons = {
@@ -31,11 +31,12 @@ const contentTypeIcons = {
 export default async function CurriculumViewPage({
   params,
 }: CurriculumViewPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug, id } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const curriculum = await prisma.curriculum.findFirst({
     where: {
-      id: params.id,
+      id,
       orgId: membership.orgId,
     },
     include: {
@@ -57,7 +58,7 @@ export default async function CurriculumViewPage({
     notFound()
   }
 
-  const basePath = `/org/${params.slug}/trainer`
+  const basePath = `/org/${slug}/trainer`
 
   return (
     <div className="space-y-10">

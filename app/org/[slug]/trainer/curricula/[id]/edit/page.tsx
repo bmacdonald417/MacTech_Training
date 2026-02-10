@@ -5,15 +5,16 @@ import { CurriculumForm } from "../../curriculum-form"
 import type { SectionInput } from "../../actions"
 
 interface EditCurriculumPageProps {
-  params: { slug: string; id: string }
+  params: Promise<{ slug: string; id: string }>
 }
 
 export default async function EditCurriculumPage({ params }: EditCurriculumPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug, id } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const [curriculum, contentItems] = await Promise.all([
     prisma.curriculum.findFirst({
-      where: { id: params.id, orgId: membership.orgId },
+      where: { id, orgId: membership.orgId },
       include: {
         sections: {
           orderBy: { order: "asc" },
@@ -49,7 +50,7 @@ export default async function EditCurriculumPage({ params }: EditCurriculumPageP
   return (
     <div className="space-y-10">
       <CurriculumForm
-        orgSlug={params.slug}
+        orgSlug={slug}
         contentItems={contentOptions}
         mode="edit"
         curriculumId={curriculum.id}

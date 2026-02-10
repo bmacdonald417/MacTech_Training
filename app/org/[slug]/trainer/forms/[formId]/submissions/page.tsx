@@ -9,16 +9,17 @@ import { format } from "date-fns"
 import { ExportButton } from "@/components/forms/export-button"
 
 interface FormSubmissionsPageProps {
-  params: { slug: string; formId: string }
+  params: Promise<{ slug: string; formId: string }>
 }
 
 export default async function FormSubmissionsPage({
   params,
 }: FormSubmissionsPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug, formId } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const formTemplate = await prisma.formTemplate.findUnique({
-    where: { id: params.formId },
+    where: { id: formId },
     include: {
       contentItem: true,
       submissions: {

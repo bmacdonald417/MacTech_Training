@@ -17,14 +17,16 @@ const CONTENT_TYPES = [
 type ContentTypeValue = (typeof CONTENT_TYPES)[number]["value"]
 
 interface NewContentPageProps {
-  params: { slug: string }
-  searchParams: { type?: string }
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ type?: string }>
 }
 
 export default async function NewContentPage({ params, searchParams }: NewContentPageProps) {
-  await requireTrainerOrAdmin(params.slug)
+  const [resolvedParams, resolvedSearch] = await Promise.all([params, searchParams])
+  const { slug } = resolvedParams
+  await requireTrainerOrAdmin(slug)
 
-  const typeParam = searchParams.type?.toUpperCase()
+  const typeParam = resolvedSearch.type?.toUpperCase()
   const initialType: ContentTypeValue =
     CONTENT_TYPES.some((t) => t.value === typeParam) ? (typeParam as ContentTypeValue) : "VIDEO"
 
@@ -32,7 +34,7 @@ export default async function NewContentPage({ params, searchParams }: NewConten
     <div className="space-y-10">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/org/${params.slug}/trainer/content`}>
+          <Link href={`/org/${slug}/trainer/content`}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>
@@ -42,7 +44,7 @@ export default async function NewContentPage({ params, searchParams }: NewConten
         title="Create content"
         description="Add a new item to your content library"
       />
-      <ContentNewForm orgSlug={params.slug} initialType={initialType} />
+      <ContentNewForm orgSlug={slug} initialType={initialType} />
     </div>
   )
 }

@@ -21,8 +21,8 @@ import {
 } from "lucide-react"
 
 interface ContentPageProps {
-  params: { slug: string }
-  searchParams: { category?: string; tab?: string }
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ category?: string; tab?: string }>
 }
 
 const CONTENT_TYPES = [
@@ -88,11 +88,13 @@ function isValidCategory(
 }
 
 export default async function ContentPage({ params, searchParams }: ContentPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
-  const category = isValidCategory(searchParams.category) ? searchParams.category : "public"
+  const [resolvedParams, resolvedSearch] = await Promise.all([params, searchParams])
+  const { slug } = resolvedParams
+  const membership = await requireTrainerOrAdmin(slug)
+  const category = isValidCategory(resolvedSearch.category) ? resolvedSearch.category : "public"
   const tab =
-    searchParams.tab === "all" || isValidTab(searchParams.tab)
-      ? (searchParams.tab ?? "all")
+    resolvedSearch.tab === "all" || isValidTab(resolvedSearch.tab)
+      ? (resolvedSearch.tab ?? "all")
       : "all"
 
   // Ensure CMMC slide deck exists in the library so it appears with the other slide decks (no separate install)
@@ -141,7 +143,7 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
     return true
   })
 
-  const basePath = `/org/${params.slug}/trainer/content`
+  const basePath = `/org/${slug}/trainer/content`
   const contentDescription =
     category === "internal"
       ? "Internal quality and training content (restricted access)"
@@ -205,7 +207,7 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
             {INTERNAL_SUB_CATEGORIES.map((sub) => {
               const Icon = sub.icon
               return (
-                <Link key={sub.value} href={sub.href(params.slug)}>
+                <Link key={sub.value} href={sub.href(slug)}>
                   <Card className="h-full transition-colors hover:bg-muted/40">
                     <CardHeader>
                       <div className="flex items-center gap-2">

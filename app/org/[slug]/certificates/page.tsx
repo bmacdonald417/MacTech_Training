@@ -9,13 +9,14 @@ import { format } from "date-fns"
 import Link from "next/link"
 
 interface CertificatesPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function CertificatesPage({
   params,
 }: CertificatesPageProps) {
-  const membership = await requireAuth(params.slug)
+  const { slug } = await params
+  const membership = await requireAuth(slug)
 
   const certificates = await prisma.certificateIssued.findMany({
     where: {
@@ -64,7 +65,7 @@ export default async function CertificatesPage({
                     Certificate #: {cert.certificateNumber}
                   </div>
                   <Button asChild variant="outline" size="sm" className="w-full">
-                    <Link href={`/org/${params.slug}/certificates/${cert.id}`}>
+                    <Link href={`/org/${slug}/certificates/${cert.id}`}>
                       <ExternalLink className="h-4 w-4 mr-2" />
                       View Certificate
                     </Link>

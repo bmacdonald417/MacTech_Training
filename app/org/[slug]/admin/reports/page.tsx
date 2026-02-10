@@ -8,11 +8,12 @@ import { format } from "date-fns"
 import Link from "next/link"
 
 interface ReportsPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function ReportsPage({ params }: ReportsPageProps) {
-  const membership = await requireAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireAdmin(slug)
 
   // Get statistics
   const [
@@ -231,7 +232,7 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
         </CardHeader>
         <CardContent>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/org/${params.slug}/admin/archive`}>View archive log</Link>
+            <Link href={`/org/${slug}/admin/archive`}>View archive log</Link>
           </Button>
         </CardContent>
       </Card>

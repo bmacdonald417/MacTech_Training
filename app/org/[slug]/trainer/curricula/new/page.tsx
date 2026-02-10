@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma"
 import { CurriculumForm } from "../curriculum-form"
 
 interface NewCurriculumPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function NewCurriculumPage({ params }: NewCurriculumPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const contentItems = await prisma.contentItem.findMany({
     where: { orgId: membership.orgId },
@@ -24,7 +25,7 @@ export default async function NewCurriculumPage({ params }: NewCurriculumPagePro
   return (
     <div className="space-y-10">
       <CurriculumForm
-        orgSlug={params.slug}
+        orgSlug={slug}
         contentItems={contentOptions}
         mode="create"
         initialTitle=""

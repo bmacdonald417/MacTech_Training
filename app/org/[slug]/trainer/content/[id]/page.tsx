@@ -8,15 +8,16 @@ import { ContentPreview } from "./content-preview"
 import { ArrowLeft } from "lucide-react"
 
 interface ContentViewPageProps {
-  params: { slug: string; id: string }
+  params: Promise<{ slug: string; id: string }>
 }
 
 export default async function ContentViewPage({ params }: ContentViewPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug, id } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const contentItem = await prisma.contentItem.findFirst({
     where: {
-      id: params.id,
+      id,
       orgId: membership.orgId,
     },
     include: {
@@ -37,7 +38,7 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/org/${params.slug}/trainer/content`}>
+          <Link href={`/org/${slug}/trainer/content`}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>
@@ -48,7 +49,7 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
         description={contentItem.description ?? undefined}
         action={
           <Button variant="outline" asChild>
-            <Link href={`/org/${params.slug}/trainer/content/${params.id}/edit`}>
+            <Link href={`/org/${slug}/trainer/content/${id}/edit`}>
               Edit
             </Link>
           </Button>
@@ -56,7 +57,7 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
       />
       <ContentPreview
         contentItem={contentItem}
-        orgSlug={params.slug}
+        orgSlug={slug}
         canGenerateNarration={true}
       />
     </div>

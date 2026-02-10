@@ -19,11 +19,12 @@ function enrollmentStatusToBadge(s: string): BadgeStatus {
 }
 
 interface MyTrainingPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
-  const membership = await requireAuth(params.slug)
+  const { slug } = await params
+  const membership = await requireAuth(slug)
 
   const enrollments = await prisma.enrollment.findMany({
     where: {
@@ -181,7 +182,7 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
                     <div className="flex gap-2">
                       <Button asChild>
                         <Link
-                          href={`/org/${params.slug}/training/${enrollment.id}`}
+                          href={`/org/${slug}/training/${enrollment.id}`}
                         >
                           {enrollment.status === "COMPLETED"
                             ? "Review"

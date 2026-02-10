@@ -8,11 +8,12 @@ import Link from "next/link"
 import { GraduationCap, Plus } from "lucide-react"
 
 interface CurriculaPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function CurriculaPage({ params }: CurriculaPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const curriculaRaw = await prisma.curriculum.findMany({
     where: { orgId: membership.orgId },
@@ -47,7 +48,7 @@ export default async function CurriculaPage({ params }: CurriculaPageProps) {
         description="Build structured training paths and add library modules to each section"
         action={
           <Button asChild>
-            <Link href={`/org/${params.slug}/trainer/curricula/new`}>
+            <Link href={`/org/${slug}/trainer/curricula/new`}>
               <Plus className="h-4 w-4" />
               Create Curriculum
             </Link>
@@ -62,7 +63,7 @@ export default async function CurriculaPage({ params }: CurriculaPageProps) {
           description="Create a curriculum to group content into sections and learning paths."
           action={
             <Button asChild>
-              <Link href={`/org/${params.slug}/trainer/curricula/new`}>
+              <Link href={`/org/${slug}/trainer/curricula/new`}>
                 <Plus className="h-4 w-4" />
                 Create curriculum
               </Link>
@@ -96,12 +97,12 @@ export default async function CurriculaPage({ params }: CurriculaPageProps) {
                   )}
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/org/${params.slug}/trainer/curricula/${curriculum.id}`}>
+                      <Link href={`/org/${slug}/trainer/curricula/${curriculum.id}`}>
                         View
                       </Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/org/${params.slug}/trainer/curricula/${curriculum.id}/edit`}>
+                      <Link href={`/org/${slug}/trainer/curricula/${curriculum.id}/edit`}>
                         Edit
                       </Link>
                     </Button>

@@ -5,14 +5,15 @@ import { notFound } from "next/navigation"
 import { CheckCircle2, XCircle, Users, TrendingUp } from "lucide-react"
 
 interface QuizAnalyticsPageProps {
-  params: { slug: string; quizId: string }
+  params: Promise<{ slug: string; quizId: string }>
 }
 
 export default async function QuizAnalyticsPage({ params }: QuizAnalyticsPageProps) {
-  const membership = await requireTrainerOrAdmin(params.slug)
+  const { slug, quizId } = await params
+  const membership = await requireTrainerOrAdmin(slug)
 
   const quiz = await prisma.quiz.findUnique({
-    where: { id: params.quizId },
+    where: { id: quizId },
     include: {
       contentItem: true,
       questions: {
