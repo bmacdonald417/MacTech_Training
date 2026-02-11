@@ -125,7 +125,6 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
           },
           include: {
             article: true,
-            slideDeck: true,
             video: true,
             quiz: true,
             attestationTemplate: true,
