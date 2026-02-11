@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
-import { getActiveTermsVersion, hashIp, recordTermsAcceptance, requireActiveTermsVersion } from "@/lib/terms"
+import { getActiveTermsVersion, hashIp, recordTermsAcceptance } from "@/lib/terms"
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -35,7 +35,14 @@ export async function POST(req: Request) {
     }
     const { email, password, name, referralSource, joinCode } = parsed.data
 
-    const activeTerms = await requireActiveTermsVersion()
+    const activeTerms = await getActiveTermsVersion()
+    if (!activeTerms) {
+      console.error("Register: No active terms version configured. Run db:seed to create one.")
+      return NextResponse.json(
+        { error: "Registration is temporarily unavailable. Please try again later or contact support." },
+        { status: 503 }
+      )
+    }
     const { ip, userAgent } = await getClientIpAndAgent()
 
     const existing = await prisma.user.findUnique({ where: { email } })
@@ -88,14 +95,22 @@ export async function POST(req: Request) {
       },
     })
 
-    await recordTermsAcceptance({
-      userId: user.id,
-      orgId,
-      termsVersionId: activeTerms.id,
-      ipHash: hashIp(ip),
-      userAgent,
-      acceptanceContext: "registration",
-    })
+    try {
+      await recordTermsAcceptance({
+        userId: user.id,
+        orgId,
+        termsVersionId: activeTerms.id,
+        ipHash: hashIp(ip),
+        userAgent,
+        acceptanceContext: "registration",
+      })
+    } catch (termsErr) {
+      console.error("Register: recordTermsAcceptance failed", termsErr)
+      return NextResponse.json(
+        { error: "Registration is temporarily unavailable. Please try again later or contact support." },
+        { status: 503 }
+      )
+    }
 
     if (groupId) {
       await prisma.groupMember.create({

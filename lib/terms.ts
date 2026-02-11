@@ -46,18 +46,23 @@ export async function recordTermsAcceptance(params: RecordTermsAcceptanceParams)
     },
   })
 
-  await prisma.eventLog.create({
-    data: {
-      userId,
-      orgId,
-      type: "TERMS_ACCEPTED",
-      metadata: JSON.stringify({
-        termsVersion: terms.version,
-        acceptanceContext,
-        acceptanceId: acceptance.id,
-      }),
-    },
-  })
+  try {
+    await prisma.eventLog.create({
+      data: {
+        userId,
+        orgId,
+        type: "TERMS_ACCEPTED",
+        metadata: JSON.stringify({
+          termsVersion: terms.version,
+          acceptanceContext,
+          acceptanceId: acceptance.id,
+        }),
+      },
+    })
+  } catch (eventLogErr) {
+    // Non-fatal: UserTermsAcceptance is the source of truth; EventLog is audit
+    console.error("recordTermsAcceptance: EventLog create failed", eventLogErr)
+  }
 
   return acceptance
 }
