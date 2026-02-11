@@ -24,9 +24,11 @@ async function getClientIpAndAgent(): Promise<{ ip: string | null; userAgent: st
   return { ip, userAgent }
 }
 
+const UNAVAILABLE_MSG = "Registration is temporarily unavailable. Please try again later or contact support."
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const parsed = registerSchema.safeParse(body)
     if (!parsed.success) {
       const msg = parsed.error.flatten().fieldErrors?.termsAccepted?.[0]
@@ -35,15 +37,27 @@ export async function POST(req: Request) {
     }
     const { email, password, name, referralSource, joinCode } = parsed.data
 
-    const activeTerms = await getActiveTermsVersion()
+    let activeTerms: Awaited<ReturnType<typeof getActiveTermsVersion>>
+    try {
+      activeTerms = await getActiveTermsVersion()
+    } catch (termsErr) {
+      console.error("Register: getActiveTermsVersion failed", termsErr)
+      return NextResponse.json({ error: UNAVAILABLE_MSG }, { status: 503 })
+    }
     if (!activeTerms) {
       console.error("Register: No active terms version configured. Run db:seed to create one.")
-      return NextResponse.json(
-        { error: "Registration is temporarily unavailable. Please try again later or contact support." },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: UNAVAILABLE_MSG }, { status: 503 })
     }
-    const { ip, userAgent } = await getClientIpAndAgent()
+
+    let ip: string | null = null
+    let userAgent = ""
+    try {
+      const client = await getClientIpAndAgent()
+      ip = client.ip
+      userAgent = client.userAgent
+    } catch {
+      // non-fatal
+    }
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -106,10 +120,7 @@ export async function POST(req: Request) {
       })
     } catch (termsErr) {
       console.error("Register: recordTermsAcceptance failed", termsErr)
-      return NextResponse.json(
-        { error: "Registration is temporarily unavailable. Please try again later or contact support." },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: UNAVAILABLE_MSG }, { status: 503 })
     }
 
     if (groupId) {
