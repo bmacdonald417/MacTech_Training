@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { enrollUserInGroupAssignments } from "@/lib/enroll-group-member"
 import type { Role } from "@/lib/rbac"
 
 const VALID_ROLES: Role[] = ["ADMIN", "TRAINER", "TRAINEE"]
@@ -89,6 +90,7 @@ export async function POST(
           update: {},
           create: { groupId: group.id, userId },
         })
+        await enrollUserInGroupAssignments(userId, group.id)
       }
     }
 
