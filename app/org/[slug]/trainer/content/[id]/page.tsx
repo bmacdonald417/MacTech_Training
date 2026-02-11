@@ -32,13 +32,14 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
   }).catch(() => null)
 
   if (!contentItem) {
-    contentItem = await prisma.contentItem.findFirst({
+    const fallback = await prisma.contentItem.findFirst({
       where: { id, orgId: membership.orgId },
       include: {
         ...contentItemInclude,
         slideDeck: { select: { id: true, contentItemId: true, createdAt: true, updatedAt: true, slides: { orderBy: { order: "asc" } } } },
       },
     })
+    contentItem = fallback as typeof contentItem
   }
 
   if (!contentItem) {
