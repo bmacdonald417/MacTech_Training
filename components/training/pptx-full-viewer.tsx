@@ -113,8 +113,32 @@ export function PptxFullViewer({
     })
     resizeObserver.observe(el)
 
+    // Fallback: if layout gives 0x0 (e.g. flex not resolved yet), retry with measured size or default after delay
+    const fallbackTimer = setTimeout(() => {
+      if (!mounted || hasInited) return
+      const { w, h } = sizeRef.current
+      if (w > 0 && h > 0) {
+        tryInit()
+        return
+      }
+      const elW = el.offsetWidth || 0
+      const elH = el.offsetHeight || 0
+      if (elW > 0 && elH > 0) {
+        sizeRef.current = { w: elW, h: elH }
+        tryInit()
+        return
+      }
+      if (bufferRef.current) {
+        const defaultW = 960
+        const defaultH = 540
+        sizeRef.current = { w: defaultW, h: defaultH }
+        tryInit()
+      }
+    }, 400)
+
     return () => {
       mounted = false
+      clearTimeout(fallbackTimer)
       resizeObserver.disconnect()
       previewerRef.current = null
     }
@@ -152,8 +176,8 @@ export function PptxFullViewer({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Slide area: fills available space so entire slide is visible without scrolling */}
-      <div className="relative flex min-h-0 flex-1 min-w-0 overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
+      {/* Slide area: fills available space; min-height ensures container has size for init when flex is 0 */}
+      <div className="relative flex min-h-[360px] min-w-0 flex-1 overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
         <div
           ref={containerRef}
           className="absolute inset-0 min-h-0 min-w-0 bg-white"
