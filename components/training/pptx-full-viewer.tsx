@@ -99,6 +99,15 @@ export function PptxFullViewer({
     }
   }, [orgSlug, sourceFileId])
 
+  // Sync currentIndex from the library when user uses its built-in prev/next (e.g. arrows in the slide area)
+  useEffect(() => {
+    if (!loaded) return
+    const id = setInterval(() => {
+      const p = previewerRef.current
+      if (p != null) setCurrentIndex((i) => (i !== p.currentIndex ? p.currentIndex : i))
+    }, 400)
+    return () => clearInterval(id)
+  }, [loaded])
 
   const currentSlide = slides[currentIndex]
   const speakerNotes = currentSlide?.notesRichText?.trim() ?? ""
@@ -118,18 +127,18 @@ export function PptxFullViewer({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Slide area: fill width, consistent aspect ratio */}
-      <div className="w-full overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
+      {/* Slide area: fill available width and height; 16:9 aspect ratio */}
+      <div
+        className="relative w-full overflow-hidden rounded-xl border border-border/40 bg-slate-900/50 flex items-center justify-center"
+        style={{ aspectRatio: "960/540", minHeight: 320 }}
+      >
         <div
           ref={containerRef}
-          className="mx-auto w-full max-w-full bg-white"
-          style={{ aspectRatio: "960/540", minHeight: 280 }}
+          className="w-full h-full min-w-0 min-h-0 bg-white flex items-center justify-center overflow-hidden"
+          style={{ aspectRatio: "960/540" }}
         />
         {!loaded && (
-          <div
-            className="flex items-center justify-center text-slate-400"
-            style={{ aspectRatio: "960/540", minHeight: 280 }}
-          >
+          <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-900/50 rounded-xl">
             Loading presentation…
           </div>
         )}
