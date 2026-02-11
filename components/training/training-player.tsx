@@ -116,7 +116,7 @@ export function TrainingPlayer({
   )
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] max-h-[calc(100vh-3rem)] flex-col overflow-hidden">
+    <div className="flex h-full max-h-full flex-col overflow-hidden">
       {/* Main Content - fills viewport; no page scroll */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-0 shadow-none">
