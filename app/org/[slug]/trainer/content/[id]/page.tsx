@@ -19,11 +19,16 @@ const contentItemInclude = {
   attestationTemplate: true,
 } as const
 
+type ContentItemForView = NonNullable<Awaited<ReturnType<typeof prisma.contentItem.findFirst<{
+  where: { id: string; orgId: string }
+  include: typeof contentItemInclude & { slideDeck: { include: { sourceFile: true; slides: { orderBy: { order: "asc" } } } } }
+}>>>>
+
 export default async function ContentViewPage({ params }: ContentViewPageProps) {
   const { slug, id } = await params
   const membership = await requireTrainerOrAdmin(slug)
 
-  let contentItem = await prisma.contentItem.findFirst({
+  let contentItem: ContentItemForView | null = await prisma.contentItem.findFirst({
     where: { id, orgId: membership.orgId },
     include: {
       ...contentItemInclude,
@@ -39,7 +44,7 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
         slideDeck: { select: { id: true, contentItemId: true, createdAt: true, updatedAt: true, slides: { orderBy: { order: "asc" } } } },
       },
     })
-    contentItem = fallback as typeof contentItem
+    contentItem = fallback as ContentItemForView
   }
 
   if (!contentItem) {

@@ -26,11 +26,16 @@ const contentItemIncludeEdit = {
   attestationTemplate: true,
 } as const
 
+type ContentItemForEdit = NonNullable<Awaited<ReturnType<typeof prisma.contentItem.findFirst<{
+  where: { id: string; orgId: string }
+  include: typeof contentItemIncludeEdit & { slideDeck: { include: { sourceFile: true; slides: { orderBy: { order: "asc" } } } } }
+}>>>>
+
 export default async function ContentEditPage({ params }: ContentEditPageProps) {
   const { slug, id } = await params
   const membership = await requireTrainerOrAdmin(slug)
 
-  let contentItem = await prisma.contentItem.findFirst({
+  let contentItem: ContentItemForEdit | null = await prisma.contentItem.findFirst({
     where: { id, orgId: membership.orgId },
     include: {
       ...contentItemIncludeEdit,
@@ -46,7 +51,7 @@ export default async function ContentEditPage({ params }: ContentEditPageProps) 
         slideDeck: { select: { id: true, contentItemId: true, createdAt: true, updatedAt: true, slides: { orderBy: { order: "asc" } } } },
       },
     })
-    contentItem = fallback as typeof contentItem
+    contentItem = fallback as ContentItemForEdit
   }
 
   if (!contentItem) {
