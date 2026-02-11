@@ -198,9 +198,21 @@ export async function POST(
     })
   } catch (err) {
     console.error("[import-pptx]", err)
-    const message = err instanceof Error ? err.message : "Import failed"
+    const rawMessage = err instanceof Error ? err.message : String(err)
+    const isMissingColumn =
+      /column .* does not exist|Unknown column/i.test(rawMessage) ||
+      (typeof (err as { meta?: { target?: string[] } })?.meta?.target !== "undefined")
+    if (isMissingColumn || rawMessage.includes("sourceFileId")) {
+      return NextResponse.json(
+        {
+          error:
+            "The database schema is missing the slide-deck update. Run this once against your database (e.g. on Railway or your host): npx prisma db push",
+        },
+        { status: 503 }
+      )
+    }
     return NextResponse.json(
-      { error: message },
+      { error: rawMessage || "Import failed" },
       { status: 500 }
     )
   }

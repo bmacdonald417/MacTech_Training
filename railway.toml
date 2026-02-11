@@ -5,4 +5,6 @@
 # Uses default: npm ci, npm run build
 
 [deploy]
+# Sync DB schema (e.g. SlideDeck.sourceFileId) before app starts; uses DATABASE_URL from Railway.
+preDeployCommand = "npx prisma db push"
 startCommand = "npm start"
