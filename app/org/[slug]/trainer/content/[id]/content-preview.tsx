@@ -29,16 +29,18 @@ export function ContentPreview({
 
   if (previewable) {
     return (
-      <ContentViewer
-        contentItem={contentItem}
-        onComplete={() => {}}
-        isCompleted={true}
-        isSubmitting={false}
-        enrollmentId=""
-        orgSlug={orgSlug}
-        userId=""
-        canGenerateNarration={canGenerateNarration}
-      />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <ContentViewer
+          contentItem={contentItem}
+          onComplete={() => {}}
+          isCompleted={true}
+          isSubmitting={false}
+          enrollmentId=""
+          orgSlug={orgSlug}
+          userId=""
+          canGenerateNarration={canGenerateNarration}
+        />
+      </div>
     )
   }
 

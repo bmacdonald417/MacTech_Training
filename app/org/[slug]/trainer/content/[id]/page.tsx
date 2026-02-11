@@ -52,8 +52,8 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="flex h-[calc(100vh-5rem)] min-h-[600px] flex-col gap-4 overflow-hidden">
+      <div className="flex shrink-0 items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/org/${slug}/trainer/content`}>
             <ArrowLeft className="h-4 w-4" />
@@ -72,11 +72,13 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
           </Button>
         }
       />
-      <ContentPreview
-        contentItem={contentItem}
-        orgSlug={slug}
-        canGenerateNarration={true}
-      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <ContentPreview
+          contentItem={contentItem}
+          orgSlug={slug}
+          canGenerateNarration={true}
+        />
+      </div>
     </div>
   )
 }
