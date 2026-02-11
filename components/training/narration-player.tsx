@@ -108,11 +108,11 @@ export function NarrationPlayer({
     <div className="rounded-lg border bg-muted/30 p-3">
       {!hasNarration && (
         <>
-          <p className="text-sm text-muted-foreground mb-2">
-            Narration not available yet.
-          </p>
-          {canGenerate && (
+          {canGenerate ? (
             <>
+              <p className="text-sm text-muted-foreground mb-2">
+                Generate and save narration (audio is stored for all trainees).
+              </p>
               <Button
                 size="sm"
                 variant="outline"
@@ -137,6 +137,10 @@ export function NarrationPlayer({
                 </p>
               )}
             </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Narration for this slide has not been added yet. Your trainer can add it from the content editor; once saved, you can play it here.
+            </p>
           )}
         </>
       )}
@@ -152,6 +156,7 @@ export function NarrationPlayer({
                 className="ml-auto h-8 text-xs"
                 onClick={handleGenerate}
                 disabled={generating}
+                title="Replace saved narration (e.g. after updating speaker notes). Trainees will hear the new audio."
               >
                 {generating ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
