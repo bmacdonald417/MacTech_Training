@@ -17,13 +17,18 @@ function toPlainText(raw: string): string {
 }
 
 /**
- * Format for slide narration: "Slide X: {title}. {bullets...}"
+ * Format for slide narration. Prefers speaker notes when present; otherwise uses title + slide content.
  */
 export function getSlideNarrationText(
   slideIndex: number,
   title: string,
-  content: string
+  content: string,
+  speakerNotes?: string | null
 ): string {
+  const notes = speakerNotes?.trim()
+  if (notes) {
+    return toPlainText(notes)
+  }
   const slideNum = slideIndex + 1
   const body = toPlainText(content)
   const prefix = `Slide ${slideNum}: ${title.trim()}.`

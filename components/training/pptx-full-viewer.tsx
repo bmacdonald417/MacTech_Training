@@ -99,15 +99,19 @@ export function PptxFullViewer({
     }
   }, [orgSlug, sourceFileId])
 
-  // Sync currentIndex from the library when user uses its built-in prev/next (e.g. arrows in the slide area)
+  // Sync currentIndex from the library when user uses its built-in prev/next (e.g. arrows in the slide area).
+  // Clamp to our slides array so speaker notes and narration always match the visible slide.
   useEffect(() => {
-    if (!loaded) return
+    if (!loaded || slides.length === 0) return
+    const maxIndex = Math.max(0, slides.length - 1)
     const id = setInterval(() => {
       const p = previewerRef.current
-      if (p != null) setCurrentIndex((i) => (i !== p.currentIndex ? p.currentIndex : i))
+      if (p == null) return
+      const libIndex = Math.max(0, Math.min(p.currentIndex, maxIndex))
+      setCurrentIndex((i) => (i !== libIndex ? libIndex : i))
     }, 400)
     return () => clearInterval(id)
-  }, [loaded])
+  }, [loaded, slides.length])
 
   const currentSlide = slides[currentIndex]
   const speakerNotes = currentSlide?.notesRichText?.trim() ?? ""

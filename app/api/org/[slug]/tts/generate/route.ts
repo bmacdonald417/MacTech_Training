@@ -67,7 +67,8 @@ export async function POST(
       textToSpeak = getSlideNarrationText(
         slideIndex,
         slide.title,
-        slide.content
+        slide.content,
+        slide.notesRichText
       )
     } else if (entityType === "ARTICLE") {
       const contentItem = await prisma.contentItem.findFirst({
