@@ -6,6 +6,8 @@ import { AcceptTermsForm } from "./accept-terms-form"
 import { LoginLayout } from "@/components/auth/login-layout"
 import { BrandMark } from "@/components/auth/brand-mark"
 
+export const dynamic = "force-dynamic"
+
 interface AcceptTermsPageProps {
   searchParams: Promise<{ callbackUrl?: string }>
 }

@@ -3,6 +3,9 @@ import { getActiveTermsVersion } from "@/lib/terms"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 
+// Render at request time so we can reach the DB (build has no DB on Railway)
+export const dynamic = "force-dynamic"
+
 function markdownToHtml(content: string): string {
   return content
     .replace(/^### (.*)$/gim, "<h3 class='text-lg font-semibold mt-6 mb-2'>$1</h3>")
