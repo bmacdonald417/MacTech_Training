@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Volume2, Loader2, RefreshCw } from "lucide-react"
+import { Volume2, VolumeX, Loader2, RefreshCw, Play, Pause } from "lucide-react"
 
 interface NarrationPlayerProps {
   orgSlug: string
   entityType: "SLIDE" | "ARTICLE"
   entityId: string
   canGenerate: boolean
+  /** When true, show explicit Play, Pause, Mute, Volume controls instead of only native audio bar */
+  showMediaControls?: boolean
 }
 
 export function NarrationPlayer({
@@ -16,12 +18,16 @@ export function NarrationPlayer({
   entityType,
   entityId,
   canGenerate,
+  showMediaControls = false,
 }: NarrationPlayerProps) {
   const [hasNarration, setHasNarration] = useState(false)
   const [streamUrl, setStreamUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [volume, setVolume] = useState(1)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const fetchStatus = useCallback(async () => {
@@ -155,13 +161,87 @@ export function NarrationPlayer({
               </Button>
             )}
           </div>
-          <audio
-            ref={audioRef}
-            controls
-            className="w-full h-9"
-            src={streamUrl}
-            preload="metadata"
-          />
+          {showMediaControls ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1"
+                onClick={() => {
+                  audioRef.current?.play()
+                  setPlaying(true)
+                }}
+              >
+                <Play className="h-3.5 w-3.5" />
+                Play
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1"
+                onClick={() => {
+                  audioRef.current?.pause()
+                  setPlaying(false)
+                }}
+              >
+                <Pause className="h-3.5 w-3.5" />
+                Pause
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1"
+                onClick={() => {
+                  if (audioRef.current) {
+                    audioRef.current.muted = !audioRef.current.muted
+                    setMuted(audioRef.current.muted)
+                  }
+                }}
+              >
+                {muted ? (
+                  <VolumeX className="h-3.5 w-3.5" />
+                ) : (
+                  <Volume2 className="h-3.5 w-3.5" />
+                )}
+                {muted ? "Unmute" : "Mute"}
+              </Button>
+              <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Volume2 className="h-3.5 w-3.5" />
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={volume * 100}
+                  onChange={(e) => {
+                    const v = Number(e.target.value) / 100
+                    setVolume(v)
+                    if (audioRef.current) audioRef.current.volume = v
+                  }}
+                  className="w-24 h-2 accent-primary"
+                  title="Volume"
+                />
+              </label>
+              <audio
+                ref={audioRef}
+                className="sr-only"
+                src={streamUrl}
+                preload="metadata"
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+              />
+            </div>
+          ) : (
+            <audio
+              ref={audioRef}
+              controls
+              className="w-full h-9"
+              src={streamUrl}
+              preload="metadata"
+            />
+          )}
         </div>
       )}
     </div>
