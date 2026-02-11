@@ -177,7 +177,7 @@ export function PptxFullViewer({
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       {/* Slide area: majority of space so slide is large and visible */}
-      <div className="relative flex min-h-[200px] min-w-0 flex-[3] overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
+      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
         <div
           ref={containerRef}
           className="absolute inset-0 min-h-0 min-w-0 overflow-hidden bg-white"
@@ -218,15 +218,15 @@ export function PptxFullViewer({
         </span>
       </div>
 
-      {/* Speaker notes + narrator: takes remaining space, scrolls internally so full layout fits in viewport */}
-      <div className="flex min-h-0 min-w-0 flex-[2] flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-border/40 bg-muted/20 p-3 space-y-2">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">Speaker notes</div>
+      {/* Speaker notes + narrator: no scrolling; slide shrinks to fit notes */}
+      <div className="flex shrink-0 min-w-0 flex-col overflow-hidden rounded-xl border border-border/40 bg-muted/20 p-3 space-y-2">
+        <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide shrink-0">Speaker notes</div>
         {speakerNotes ? (
-          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+          <p className="text-xs text-foreground whitespace-pre-wrap leading-snug break-words">
             {speakerNotes}
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No notes for this slide.</p>
+          <p className="text-xs text-muted-foreground italic">No notes for this slide.</p>
         )}
         <NarrationPlayer
           orgSlug={orgSlug}

@@ -29,39 +29,32 @@ export function AppShell({
   // This prevents nested scrolling and gives slide decks maximum space.
   const isFullBleed = pathname.includes("/training/") || pathname.includes("/trainer/content/")
 
-  // Immersive pages: hide chrome to maximize viewport for slide decks/training.
-  const isImmersive = isFullBleed
-
   // Prevent *page* scrolling on immersive routes (internal panels may still scroll).
   useEffect(() => {
-    if (!isImmersive) return
+    if (!isFullBleed) return
     document.documentElement.classList.add("overflow-hidden")
     document.body.classList.add("overflow-hidden")
     return () => {
       document.documentElement.classList.remove("overflow-hidden")
       document.body.classList.remove("overflow-hidden")
     }
-  }, [isImmersive])
+  }, [isFullBleed])
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-background">
-      {!isImmersive && (
-        <Sidebar
-          orgSlug={orgSlug}
-          role={role}
-          userGroupNames={userGroupNames}
-          mobileOpen={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-        />
-      )}
+      <Sidebar
+        orgSlug={orgSlug}
+        role={role}
+        userGroupNames={userGroupNames}
+        mobileOpen={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+      />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {!isImmersive && (
-          <Topbar
-            userName={userName}
-            userEmail={userEmail}
-            onMenuClick={() => setMobileOpen(true)}
-          />
-        )}
+        <Topbar
+          userName={userName}
+          userEmail={userEmail}
+          onMenuClick={() => setMobileOpen(true)}
+        />
         <main
           className={
             isFullBleed
