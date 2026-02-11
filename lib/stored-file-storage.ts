@@ -1,8 +1,21 @@
 import fs from "fs"
 import path from "path"
+import { createReadStream } from "fs"
+import type { ReadStream } from "fs"
 import { getMountPath, ensureDirForFile, isMountWritable } from "./narration-storage"
 
 const STORED_FILES_DIR = "stored-files"
+
+/** Resolve stored file storagePath (from DB) to absolute filesystem path. */
+export function resolveStoredFileAbsolutePath(storagePath: string): string {
+  const base = getMountPath()
+  return path.isAbsolute(storagePath) ? storagePath : path.join(base, storagePath)
+}
+
+/** Create a read stream for a stored file. Caller must handle file-not-found. */
+export function createStoredFileReadStream(storagePath: string): ReadStream {
+  return createReadStream(resolveStoredFileAbsolutePath(storagePath))
+}
 
 /**
  * Full filesystem path for a stored file.

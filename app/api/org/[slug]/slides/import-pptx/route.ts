@@ -78,6 +78,27 @@ export async function POST(
         include: { slideDeck: true },
       })
       if (contentItem?.slideDeck?.id === slideDeckIdParam.trim()) {
+        const fileId = nanoid()
+        const storagePath = await writeStoredFile(
+          membership.orgId,
+          fileId,
+          file.name,
+          buffer
+        )
+        const storedFile = await prisma.storedFile.create({
+          data: {
+            orgId: membership.orgId,
+            filename: file.name,
+            mimeType: getPptxMimeType(),
+            sizeBytes: file.size,
+            storagePath,
+            createdByMembershipId: membershipRow?.id ?? null,
+          },
+        })
+        await prisma.slideDeck.update({
+          where: { id: contentItem.slideDeck!.id },
+          data: { sourceFileId: storedFile.id },
+        })
         await prisma.slide.deleteMany({
           where: { slideDeckId: contentItem.slideDeck.id },
         })
@@ -143,7 +164,7 @@ export async function POST(
     })
 
     const slideDeck = await prisma.slideDeck.create({
-      data: { contentItemId: contentItem.id },
+      data: { contentItemId: contentItem.id, sourceFileId: storedFile.id },
     })
 
     await prisma.slide.createMany({

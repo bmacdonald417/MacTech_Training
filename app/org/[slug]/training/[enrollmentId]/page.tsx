@@ -23,6 +23,7 @@ export default async function TrainingPlayerPage({
               article: true,
               slideDeck: {
                 include: {
+                  sourceFile: true,
                   slides: {
                     orderBy: { order: "asc" },
                   },
@@ -56,6 +57,7 @@ export default async function TrainingPlayerPage({
                           article: true,
                           slideDeck: {
                             include: {
+                              sourceFile: true,
                               slides: {
                                 orderBy: { order: "asc" },
                               },

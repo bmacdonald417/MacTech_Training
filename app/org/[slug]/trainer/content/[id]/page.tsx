@@ -22,7 +22,7 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
     },
     include: {
       article: true,
-      slideDeck: { include: { slides: { orderBy: { order: "asc" } } } },
+      slideDeck: { include: { sourceFile: true, slides: { orderBy: { order: "asc" } } } },
       video: true,
       formTemplate: true,
       quiz: { include: { questions: { include: { choices: true }, orderBy: { order: "asc" } } } },

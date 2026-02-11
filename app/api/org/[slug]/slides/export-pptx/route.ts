@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import PptxGenJS from "pptxgenjs"
+import fs from "fs"
+import {
+  createStoredFileReadStream,
+  resolveStoredFileAbsolutePath,
+} from "@/lib/stored-file-storage"
 
 const DARK_BG = "0F2438"
 const LIGHT_TEXT = "F1F5F9"
@@ -19,8 +24,7 @@ function markdownToPlain(text: string): string {
 
 /**
  * GET /api/org/[slug]/slides/export-pptx?slideDeckId=...
- * Admin/Trainer only. Generates PPTX from SlideDeck (title, content, speaker notes).
- * Streams application/vnd.openxmlformats-officedocument.presentationml.presentation.
+ * Admin/Trainer only. If deck has source PPTX file, streams that; otherwise generates from slides.
  */
 export async function GET(
   req: NextRequest,
@@ -43,6 +47,7 @@ export async function GET(
       where: { id: slideDeckId },
       include: {
         contentItem: true,
+        sourceFile: true,
         slides: { orderBy: { order: "asc" } },
       },
     })
@@ -59,6 +64,28 @@ export async function GET(
         { error: "Slide deck not found." },
         { status: 404 }
       )
+    }
+
+    if (deck.sourceFileId && deck.sourceFile) {
+      const storedFile = deck.sourceFile
+      const fullPath = resolveStoredFileAbsolutePath(storedFile.storagePath)
+      try {
+        await fs.promises.access(fullPath, fs.constants.R_OK)
+      } catch {
+        return NextResponse.json(
+          { error: "Original file not found on disk." },
+          { status: 404 }
+        )
+      }
+      const stream = createStoredFileReadStream(storedFile.storagePath)
+      const filename = (storedFile.filename || "export.pptx").replace(/[^\w\-.\s]/g, "_")
+      return new NextResponse(stream as any, {
+        headers: {
+          "Content-Type": storedFile.mimeType,
+          "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+          "Content-Length": String(storedFile.sizeBytes),
+        },
+      })
     }
 
     const pptx = new PptxGenJS()

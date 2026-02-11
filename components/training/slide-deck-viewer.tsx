@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
+import { PptxFullViewer } from "./pptx-full-viewer"
 
 interface SlideDeckViewerProps {
   slideDeck: any
@@ -30,8 +31,23 @@ export function SlideDeckViewer({
     )
   }
 
-  // Speaker notes (notesRichText) are not rendered here; they are for trainer use only and hidden from trainees.
   const slides = slideDeck.slides
+  const sourceFileId = slideDeck.sourceFileId ?? slideDeck.sourceFile?.id
+
+  if (sourceFileId) {
+    return (
+      <PptxFullViewer
+        orgSlug={orgSlug}
+        sourceFileId={sourceFileId}
+        slideCount={slides.length}
+        firstSlideId={slides[0]?.id}
+        canGenerateNarration={canGenerateNarration}
+        onComplete={onComplete}
+        isCompleted={isCompleted}
+      />
+    )
+  }
+
   const isFirst = currentSlide === 0
   const isLast = currentSlide === slides.length - 1
 

@@ -157,12 +157,14 @@ model Article {
 }
 
 model SlideDeck {
-  id          String   @id @default(cuid())
-  contentItemId String @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  contentItemId String   @unique
+  sourceFileId  String?  // the uploaded PPTX; when set, deck is "PPTX-as-source" (full fidelity)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   contentItem ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  sourceFile  StoredFile? @relation(fields: [sourceFileId], references: [id], onDelete: SetNull)
   slides      Slide[]
 }
 
@@ -197,8 +199,9 @@ model StoredFile {
   createdAt             DateTime @default(now())
   createdByMembershipId String?
 
-  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  slides  Slide[]
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  slides     Slide[]
+  slideDecks SlideDeck[]
 
   @@index([orgId])
 }
