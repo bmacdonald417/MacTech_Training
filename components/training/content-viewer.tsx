@@ -107,5 +107,13 @@ export function ContentViewer({
     }
   }
 
+  // Slide deck fills available height so the slide fits without scrolling; other content uses normal flow
+  if (contentItem.type === "SLIDE_DECK") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {renderContent()}
+      </div>
+    )
+  }
   return <div className="space-y-4">{renderContent()}</div>
 }

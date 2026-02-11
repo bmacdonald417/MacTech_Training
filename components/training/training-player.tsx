@@ -119,11 +119,11 @@ export function TrainingPlayer({
     <div className="flex h-[calc(100vh-8rem)] flex-col">
       {/* Main Content - full width */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Card className="flex-1 flex flex-col overflow-hidden">
-          <CardHeader>
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <CardHeader className="shrink-0">
             <CardTitle>{currentItem?.title}</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto">
+          <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {currentItem && (
               <ContentViewer
                 contentItem={currentItem.contentItem}

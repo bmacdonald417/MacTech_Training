@@ -59,42 +59,63 @@ export function PptxFullViewer({
     if (!containerRef.current || !sourceFileId) return
     let mounted = true
     const el = containerRef.current
+    const bufferRef = { current: null as ArrayBuffer | null }
+    const sizeRef = { current: { w: 0, h: 0 } }
+    let hasInited = false
 
-    function run() {
-      if (!mounted || !el) return
-      const width = el.offsetWidth || 960
-      const height = Math.round((width * 540) / 960)
-
-      const url = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
-      fetch(url, { credentials: "include" })
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to load presentation")
-          return res.arrayBuffer()
+    function tryInit() {
+      if (hasInited) return
+      const buf = bufferRef.current
+      const { w, h } = sizeRef.current
+      if (!buf || w <= 0 || h <= 0 || !mounted) return
+      hasInited = true
+      import("pptx-preview").then(({ init }) => {
+        if (!mounted || !el) return
+        previewerRef.current = null
+        const previewer = init(el, {
+          width: w,
+          height: h,
+          mode: "slide",
+        }) as unknown as PreviewerInstance
+        previewer.preview(buf).then(() => {
+          if (!mounted) return
+          previewerRef.current = previewer
+          setCurrentIndex(previewer.currentIndex)
+          setLoaded(true)
         })
-        .then((buffer) => {
-          if (!mounted || !el) return
-          return import("pptx-preview").then(({ init }) => {
-            if (!mounted || !el) return
-            const previewer = init(el, {
-              width,
-              height,
-              mode: "slide",
-            }) as unknown as PreviewerInstance
-            return previewer.preview(buffer).then(() => {
-              if (!mounted) return
-              previewerRef.current = previewer
-              setCurrentIndex(previewer.currentIndex)
-              setLoaded(true)
-            })
-          })
-        })
-        .catch((e) => {
-          if (mounted) setError(e instanceof Error ? e.message : "Failed to load")
-        })
+      })
     }
-    requestAnimationFrame(run)
+
+    const url = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
+    fetch(url, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load presentation")
+        return res.arrayBuffer()
+      })
+      .then((buf) => {
+        if (mounted) {
+          bufferRef.current = buf
+          tryInit()
+        }
+      })
+      .catch((e) => {
+        if (mounted) setError(e instanceof Error ? e.message : "Failed to load")
+      })
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry || !mounted) return
+      const { width, height } = entry.contentRect
+      const w = Math.floor(width)
+      const h = Math.floor(height)
+      sizeRef.current = { w, h }
+      if (w > 0 && h > 0) tryInit()
+    })
+    resizeObserver.observe(el)
+
     return () => {
       mounted = false
+      resizeObserver.disconnect()
       previewerRef.current = null
     }
   }, [orgSlug, sourceFileId])
@@ -130,16 +151,12 @@ export function PptxFullViewer({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Slide area: fill available width and height; 16:9 aspect ratio */}
-      <div
-        className="relative w-full overflow-hidden rounded-xl border border-border/40 bg-slate-900/50 flex items-center justify-center"
-        style={{ aspectRatio: "960/540", minHeight: 320 }}
-      >
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* Slide area: fills available space so entire slide is visible without scrolling */}
+      <div className="relative flex min-h-0 flex-1 min-w-0 overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
         <div
           ref={containerRef}
-          className="w-full h-full min-w-0 min-h-0 bg-white flex items-center justify-center overflow-hidden"
-          style={{ aspectRatio: "960/540" }}
+          className="absolute inset-0 min-h-0 min-w-0 bg-white"
         />
         {!loaded && (
           <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-900/50 rounded-xl">
@@ -149,7 +166,7 @@ export function PptxFullViewer({
       </div>
 
       {/* Controls: Previous | Next | counter | Play | Pause | Mute | Volume */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/40 pb-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/40 pb-3">
         <Button
           type="button"
           variant="outline"
@@ -178,7 +195,7 @@ export function PptxFullViewer({
       </div>
 
       {/* Narration bar: speaker notes + narration player */}
-      <div className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-3">
+      <div className="shrink-0 rounded-lg border border-border/40 bg-muted/20 p-4 space-y-3">
         <div className="text-sm font-medium text-muted-foreground">Speaker notes</div>
         {speakerNotes ? (
           <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
@@ -197,7 +214,7 @@ export function PptxFullViewer({
       </div>
 
       {/* Complete */}
-      <div className="flex items-center justify-between border-t border-border/40 pt-4">
+      <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-4">
         <span className="text-sm text-slate-400">
           {slides.length} slide{slides.length === 1 ? "" : "s"}
         </span>
