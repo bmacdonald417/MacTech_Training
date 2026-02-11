@@ -177,7 +177,7 @@ export function PptxFullViewer({
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       {/* Slide area: majority of space so slide is large and visible */}
-      <div className="relative flex min-h-[240px] min-w-0 flex-[2] overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
+      <div className="relative flex min-h-[200px] min-w-0 flex-[3] overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
         <div
           ref={containerRef}
           className="absolute inset-0 min-h-0 min-w-0 overflow-hidden bg-white"
@@ -190,7 +190,7 @@ export function PptxFullViewer({
       </div>
 
       {/* Controls: Previous | Next | counter */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/40 pb-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/40 pb-1">
         <Button
           type="button"
           variant="outline"
@@ -219,7 +219,7 @@ export function PptxFullViewer({
       </div>
 
       {/* Speaker notes + narrator: takes remaining space, scrolls internally so full layout fits in viewport */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3">
+      <div className="flex min-h-0 min-w-0 flex-[2] flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-border/40 bg-muted/20 p-3 space-y-2">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">Speaker notes</div>
         {speakerNotes ? (
           <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
@@ -238,7 +238,7 @@ export function PptxFullViewer({
       </div>
 
       {/* Complete */}
-      <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-2">
+      <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-1">
         <span className="text-sm text-slate-400">
           {slides.length} slide{slides.length === 1 ? "" : "s"}
         </span>

@@ -120,10 +120,10 @@ export function TrainingPlayer({
       {/* Main Content - fills viewport; no page scroll */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden min-w-0">
         <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-0 shadow-none">
-          <CardHeader className="shrink-0 py-2">
-            <CardTitle className="truncate text-base">{currentItem?.title}</CardTitle>
+          <CardHeader className="shrink-0 py-1">
+            <CardTitle className="truncate text-sm font-medium">{currentItem?.title}</CardTitle>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
             {currentItem && (
               <ContentViewer
                 contentItem={currentItem.contentItem}
@@ -140,9 +140,10 @@ export function TrainingPlayer({
         </Card>
 
         {/* Navigation Controls */}
-        <div className="flex shrink-0 items-center justify-between py-2">
+        <div className="flex shrink-0 items-center justify-between gap-2 py-1">
           <Button
             variant="outline"
+            size="sm"
             onClick={handlePrevious}
             disabled={isFirst}
           >
@@ -156,12 +157,13 @@ export function TrainingPlayer({
 
           {isLast && allCompleted ? (
             <Button
+              size="sm"
               onClick={() => router.push(`/org/${orgSlug}/my-training`)}
             >
               Finish Training
             </Button>
           ) : (
-            <Button onClick={handleNext} disabled={isLast}>
+            <Button size="sm" onClick={handleNext} disabled={isLast}>
               Next
               <ChevronRight className="h-4 w-4 ml-2" />
             </Button>

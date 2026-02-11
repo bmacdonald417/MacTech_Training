@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Sidebar } from "./sidebar"
 import { Topbar } from "./topbar"
@@ -27,25 +27,41 @@ export function AppShell({
 
   // Full-bleed pages: use the entire viewport area (no padded, scrollable main)
   // This prevents nested scrolling and gives slide decks maximum space.
-  const isFullBleed =
-    pathname.includes("/training/") ||
-    pathname.includes("/trainer/content/")
+  const isFullBleed = pathname.includes("/training/") || pathname.includes("/trainer/content/")
+
+  // Immersive pages: hide chrome to maximize viewport for slide decks/training.
+  const isImmersive = isFullBleed
+
+  // Prevent *page* scrolling on immersive routes (internal panels may still scroll).
+  useEffect(() => {
+    if (!isImmersive) return
+    document.documentElement.classList.add("overflow-hidden")
+    document.body.classList.add("overflow-hidden")
+    return () => {
+      document.documentElement.classList.remove("overflow-hidden")
+      document.body.classList.remove("overflow-hidden")
+    }
+  }, [isImmersive])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar
-        orgSlug={orgSlug}
-        role={role}
-        userGroupNames={userGroupNames}
-        mobileOpen={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-      />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <Topbar
-          userName={userName}
-          userEmail={userEmail}
-          onMenuClick={() => setMobileOpen(true)}
+    <div className="flex h-[100dvh] overflow-hidden bg-background">
+      {!isImmersive && (
+        <Sidebar
+          orgSlug={orgSlug}
+          role={role}
+          userGroupNames={userGroupNames}
+          mobileOpen={mobileOpen}
+          onClose={() => setMobileOpen(false)}
         />
+      )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {!isImmersive && (
+          <Topbar
+            userName={userName}
+            userEmail={userEmail}
+            onMenuClick={() => setMobileOpen(true)}
+          />
+        )}
         <main
           className={
             isFullBleed
