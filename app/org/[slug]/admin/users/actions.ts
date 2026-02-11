@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { enrollUserInGroupAssignments } from "@/lib/enroll-group-member"
 import type { Role } from "@/lib/rbac"
 
 const VALID_ROLES: Role[] = ["ADMIN", "TRAINER", "TRAINEE"]
@@ -43,9 +44,11 @@ export async function setUserGroup(
       await prisma.groupMember.create({
         data: { groupId, userId },
       })
+      await enrollUserInGroupAssignments(userId, groupId)
     }
 
     revalidatePath(`/org/${orgSlug}/admin/users`)
+    revalidatePath(`/org/${orgSlug}/my-training`)
     return {}
   } catch (err) {
     if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {

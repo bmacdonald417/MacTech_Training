@@ -80,6 +80,8 @@ export async function POST(req: Request) {
           userId: user.id,
         },
       })
+      const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
+      await enrollUserInGroupAssignments(user.id, groupId)
     }
 
     return NextResponse.json({ success: true, userId: user.id })
