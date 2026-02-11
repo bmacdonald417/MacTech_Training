@@ -39,7 +39,7 @@ export function SlideDeckViewer({
       <PptxFullViewer
         orgSlug={orgSlug}
         sourceFileId={sourceFileId}
-        slides={slides.map((s) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
+        slides={slides.map((s: { id: string; notesRichText?: string | null }) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
         canGenerateNarration={canGenerateNarration}
         onComplete={onComplete}
         isCompleted={isCompleted}

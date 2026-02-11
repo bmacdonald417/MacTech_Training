@@ -20,6 +20,7 @@ interface PptxFullViewerProps {
 }
 
 type PreviewerInstance = {
+  preview: (buffer: ArrayBuffer) => Promise<unknown>
   renderPreSlide: () => void
   renderNextSlide: () => void
   get currentIndex(): number
