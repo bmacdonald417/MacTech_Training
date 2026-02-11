@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Circle, ChevronRight, ChevronLeft } from "lucide-react"
+import { ChevronRight, ChevronLeft } from "lucide-react"
 import { ContentViewer } from "./content-viewer"
 import { useRouter } from "next/navigation"
 
@@ -111,50 +111,14 @@ export function TrainingPlayer({
     }
   }
 
-  const handleNavigation = (index: number) => {
-    setCurrentItemIndex(index)
-  }
-
   const allCompleted = navigationItems.every((item) =>
     completedItems.has(item.id)
   )
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
-      {/* Sidebar Navigation */}
-      <div className="w-64 flex-shrink-0 overflow-y-auto border-r bg-white p-4">
-        <h2 className="font-semibold mb-4">Training Outline</h2>
-        <nav className="space-y-2">
-          {navigationItems.map((item, index) => {
-            const isCompleted = completedItems.has(item.id)
-            const isCurrent = index === currentItemIndex
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigation(index)}
-                className={`w-full text-left p-2 rounded-lg text-sm transition-colors ${
-                  isCurrent
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-100"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {isCompleted ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Circle className="h-4 w-4" />
-                  )}
-                  <span className="flex-1 truncate">{item.title}</span>
-                </div>
-              </button>
-            )
-          })}
-        </nav>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex h-[calc(100vh-8rem)] flex-col">
+      {/* Main Content - full width */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Card className="flex-1 flex flex-col overflow-hidden">
           <CardHeader>
             <CardTitle>{currentItem?.title}</CardTitle>

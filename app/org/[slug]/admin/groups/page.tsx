@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { GroupJoinQR } from "@/components/group-join-qr"
 import { GroupJoinCodeGenerateButton } from "./group-join-code-button"
 import { ViewGroupMembersButton } from "./view-group-members"
+import { RemoveGroupAssignmentButton } from "./remove-group-assignment-button"
 import { Users, Plus, BookOpen, GraduationCap } from "lucide-react"
 
 interface GroupsPageProps {
@@ -122,7 +123,12 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
                       {group.assignments.map((a) => (
                         <li key={a.id} className="flex items-center gap-2 text-sm text-foreground">
                           <GraduationCap className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          {a.curriculum?.title ?? a.title}
+                          <span className="min-w-0 flex-1 truncate">{a.curriculum?.title ?? a.title}</span>
+                          <RemoveGroupAssignmentButton
+                            orgSlug={slug}
+                            assignmentId={a.id}
+                            curriculumTitle={a.curriculum?.title ?? a.title}
+                          />
                         </li>
                       ))}
                     </ul>

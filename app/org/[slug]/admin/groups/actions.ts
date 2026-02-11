@@ -135,3 +135,33 @@ export async function assignCurriculumToGroup(
     return { error: "Failed to assign curriculum to group." }
   }
 }
+
+/** Remove a curriculum assignment from a group. Deletes the assignment and its enrollments. */
+export async function removeAssignmentFromGroup(
+  orgSlug: string,
+  assignmentId: string
+): Promise<{ error?: string }> {
+  try {
+    const membership = await requireAdmin(orgSlug)
+    const assignment = await prisma.assignment.findFirst({
+      where: { id: assignmentId, orgId: membership.orgId, groupId: { not: null } },
+    })
+    if (!assignment) return { error: "Assignment not found or not a group assignment." }
+
+    await prisma.assignment.delete({
+      where: { id: assignmentId },
+    })
+
+    revalidatePath(`/org/${orgSlug}/admin/groups`)
+    revalidatePath(`/org/${orgSlug}/admin/groups/${assignment.groupId}/assign-curriculum`)
+    revalidatePath(`/org/${orgSlug}/trainer/assignments`)
+    revalidatePath(`/org/${orgSlug}/my-training`)
+    return {}
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
+      return { error: "You don't have permission." }
+    }
+    console.error("removeAssignmentFromGroup:", err)
+    return { error: "Failed to remove training from group." }
+  }
+}
