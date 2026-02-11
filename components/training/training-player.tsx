@@ -116,9 +116,9 @@ export function TrainingPlayer({
   )
 
   return (
-    <div className="flex h-full max-h-full flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Main Content - fills viewport; no page scroll */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden min-w-0">
         <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-0 shadow-none">
           <CardHeader className="shrink-0 py-2">
             <CardTitle className="truncate text-base">{currentItem?.title}</CardTitle>
