@@ -117,7 +117,7 @@ export function PptxStandaloneViewer({
       mounted = false
       previewerRef.current = null
     }
-  }, [orgSlug, sourceFileId, boxSize.w, boxSize.h])
+  }, [orgSlug, sourceFileId, boxSize])
 
   // Sync currentIndex from the library if user uses built-in nav.
   useEffect(() => {
