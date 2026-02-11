@@ -116,14 +116,14 @@ export function TrainingPlayer({
   )
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col">
-      {/* Main Content - full width */}
+    <div className="flex h-[calc(100vh-5rem)] flex-col">
+      {/* Main Content - full width; more vertical space for slide + notes */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <CardHeader className="shrink-0">
-            <CardTitle>{currentItem?.title}</CardTitle>
+          <CardHeader className="shrink-0 py-3">
+            <CardTitle className="text-lg">{currentItem?.title}</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col p-4">
             {currentItem && (
               <ContentViewer
                 contentItem={currentItem.contentItem}
