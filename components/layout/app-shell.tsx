@@ -9,6 +9,7 @@ interface AppShellProps {
   role: string
   userName?: string | null
   userEmail?: string | null
+  userGroupNames?: string[]
   children: React.ReactNode
 }
 
@@ -17,6 +18,7 @@ export function AppShell({
   role,
   userName,
   userEmail,
+  userGroupNames = [],
   children,
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -26,6 +28,7 @@ export function AppShell({
       <Sidebar
         orgSlug={orgSlug}
         role={role}
+        userGroupNames={userGroupNames}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
       />

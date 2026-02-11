@@ -19,6 +19,7 @@ import {
 interface SidebarProps {
   orgSlug: string
   role: string
+  userGroupNames?: string[]
   mobileOpen?: boolean
   onClose?: () => void
 }
@@ -92,7 +93,7 @@ function NavSection({
   )
 }
 
-export function Sidebar({ orgSlug, role, mobileOpen = false, onClose }: SidebarProps) {
+export function Sidebar({ orgSlug, role, userGroupNames = [], mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname()
 
   return (
@@ -119,6 +120,20 @@ export function Sidebar({ orgSlug, role, mobileOpen = false, onClose }: SidebarP
           )}
         </div>
         <nav className="flex-1 space-y-5 overflow-y-auto px-2 py-3">
+          <div className="space-y-0.5">
+            <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Group
+            </p>
+            <div className="px-2.5 py-2">
+              {userGroupNames.length > 0 ? (
+                <p className="text-[13px] font-medium text-foreground">
+                  {userGroupNames.join(", ")}
+                </p>
+              ) : (
+                <p className="text-[13px] text-muted-foreground">No group assigned</p>
+              )}
+            </div>
+          </div>
           <NavSection
             title="Overview"
             links={traineeLinks}
