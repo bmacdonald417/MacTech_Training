@@ -11,24 +11,35 @@ interface ContentViewPageProps {
   params: Promise<{ slug: string; id: string }>
 }
 
+const contentItemInclude = {
+  article: true,
+  video: true,
+  formTemplate: true,
+  quiz: { include: { questions: { include: { choices: true }, orderBy: { order: "asc" } } } },
+  attestationTemplate: true,
+} as const
+
 export default async function ContentViewPage({ params }: ContentViewPageProps) {
   const { slug, id } = await params
   const membership = await requireTrainerOrAdmin(slug)
 
-  const contentItem = await prisma.contentItem.findFirst({
-    where: {
-      id,
-      orgId: membership.orgId,
-    },
+  let contentItem = await prisma.contentItem.findFirst({
+    where: { id, orgId: membership.orgId },
     include: {
-      article: true,
+      ...contentItemInclude,
       slideDeck: { include: { sourceFile: true, slides: { orderBy: { order: "asc" } } } },
-      video: true,
-      formTemplate: true,
-      quiz: { include: { questions: { include: { choices: true }, orderBy: { order: "asc" } } } },
-      attestationTemplate: true,
     },
-  })
+  }).catch(() => null)
+
+  if (!contentItem) {
+    contentItem = await prisma.contentItem.findFirst({
+      where: { id, orgId: membership.orgId },
+      include: {
+        ...contentItemInclude,
+        slideDeck: { select: { id: true, contentItemId: true, createdAt: true, updatedAt: true, slides: { orderBy: { order: "asc" } } } },
+      },
+    })
+  }
 
   if (!contentItem) {
     notFound()
