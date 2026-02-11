@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { GroupJoinQR } from "@/components/group-join-qr"
 import { GroupJoinCodeGenerateButton } from "./group-join-code-button"
+import { ViewGroupMembersButton } from "./view-group-members"
 import { Users, Plus, BookOpen, GraduationCap } from "lucide-react"
 
 interface GroupsPageProps {
@@ -89,9 +90,12 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
                   <Users className="h-5 w-5 text-primary" />
                   <CardTitle className="text-lg">{group.name}</CardTitle>
                 </div>
-                <CardDescription>
-                  {[group.groupType?.toLowerCase(), `${group.members.length} members`].filter(Boolean).join(" · ")}
-                </CardDescription>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <CardDescription>
+                    {[group.groupType?.toLowerCase(), `${group.members.length} members`].filter(Boolean).join(" · ")}
+                  </CardDescription>
+                  <ViewGroupMembersButton groupName={group.name} members={group.members} />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {group.joinCode && baseUrl ? (
