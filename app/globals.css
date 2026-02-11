@@ -16,7 +16,7 @@
     --popover: 222 14% 10%;
     --popover-foreground: 210 18% 98%;
     /* Primary: crisp accent */
-    --primary: 142 72% 45%;
+    --primary: 238 84% 61%;
     --primary-foreground: 0 0% 100%;
     --secondary: 222 12% 16%;
     --secondary-foreground: 210 18% 90%;
@@ -32,7 +32,7 @@
     --warning-foreground: 0 0% 100%;
     --border: 220 12% 16%;
     --input: 220 12% 16%;
-    --ring: 142 72% 45%;
+    --ring: 238 84% 61%;
     --radius: 0.75rem;
     --radius-xl: 1rem;
     --radius-2xl: 1.25rem;
