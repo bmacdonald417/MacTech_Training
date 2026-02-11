@@ -175,22 +175,22 @@ export function PptxFullViewer({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {/* Slide area: majority of space so full slide visible without scroll; min-h so init works */}
-      <div className="relative flex min-h-[50vh] min-w-0 flex-1 overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      {/* Slide area: takes all remaining space; no scroll (overflow-hidden) */}
+      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border border-border/40 bg-slate-900/50">
         <div
           ref={containerRef}
           className="absolute inset-0 min-h-0 min-w-0 overflow-hidden bg-white"
         />
         {!loaded && (
-          <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-900/50 rounded-xl">
+          <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-900/50 rounded-lg">
             Loading presentation…
           </div>
         )}
       </div>
 
       {/* Controls: Previous | Next | counter */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/40 pb-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/40 pb-1.5">
         <Button
           type="button"
           variant="outline"
@@ -218,9 +218,9 @@ export function PptxFullViewer({
         </span>
       </div>
 
-      {/* Speaker notes + audio: compact strip, always visible and scrollable if long */}
-      <div className="flex shrink-0 max-h-[220px] min-h-0 flex-col overflow-y-auto rounded-lg border border-border/40 bg-muted/20 p-3 space-y-2">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Speaker notes</div>
+      {/* Speaker notes + audio: fixed height strip, scroll only inside this panel (no page scroll) */}
+      <div className="flex shrink-0 max-h-[160px] min-h-0 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border/40 bg-muted/20 p-2.5 space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">Speaker notes</div>
         {speakerNotes ? (
           <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
             {speakerNotes}
@@ -238,7 +238,7 @@ export function PptxFullViewer({
       </div>
 
       {/* Complete */}
-      <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-2">
+      <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-1.5">
         <span className="text-sm text-slate-400">
           {slides.length} slide{slides.length === 1 ? "" : "s"}
         </span>

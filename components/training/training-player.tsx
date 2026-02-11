@@ -116,14 +116,14 @@ export function TrainingPlayer({
   )
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] flex-col">
-      {/* Main Content - full width; more vertical space for slide + notes */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <CardHeader className="shrink-0 py-3">
-            <CardTitle className="text-lg">{currentItem?.title}</CardTitle>
+    <div className="flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] flex-col overflow-hidden">
+      {/* Main Content - fills viewport; no page scroll */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-0 shadow-none">
+          <CardHeader className="shrink-0 py-2">
+            <CardTitle className="truncate text-base">{currentItem?.title}</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 min-h-0 overflow-hidden flex flex-col p-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
             {currentItem && (
               <ContentViewer
                 contentItem={currentItem.contentItem}
@@ -140,7 +140,7 @@ export function TrainingPlayer({
         </Card>
 
         {/* Navigation Controls */}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex shrink-0 items-center justify-between py-2">
           <Button
             variant="outline"
             onClick={handlePrevious}
