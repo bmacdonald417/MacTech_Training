@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
+import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { getActiveTermsVersion, hashIp, recordTermsAcceptance, requireActiveTermsVersion } from "@/lib/terms"
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -9,19 +11,32 @@ const registerSchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
   referralSource: z.string().min(1, "Please select how you heard about us"),
   joinCode: z.string().optional(),
+  termsAccepted: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the acknowledgment to register." }),
+  }),
 })
+
+async function getClientIpAndAgent(): Promise<{ ip: string | null; userAgent: string }> {
+  const headersList = await headers()
+  const forwarded = headersList.get("x-forwarded-for")
+  const ip = forwarded ? forwarded.split(",")[0]?.trim() ?? headersList.get("x-real-ip") : headersList.get("x-real-ip")
+  const userAgent = headersList.get("user-agent") ?? ""
+  return { ip, userAgent }
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.flatten().fieldErrors ? Object.values(parsed.error.flatten().fieldErrors).flat().join(", ") : "Invalid input" },
-        { status: 400 }
-      )
+      const msg = parsed.error.flatten().fieldErrors?.termsAccepted?.[0]
+        ?? (parsed.error.flatten().fieldErrors ? Object.values(parsed.error.flatten().fieldErrors).flat().join(", ") : "Invalid input")
+      return NextResponse.json({ error: msg }, { status: 400 })
     }
     const { email, password, name, referralSource, joinCode } = parsed.data
+
+    const activeTerms = await requireActiveTermsVersion()
+    const { ip, userAgent } = await getClientIpAndAgent()
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -71,6 +86,15 @@ export async function POST(req: Request) {
         orgId,
         role: "TRAINEE",
       },
+    })
+
+    await recordTermsAcceptance({
+      userId: user.id,
+      orgId,
+      termsVersionId: activeTerms.id,
+      ipHash: hashIp(ip),
+      userAgent,
+      acceptanceContext: "registration",
     })
 
     if (groupId) {

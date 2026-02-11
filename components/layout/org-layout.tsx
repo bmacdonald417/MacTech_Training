@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import { userHasAcceptedCurrentTerms } from "@/lib/terms"
 import { AppShell } from "./app-shell"
 import { redirect } from "next/navigation"
 
@@ -20,6 +21,11 @@ export default async function OrgLayout({
   }
 
   const membership = await requireAuth(params.slug)
+
+  const acceptedTerms = await userHasAcceptedCurrentTerms(membership.userId)
+  if (!acceptedTerms) {
+    redirect(`/accept-terms?callbackUrl=${encodeURIComponent(`/org/${params.slug}/dashboard`)}`)
+  }
 
   const userGroupMemberships = await prisma.groupMember.findMany({
     where: {

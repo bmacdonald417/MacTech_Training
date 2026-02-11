@@ -53,8 +53,42 @@ model User {
   certificatesIssued CertificateIssued[]
   eventLogs EventLog[]
   documentAcknowledgments DocumentAcknowledgment[]
+  termsAcceptances UserTermsAcceptance[]
 
   @@index([email])
+}
+
+// Terms of Service versions and user acceptances (clickwrap / audit)
+model TermsVersion {
+  id        String   @id @default(cuid())
+  version   String   @unique // e.g. "2026-02-11-v1"
+  title     String   // e.g. "MacTech Training Terms of Service"
+  content   String   @db.Text // markdown or long text
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  acceptances UserTermsAcceptance[]
+
+  @@index([isActive])
+}
+
+model UserTermsAcceptance {
+  id                String   @id @default(cuid())
+  userId            String
+  orgId             String?  // optional; set when accepted in org context
+  termsVersionId    String
+  acceptedAt        DateTime @default(now())
+  ipHash            String   // hashed IP for privacy
+  userAgent         String   @db.Text
+  acceptanceContext String   // e.g. "registration" | "reacceptance"
+  createdAt         DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  termsVersion TermsVersion @relation(fields: [termsVersionId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([termsVersionId])
+  @@index([userId, termsVersionId])
 }
 
 model Membership {
@@ -702,6 +736,7 @@ enum EventType {
   DOCUMENT_OBSOLETED
   DOCUMENT_TRAINING_TRIGGERED
   DOCUMENT_ACKNOWLEDGMENT_COMPLETED
+  TERMS_ACCEPTED
 }
 
 model EventLog {

@@ -21,6 +21,41 @@ async function main() {
 
   console.log("Created organization:", org.name)
 
+  // Seed active Terms of Service version (clickwrap)
+  const termsVersion = await prisma.termsVersion.upsert({
+    where: { version: "2026-02-11-v1" },
+    update: { isActive: true },
+    create: {
+      version: "2026-02-11-v1",
+      title: "MacTech Training Terms of Service",
+      content: `# MacTech Training Terms of Service
+
+**Last updated: February 11, 2026**
+
+## 1. Acceptance of Terms
+
+By accessing or using the MacTech Training platform ("Platform") operated by MacTech Solutions LLC ("MacTech," "we," "us"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Platform.
+
+## 2. Confidential and Proprietary Materials
+
+All content, materials, training modules, presentations, documents, and other information made available through the Platform are **confidential and proprietary** to MacTech Solutions LLC. You may not copy, record, screenshot, distribute, reproduce, or disclose any such materials to any third party without prior written authorization from MacTech Solutions LLC.
+
+## 3. Use of the Platform
+
+You agree to use the Platform only for lawful purposes and in accordance with these Terms. You are responsible for maintaining the confidentiality of your account credentials.
+
+## 4. Privacy
+
+Your use of the Platform is also governed by our Privacy Policy, available at /privacy.
+
+## 5. Changes
+
+We may update these Terms from time to time. Continued use of the Platform after changes constitutes acceptance of the revised Terms.`,
+      isActive: true,
+    },
+  })
+  console.log("Seeded Terms version:", termsVersion.version)
+
   // Create users
   const hashedPassword = await bcrypt.hash("password123", 10)
 

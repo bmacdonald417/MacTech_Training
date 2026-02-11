@@ -32,6 +32,9 @@ const signupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
   referralSource: z.string().min(1, "Please select how you heard about us"),
+  termsAccepted: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the acknowledgment to create an account." }),
+  }),
 })
 
 type SignupForm = z.infer<typeof signupSchema>
@@ -74,6 +77,7 @@ export function SignupForm() {
           name: data.name,
           referralSource: data.referralSource,
           joinCode: joinCode || undefined,
+          termsAccepted: data.termsAccepted,
         }),
       })
       const json = await res.json().catch(() => ({}))
@@ -193,6 +197,37 @@ export function SignupForm() {
                   {errors.referralSource.message}
                 </p>
               )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="termsAccepted"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  {...register("termsAccepted")}
+                />
+                <label htmlFor="termsAccepted" className="text-sm text-slate-700 leading-relaxed cursor-pointer">
+                  I acknowledge that all materials on this platform are confidential and proprietary to MacTech Solutions LLC. I agree not to copy, record, screenshot, distribute, or reproduce any content without prior written authorization. I agree to the{" "}
+                  <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+                    Terms of Service
+                  </Link>
+                  .
+                </label>
+              </div>
+              <p className="text-xs text-slate-500 pl-7">
+                This acknowledgment is required to create an account.
+              </p>
+              {errors.termsAccepted && (
+                <p className="text-sm text-red-600 flex items-center gap-1.5 pl-7" role="alert">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.termsAccepted.message}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2 text-xs text-slate-600 pl-7">
+              <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+                Privacy Policy
+              </Link>
             </div>
             {error && (
               <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3" role="alert">
