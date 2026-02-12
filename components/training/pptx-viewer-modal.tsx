@@ -104,13 +104,8 @@ export function PptxViewerModal({
     function tryInit() {
       if (hasInited) return
       const buf = bufferRef.current
-      if (!buf || !mounted) return
-      // Use measured size, or fallback so we still load when modal isn't laid out yet (e.g. Radix animation)
-      let { w, h } = sizeRef.current
-      if (w <= 0 || h <= 0) {
-        w = 960
-        h = 540
-      }
+      const { w, h } = sizeRef.current
+      if (!buf || w <= 0 || h <= 0 || !mounted) return
 
       hasInited = true
       import("pptx-preview").then(({ init }) => {
@@ -128,9 +123,6 @@ export function PptxViewerModal({
           previewerRef.current = previewer
           setCurrentIndex(previewer.currentIndex)
           setLoaded(true)
-        }).catch((err) => {
-          if (!mounted) return
-          setError(err instanceof Error ? err.message : "Failed to render presentation")
         })
       })
     }
@@ -275,11 +267,10 @@ export function PptxViewerModal({
             {/* Body */}
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
               {/* Slide area (big, full dimension within modal) */}
-              <div className="relative flex min-h-[320px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-border/40 bg-slate-950/40 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+              <div className="relative flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 bg-slate-950/40 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
                 <div
                   ref={containerRef}
                   className="absolute inset-0 min-h-0 min-w-0 overflow-hidden bg-white"
-                  style={{ minWidth: 1, minHeight: 1 }}
                 />
                 {!loaded && !error && (
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
