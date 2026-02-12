@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
 import { ExternalLink } from "lucide-react"
 import { PresentationAdminEditor } from "./presentation-admin-editor"
+import { getSlideNarrationText } from "@/lib/tts-text"
 
 interface PageProps {
   params: Promise<{ slug: string; slideDeckId: string }>
@@ -26,12 +27,35 @@ export default async function PresentationAdminDetailPage({ params }: PageProps)
       sourceFile: { select: { id: true, filename: true } },
       slides: {
         orderBy: { order: "asc" },
-        select: { id: true, order: true, title: true, notesRichText: true },
+        select: { id: true, order: true, title: true, content: true, notesRichText: true },
       },
     },
   })
 
   if (!deck) notFound()
+
+  const slideIds = deck.slides.map((s) => s.id)
+  const narrationAssets = slideIds.length
+    ? await prisma.narrationAsset.findMany({
+        where: {
+          orgId: membership.orgId,
+          entityType: "SLIDE",
+          entityId: { in: slideIds },
+        },
+        select: { entityId: true, updatedAt: true, voice: true, inputText: true },
+      })
+    : []
+
+  const narrationBySlideId = new Map(
+    narrationAssets.map((a) => [
+      a.entityId,
+      {
+        updatedAt: a.updatedAt.toISOString(),
+        voice: a.voice,
+        inputText: a.inputText,
+      },
+    ])
+  )
 
   return (
     <div className="space-y-10">
@@ -66,7 +90,15 @@ export default async function PresentationAdminDetailPage({ params }: PageProps)
         slideDeckId={deck.id}
         title={deck.contentItem?.title ?? "Presentation"}
         sourceFileId={deck.sourceFile?.id ?? null}
-        slides={deck.slides}
+        slides={deck.slides.map((s, idx) => ({
+          id: s.id,
+          order: s.order,
+          title: s.title,
+          notesRichText: s.notesRichText,
+          // Default script used for TTS when no saved inputText exists.
+          defaultScript: getSlideNarrationText(idx, s.title, s.content, s.notesRichText),
+          narration: narrationBySlideId.get(s.id) ?? null,
+        }))}
       />
     </div>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
@@ -25,12 +25,7 @@ export function SlideDeckViewer({
 
   const slides = slideDeck?.slides ?? []
   const sourceFileId = slideDeck?.sourceFileId ?? slideDeck?.sourceFile?.id ?? null
-  const presentationTitle =
-    slideDeck?.title ??
-    slideDeck?.name ??
-    slideDeck?.sourceFile?.filename ??
-    slides?.[0]?.title ??
-    "Presentation"
+  const presentationTitle = slideDeck?.sourceFile?.filename ?? "Presentation"
   const presentationUrl =
     sourceFileId != null ? `/org/${orgSlug}/slides/view/${sourceFileId}` : null
 
@@ -48,10 +43,11 @@ export function SlideDeckViewer({
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
         <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-border/40 bg-slate-950">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,hsl(var(--primary)/0.20),transparent_55%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_90%,rgba(255,255,255,0.06),transparent_55%)]" />
-          </div>
+          <PptxBackdrop orgSlug={orgSlug} sourceFileId={sourceFileId} />
+
+          <div className="pointer-events-none absolute inset-0 bg-black/70" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_20%,hsl(var(--primary)/0.24),transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/80" />
 
           <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-6 py-10 text-center">
             <div className="text-xs font-medium uppercase tracking-widest text-white/60">
@@ -218,6 +214,100 @@ export function SlideDeckViewer({
           </Button>
         )}
       </div>
+    </div>
+  )
+}
+
+function PptxBackdrop({
+  orgSlug,
+  sourceFileId,
+}: {
+  orgSlug: string
+  sourceFileId: string
+}) {
+  const BASE_W = 1600
+  const BASE_H = 900
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+
+  useEffect(() => {
+    if (!viewportRef.current) return
+    const el = viewportRef.current
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      const w = Math.max(1, Math.floor(entry.contentRect.width))
+      const h = Math.max(1, Math.floor(entry.contentRect.height))
+      // "Cover" scale: fill the card, cropping as needed.
+      const next = Math.max(w / BASE_W, h / BASE_H)
+      setScale((prev) => (Math.abs(prev - next) < 0.002 ? prev : next))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!stageRef.current) return
+    let mounted = true
+    const el = stageRef.current
+    const url = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
+    const bufferRef = { current: null as ArrayBuffer | null }
+    let hasInited = false
+
+    function tryInit() {
+      if (hasInited) return
+      const buf = bufferRef.current
+      if (!buf || !mounted) return
+      hasInited = true
+      import("pptx-preview").then(({ init }) => {
+        if (!mounted) return
+        el.innerHTML = ""
+        const previewer = init(el, {
+          width: BASE_W,
+          height: BASE_H,
+          mode: "slide",
+        }) as unknown as { preview: (b: ArrayBuffer) => Promise<unknown> }
+        previewer.preview(buf).catch(() => {
+          // ignore backdrop failures (launch UI still works)
+        })
+      })
+    }
+
+    fetch(url, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load presentation")
+        return res.arrayBuffer()
+      })
+      .then((buf) => {
+        if (!mounted) return
+        bufferRef.current = buf
+        tryInit()
+      })
+      .catch(() => {
+        // ignore backdrop failures
+      })
+
+    const t = setTimeout(() => tryInit(), 300)
+
+    return () => {
+      mounted = false
+      clearTimeout(t)
+    }
+  }, [orgSlug, sourceFileId])
+
+  return (
+    <div ref={viewportRef} className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        ref={stageRef}
+        className="absolute left-1/2 top-1/2 opacity-55 blur-[1px] saturate-110"
+        style={{
+          width: BASE_W,
+          height: BASE_H,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: "top left",
+        }}
+      />
     </div>
   )
 }

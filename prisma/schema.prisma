@@ -386,6 +386,7 @@ model NarrationAsset {
   voice       String   @default("alloy")
   format      String   @default("mp3")
   storagePath String   // path relative to volume mount or absolute
+  inputText   String?  @db.Text // exact TTS input used for generation (admin-editable)
   updatedAt   DateTime @updatedAt
   updatedByMembershipId String?
 

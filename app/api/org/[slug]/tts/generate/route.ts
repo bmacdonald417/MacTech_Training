@@ -31,6 +31,7 @@ export async function POST(
       entityType?: string
       entityId?: string
       voice?: string
+      inputText?: string
     }
 
     if (!entityType || !entityId) {
@@ -57,6 +58,8 @@ export async function POST(
     }
 
     let textToSpeak: string
+    const inputOverride =
+      typeof (body as any)?.inputText === "string" ? ((body as any).inputText as string) : null
 
     if (entityType === "SLIDE") {
       const slide = await prisma.slide.findUnique({
@@ -70,22 +73,26 @@ export async function POST(
       if (!slide?.slideDeck?.contentItem || slide.slideDeck.contentItem.orgId !== membership.orgId) {
         return NextResponse.json({ error: "Slide not found" }, { status: 404 })
       }
-      const order = slide.slideDeck
-        ? await prisma.slide
-            .findMany({
-              where: { slideDeckId: slide.slideDeckId },
-              orderBy: { order: "asc" },
-              select: { id: true },
-            })
-            .then((slides) => slides.findIndex((s) => s.id === slide.id))
-        : 0
-      const slideIndex = order >= 0 ? order : 0
-      textToSpeak = getSlideNarrationText(
-        slideIndex,
-        slide.title,
-        slide.content,
-        slide.notesRichText
-      )
+      if (inputOverride && inputOverride.trim()) {
+        textToSpeak = inputOverride.trim()
+      } else {
+        const order = slide.slideDeck
+          ? await prisma.slide
+              .findMany({
+                where: { slideDeckId: slide.slideDeckId },
+                orderBy: { order: "asc" },
+                select: { id: true },
+              })
+              .then((slides) => slides.findIndex((s) => s.id === slide.id))
+          : 0
+        const slideIndex = order >= 0 ? order : 0
+        textToSpeak = getSlideNarrationText(
+          slideIndex,
+          slide.title,
+          slide.content,
+          slide.notesRichText
+        )
+      }
     } else if (entityType === "ARTICLE") {
       const contentItem = await prisma.contentItem.findFirst({
         where: {
@@ -98,10 +105,14 @@ export async function POST(
       if (!contentItem?.article) {
         return NextResponse.json({ error: "Article not found" }, { status: 404 })
       }
-      textToSpeak = getArticleNarrationText(
-        contentItem.title,
-        contentItem.article.content
-      )
+      if (inputOverride && inputOverride.trim()) {
+        textToSpeak = inputOverride.trim()
+      } else {
+        textToSpeak = getArticleNarrationText(
+          contentItem.title,
+          contentItem.article.content
+        )
+      }
     } else {
       return NextResponse.json(
         { error: "SLIDE_DECK narration not implemented; use SLIDE per slide" },
@@ -210,6 +221,7 @@ export async function POST(
         updatedAt: now,
         updatedByMembershipId: undefined,
         voice: voiceToUse,
+        inputText: trimmed,
       },
       create: {
         orgId: membership.orgId,
@@ -218,6 +230,7 @@ export async function POST(
         voice: voiceToUse,
         format: "mp3",
         storagePath,
+        inputText: trimmed,
         updatedByMembershipId: undefined,
       },
     })

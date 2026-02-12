@@ -7,13 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { updateSlideNotesRichText } from "../actions"
-import { ExternalLink, Loader2, RefreshCw, Wand2, Volume2 } from "lucide-react"
+import { ExternalLink, Loader2, RefreshCw, Wand2, Volume2, RotateCcw } from "lucide-react"
 
 type SlideRow = {
   id: string
   order: number
   title: string
   notesRichText: string | null
+  defaultScript: string
+  narration: { updatedAt: string; voice: string; inputText: string | null } | null
 }
 
 const VOICES = [
@@ -46,6 +48,13 @@ export function PresentationAdminEditor({
   const selected = slides[selectedIndex]
 
   const [notes, setNotes] = useState(selected?.notesRichText ?? "")
+  const [scriptBySlideId, setScriptBySlideId] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {}
+    for (const s of slides) {
+      init[s.id] = s.narration?.inputText?.trim() || s.defaultScript
+    }
+    return init
+  })
   const [voice, setVoice] = useState<(typeof VOICES)[number]["value"]>("alloy")
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -92,10 +101,11 @@ export function PresentationAdminEditor({
     setStatus(null)
     setAudioUrl(null)
     try {
+      const inputText = scriptBySlideId[slideId] ?? ""
       const res = await fetch(`/api/org/${orgSlug}/tts/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entityType: "SLIDE", entityId: slideId, voice }),
+        body: JSON.stringify({ entityType: "SLIDE", entityId: slideId, voice, inputText }),
       })
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean
@@ -107,7 +117,7 @@ export function PresentationAdminEditor({
         return
       }
       setAudioUrl(data.streamUrl)
-      setStatus("Narration generated.")
+      setStatus("Narration generated from script.")
     } catch {
       setError("Network error generating narration.")
     } finally {
@@ -124,10 +134,11 @@ export function PresentationAdminEditor({
     try {
       for (let i = 0; i < slides.length; i++) {
         const s = slides[i]
+        const inputText = scriptBySlideId[s.id] ?? s.defaultScript
         const res = await fetch(`/api/org/${orgSlug}/tts/generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ entityType: "SLIDE", entityId: s.id, voice }),
+          body: JSON.stringify({ entityType: "SLIDE", entityId: s.id, voice, inputText }),
         })
         if (!res.ok) {
           const data = await res.json().catch(() => ({} as any))
@@ -171,7 +182,7 @@ export function PresentationAdminEditor({
                 </span>
                 <span className="min-w-0 flex-1 truncate">{s.title}</span>
                 <span className="shrink-0 text-[10px] text-muted-foreground">
-                  {s.notesRichText?.trim() ? "notes" : ""}
+                  {s.narration ? "narrated" : s.notesRichText?.trim() ? "notes" : ""}
                 </span>
               </button>
             ))}
@@ -265,6 +276,23 @@ export function PresentationAdminEditor({
                   {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Save notes
                 </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Narration script (used for TTS)</Label>
+              <textarea
+                value={selected?.id ? (scriptBySlideId[selected.id] ?? "") : ""}
+                onChange={(e) => {
+                  if (!selected?.id) return
+                  const v = e.target.value
+                  setScriptBySlideId((prev) => ({ ...prev, [selected.id]: v }))
+                }}
+                rows={8}
+                placeholder="This is the exact text sent to the TTS API. Edit it, then regenerate narration."
+                className="flex min-h-[120px] w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm"
+              />
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -273,8 +301,32 @@ export function PresentationAdminEditor({
                   className="gap-2"
                 >
                   {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  Generate narration for this slide
+                  {selected?.narration ? "Regenerate narration" : "Generate narration"}
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    if (!selected?.id) return
+                    const d = selected.defaultScript
+                    setScriptBySlideId((prev) => ({ ...prev, [selected.id]: d }))
+                    setStatus("Reset script to default.")
+                    setError(null)
+                  }}
+                  disabled={!selected?.id}
+                  className="gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset script
+                </Button>
+                {selected?.narration && (
+                  <div className="text-xs text-muted-foreground">
+                    Current narration: {new Date(selected.narration.updatedAt).toLocaleString()} • {selected.narration.voice}
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Edits here are saved the next time you regenerate (we persist the script with the narration asset).
               </div>
             </div>
 
