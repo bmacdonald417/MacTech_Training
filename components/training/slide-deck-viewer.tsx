@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
-import { PptxFullViewer } from "./pptx-full-viewer"
 
 interface SlideDeckViewerProps {
   slideDeck: any
@@ -22,8 +21,20 @@ export function SlideDeckViewer({
   isCompleted,
 }: SlideDeckViewerProps) {
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [popupBlocked, setPopupBlocked] = useState(false)
 
-  if (!slideDeck || !slideDeck.slides || slideDeck.slides.length === 0) {
+  const slides = slideDeck?.slides ?? []
+  const sourceFileId = slideDeck?.sourceFileId ?? slideDeck?.sourceFile?.id ?? null
+  const presentationTitle =
+    slideDeck?.title ??
+    slideDeck?.name ??
+    slideDeck?.sourceFile?.filename ??
+    slides?.[0]?.title ??
+    "Presentation"
+  const presentationUrl =
+    sourceFileId != null ? `/org/${orgSlug}/slides/view/${sourceFileId}` : null
+
+  if (!slideDeck || slides.length === 0) {
     return (
       <div className="rounded-xl bg-slate-900/80 px-6 py-8 text-slate-200">
         Slide deck not found
@@ -31,19 +42,89 @@ export function SlideDeckViewer({
     )
   }
 
-  const slides = slideDeck.slides
-  const sourceFileId = slideDeck.sourceFileId ?? slideDeck.sourceFile?.id
-
   if (sourceFileId) {
+    // Prefer a dedicated presentation viewer (new tab/window) for a clean, unobstructed viewport.
+    // Embedded PPTX rendering inside the dashboard layout is prone to truncation/scroll issues.
     return (
-      <PptxFullViewer
-        orgSlug={orgSlug}
-        sourceFileId={sourceFileId}
-        slides={slides.map((s: { id: string; notesRichText?: string | null }) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
-        canGenerateNarration={canGenerateNarration}
-        onComplete={onComplete}
-        isCompleted={isCompleted}
-      />
+      <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-border/40 bg-slate-950">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,hsl(var(--primary)/0.20),transparent_55%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_90%,rgba(255,255,255,0.06),transparent_55%)]" />
+          </div>
+
+          <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-6 py-10 text-center">
+            <div className="text-xs font-medium uppercase tracking-widest text-white/60">
+              PowerPoint deck
+            </div>
+            <div className="text-balance text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              {presentationTitle}
+            </div>
+            <div className="text-sm text-white/65">
+              Opens in a dedicated presentation viewer for the best experience.
+            </div>
+
+            <div className="mt-2 flex flex-col items-center gap-2">
+              <Button
+                type="button"
+                className="gap-2"
+                onClick={() => {
+                  if (!presentationUrl) return
+                  setPopupBlocked(false)
+                  const w = window.open(
+                    presentationUrl,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                  if (!w) setPopupBlocked(true)
+                }}
+              >
+                Open presentation
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+
+              {popupBlocked && presentationUrl && (
+                <a
+                  href={presentationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-white/70 underline underline-offset-4 hover:text-white"
+                >
+                  Popup blocked. Click here to open.
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Keep completion + narration in-dashboard */}
+        <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-2">
+          <span className="text-sm text-slate-400">
+            {slides.length} slide{slides.length === 1 ? "" : "s"}
+          </span>
+          {!isCompleted ? (
+            <Button onClick={onComplete}>
+              <CheckCircle2 className="h-4 w-4" />
+              Complete
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium">Completed</span>
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0">
+          <NarrationPlayer
+            orgSlug={orgSlug}
+            entityType="SLIDE"
+            entityId={slides?.[0]?.id ?? ""}
+            canGenerate={canGenerateNarration}
+            showMediaControls
+          />
+        </div>
+      </div>
     )
   }
 
