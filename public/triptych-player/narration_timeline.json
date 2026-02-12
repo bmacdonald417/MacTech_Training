@@ -8,66 +8,71 @@
       "image": "assets/triptych_01.png",
       "title": "Welcome to CMMC Level 2 Training",
       "segments": {
-        "introStart": 0.0,
+        "introStart": 0,
         "leftStart": 1.5,
-        "centerStart": 22.0,
-        "rightStart": 43.0,
-        "recapStart": 64.0,
-        "end": 72.0
+        "centerStart": 36.7,
+        "rightStart": 67.2,
+        "recapStart": 95.3,
+        "end": 97.3
       },
-      "panels": null
+      "panels": null,
+      "audioUrl": "audio/triptych_01.mp3"
     },
     {
       "image": "assets/triptych_02.png",
       "title": "CMMC Level 2: Protecting CUI",
       "segments": {
-        "introStart": 0.0,
+        "introStart": 0,
         "leftStart": 1.5,
-        "centerStart": 18.0,
-        "rightStart": 35.0,
-        "recapStart": 52.0,
-        "end": 58.0
+        "centerStart": 24.5,
+        "rightStart": 48.9,
+        "recapStart": 74.1,
+        "end": 76.1
       },
-      "panels": null
+      "panels": null,
+      "audioUrl": "audio/triptych_02.mp3"
     },
     {
       "image": "assets/triptych_03.png",
       "title": "Threat Landscape and FCI vs CUI",
       "segments": {
-        "introStart": 0.0,
+        "introStart": 0,
         "leftStart": 1.5,
-        "centerStart": 20.0,
-        "rightStart": 40.0,
-        "recapStart": 58.0,
-        "end": 65.0
+        "centerStart": 20.5,
+        "rightStart": 43.5,
+        "recapStart": 64.5,
+        "end": 66.5
       },
-      "panels": null
+      "panels": null,
+      "audioUrl": "audio/triptych_03.mp3"
     },
     {
       "image": "assets/triptych_04.png",
       "title": "Acceptable Use and Identity",
       "segments": {
-        "introStart": 0.0,
+        "introStart": 0,
         "leftStart": 1.5,
-        "centerStart": 19.0,
-        "rightStart": 38.0,
-        "recapStart": 55.0,
-        "end": 62.0
+        "centerStart": 20.3,
+        "rightStart": 41.1,
+        "recapStart": 61.1,
+        "end": 63.1
       },
-      "panels": null
+      "panels": null,
+      "audioUrl": "audio/triptych_04.mp3"
     },
     {
       "image": "assets/triptych_05.png",
       "title": "Role-Based Training and Manager Module",
       "segments": {
-        "introStart": 0.0,
+        "introStart": 0,
         "leftStart": 1.5,
-        "centerStart": 21.0,
-        "rightStart": 42.0,
-        "recapStart": 62.0,
-        "end": 70.0
+        "centerStart": 17.8,
+        "rightStart": 36.9,
+        "recapStart": 57.2,
+        "end": 59.2
       },
-      "panels": null
+      "panels": null,
+      "audioUrl": "audio/triptych_05.mp3"
     }
   ]
 }

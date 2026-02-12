@@ -21,7 +21,28 @@ triptych-player/
   README.md
   assets/
     triptych_01.png … triptych_05.png
+  audio/                    (after generating TTS)
+    triptych_01.mp3 … triptych_05.mp3
+    segments/               (per-segment MP3s before concat)
+      seg_01.mp3 … seg_15.mp3
 ```
+
+## Generating narration (TTS) and syncing highlights
+
+The CMMC script (`components/training/cmmc2/CMMC_Triptych_TTS_Narration_Script.txt`) has 15 slide texts (3 per triptych). To generate TTS and build a timeline so **Play** syncs highlights to the narration:
+
+1. Set `OPENAI_API_KEY` in your environment.
+2. From the repo root run: **`npm run triptych:generate`**
+
+This will:
+
+- Parse the script into 15 segments and call OpenAI TTS for each.
+- Write segment MP3s to `public/triptych-player/audio/segments/`.
+- Measure each MP3 duration and build exact `introStart`, `leftStart`, `centerStart`, `rightStart`, `recapStart`, `end` for each of the 5 slides.
+- If **ffmpeg** is installed, concatenate segments into `public/triptych-player/audio/triptych_01.mp3` … `triptych_05.mp3`.
+- Update `public/triptych-player/narration_timeline.json` with `audioUrl` per slide and the computed timings.
+
+When `narration_timeline.json` includes `audioUrl` for a slide, pressing **Play** plays that audio and drives the panel highlights from the audio’s current time, so Left/Center/Right stay in sync with the narration. Without generated audio, Play still runs the built-in timer and highlights from the JSON timings only.
 
 ## Replacing images
 

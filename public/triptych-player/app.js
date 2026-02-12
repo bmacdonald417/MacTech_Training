@@ -23,6 +23,7 @@
   let playbackStartReal = 0;
   let playbackStartSlideTime = 0;
   let rafId = null;
+  let slideAudio = null;
 
   const el = {
     stage: null,
@@ -51,8 +52,12 @@
     return slide && slide.segments ? slide.segments : null;
   }
 
-  /** Current time within the slide (seconds). */
+  /** Current time within the slide (seconds). When narration audio is playing, use it for perfect sync. */
   function getCurrentTime() {
+    var s = getSlide();
+    if (isPlaying && slideAudio && s && s.audioUrl && !isNaN(slideAudio.currentTime)) {
+      return slideAudio.currentTime;
+    }
     if (isPlaying) {
       return playbackStartSlideTime + (performance.now() / 1000 - playbackStartReal) + calibrationOffset;
     }
@@ -162,6 +167,7 @@
 
   function goToSlide(index) {
     if (index < 0 || index >= config.slides.length) return;
+    if (slideAudio) slideAudio.pause();
     currentSlideIndex = index;
     const slide = getSlide();
     segmentStartTime = slide && slide.segments ? slide.segments.introStart : 0;
@@ -215,17 +221,35 @@
 
   function startPlayback() {
     const segments = getSegments();
+    const slide = getSlide();
     if (!segments) return;
     isPlaying = true;
     playbackStartReal = performance.now() / 1000;
     playbackStartSlideTime = segmentStartTime + calibrationOffset;
     if (el.btnPlayPause) el.btnPlayPause.textContent = 'Pause';
     if (rafId) cancelAnimationFrame(rafId);
+    if (slide && slide.audioUrl) {
+      if (!slideAudio) slideAudio = new Audio();
+      var base = (window.location.pathname.replace(/[^/]*$/, '') || '/');
+      var audioSrc = base + slide.audioUrl.replace(/^\//, '');
+      slideAudio.src = audioSrc;
+      slideAudio.onended = function () {
+        isPlaying = false;
+        if (segments) segmentStartTime = segments.recapStart;
+        if (el.btnPlayPause) el.btnPlayPause.textContent = 'Play';
+        render();
+      };
+      slideAudio.currentTime = Math.max(0, playbackStartSlideTime);
+      slideAudio.play().catch(function () {});
+    }
     rafId = requestAnimationFrame(tick);
   }
 
   function stopPlayback() {
     isPlaying = false;
+    if (slideAudio) {
+      slideAudio.pause();
+    }
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = null;
