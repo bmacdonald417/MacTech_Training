@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,25 +28,34 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
 
-function canFullscreen() {
-  return (
-    typeof document !== "undefined" &&
-    !!document.documentElement &&
-    "requestFullscreen" in document.documentElement
-  )
+function canFullscreen(el: HTMLElement | null) {
+  if (typeof document === "undefined") return false
+  const anyEl = (el ?? document.documentElement) as unknown as {
+    requestFullscreen?: () => Promise<void>
+  }
+  return typeof anyEl?.requestFullscreen === "function"
 }
 
 export function PptxPresentationViewer({
   orgSlug,
   sourceFileId,
+  title,
+  slideIds,
 }: {
   orgSlug: string
   sourceFileId: string
+  title?: string
+  slideIds: string[]
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const viewportRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const previewerRef = useRef<PreviewerInstance | null>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const playbackTokenRef = useRef(0)
+  const narrationCacheRef = useRef<Map<string, string | null>>(new Map())
+  const activeNarrationSlideIdRef = useRef<string | null>(null)
 
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,11 +65,29 @@ export function PptxPresentationViewer({
   const [showUi, setShowUi] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [hasNarration, setHasNarration] = useState(false)
 
   const deckUrl = useMemo(
     () => `/api/org/${orgSlug}/slides/file/${sourceFileId}`,
     [orgSlug, sourceFileId],
   )
+
+  const safeReturnTo = useMemo(() => {
+    const from = searchParams.get("from")
+    if (from && from.startsWith("/") && !from.startsWith("//")) return from
+    return `/org/${orgSlug}/my-training`
+  }, [orgSlug, searchParams])
+
+  const closeViewer = useCallback(() => {
+    // When opened via window.open, back() does nothing (no history). Prefer close.
+    try {
+      window.close()
+    } catch {
+      // ignore
+    }
+    // Fallback navigation in case the browser blocks window.close().
+    setTimeout(() => router.push(safeReturnTo), 50)
+  }, [router, safeReturnTo])
 
   const goPrev = useCallback(() => {
     const p = previewerRef.current
@@ -79,10 +106,12 @@ export function PptxPresentationViewer({
   }, [])
 
   const toggleFullscreen = useCallback(async () => {
-    if (!canFullscreen()) return
+    const target = viewportRef.current ?? document.documentElement
+    if (!canFullscreen(target)) return
     try {
       if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen()
+        const el = target as unknown as { requestFullscreen: () => Promise<void> }
+        await el.requestFullscreen()
       } else {
         await document.exitFullscreen()
       }
@@ -104,6 +133,14 @@ export function PptxPresentationViewer({
     setCurrentIndex(0)
     setSlideCount(null)
     setIsPlaying(false)
+    setHasNarration(false)
+    activeNarrationSlideIdRef.current = null
+    playbackTokenRef.current += 1
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.removeAttribute("src")
+      audioRef.current.load()
+    }
 
     function tryInit() {
       if (hasInited) return
@@ -198,20 +235,120 @@ export function PptxPresentationViewer({
     return () => clearTimeout(t)
   }, [showUi, currentIndex])
 
-  // Play mode (auto-advance).
+  const isFirst = currentIndex <= 0
+  const isLast =
+    slideCount == null ? false : currentIndex >= Math.max(0, slideCount - 1)
+
+  const getNarrationStreamUrl = useCallback(
+    async (slideId: string) => {
+      const cached = narrationCacheRef.current.get(slideId)
+      if (cached !== undefined) return cached
+      try {
+        const res = await fetch(
+          `/api/org/${orgSlug}/narration?entityType=SLIDE&entityId=${encodeURIComponent(slideId)}`,
+          { credentials: "include" },
+        )
+        const data = (await res.json().catch(() => ({}))) as {
+          hasNarration?: boolean
+          streamUrl?: string
+        }
+        const url =
+          res.ok && data.hasNarration && data.streamUrl ? data.streamUrl : null
+        narrationCacheRef.current.set(slideId, url)
+        return url
+      } catch {
+        narrationCacheRef.current.set(slideId, null)
+        return null
+      }
+    },
+    [orgSlug],
+  )
+
+  // Narrated slideshow playback:
+  // - On Play: play current slide narration (if exists), then advance on end.
+  // - If narration missing: short dwell, then advance.
   useEffect(() => {
-    if (!isPlaying) return
-    const id = setInterval(() => {
-      const p = previewerRef.current
-      if (!p) return
-      if (p.currentIndex >= p.slideCount - 1) {
+    if (!isPlaying || !loaded) return
+
+    const slideId = slideIds[currentIndex]
+    if (!slideId) {
+      setIsPlaying(false)
+      return
+    }
+
+    // Avoid re-triggering if we already started narration for this slide.
+    if (activeNarrationSlideIdRef.current === slideId) return
+    activeNarrationSlideIdRef.current = slideId
+
+    const token = ++playbackTokenRef.current
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    async function run() {
+      const url = await getNarrationStreamUrl(slideId)
+      if (token !== playbackTokenRef.current) return
+
+      setHasNarration(!!url)
+
+      // If no narration saved, just dwell briefly.
+      if (!url || !audioRef.current) {
+        timeoutId = setTimeout(() => {
+          if (token !== playbackTokenRef.current) return
+          if (isLast) {
+            setIsPlaying(false)
+            return
+          }
+          goNext()
+        }, 1800)
+        return
+      }
+
+      const audio = audioRef.current
+      try {
+        if (audio.src !== url) {
+          audio.src = url
+          audio.load()
+        }
+        audio.currentTime = 0
+        await audio.play()
+      } catch {
+        // Autoplay restrictions or decoding issue; stop playback gracefully.
         setIsPlaying(false)
         return
       }
-      p.renderNextSlide()
-      requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
-    }, 8000)
-    return () => clearInterval(id)
+
+      const onEnded = () => {
+        audio.removeEventListener("ended", onEnded)
+        if (token !== playbackTokenRef.current) return
+        if (isLast) {
+          setIsPlaying(false)
+          return
+        }
+        goNext()
+      }
+      audio.addEventListener("ended", onEnded)
+    }
+
+    run()
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [
+    currentIndex,
+    getNarrationStreamUrl,
+    goNext,
+    isLast,
+    isPlaying,
+    loaded,
+    slideIds,
+  ])
+
+  // When paused/stopped, cancel any active narration and allow replay on same slide.
+  useEffect(() => {
+    if (isPlaying) return
+    playbackTokenRef.current += 1
+    activeNarrationSlideIdRef.current = null
+    if (audioRef.current) audioRef.current.pause()
   }, [isPlaying])
 
   // Keyboard controls.
@@ -220,10 +357,12 @@ export function PptxPresentationViewer({
       if (e.key === "ArrowLeft") {
         e.preventDefault()
         setShowUi(true)
+        activeNarrationSlideIdRef.current = null
         goPrev()
       } else if (e.key === "ArrowRight") {
         e.preventDefault()
         setShowUi(true)
+        activeNarrationSlideIdRef.current = null
         goNext()
       } else if (e.key === " ") {
         e.preventDefault()
@@ -249,10 +388,6 @@ export function PptxPresentationViewer({
     document.addEventListener("fullscreenchange", onFs)
     return () => document.removeEventListener("fullscreenchange", onFs)
   }, [])
-
-  const isFirst = currentIndex <= 0
-  const isLast =
-    slideCount == null ? false : currentIndex >= Math.max(0, slideCount - 1)
 
   return (
     <div
@@ -296,6 +431,8 @@ export function PptxPresentationViewer({
         />
       </div>
 
+      <audio ref={audioRef} className="sr-only" preload="metadata" />
+
       {/* Loading / error overlays */}
       {!loaded && !error && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-white/70">
@@ -311,7 +448,7 @@ export function PptxPresentationViewer({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => router.back()}
+                onClick={closeViewer}
               >
                 Back
               </Button>
@@ -335,10 +472,10 @@ export function PptxPresentationViewer({
       >
         <div className="pointer-events-none mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="pointer-events-auto flex items-center gap-2 rounded-xl bg-black/45 px-3 py-2 text-xs backdrop-blur">
-            <span className="font-medium">Presentation</span>
-            {slideCount != null && (
+            <span className="font-medium">{title?.trim() ? title : "Presentation"}</span>
+            {(slideCount != null || slideIds.length > 0) && (
               <span className="text-white/70">
-                {currentIndex + 1}/{slideCount}
+                {currentIndex + 1}/{slideCount ?? slideIds.length}
               </span>
             )}
           </div>
@@ -349,8 +486,8 @@ export function PptxPresentationViewer({
               size="icon"
               variant="ghost"
               className="h-9 w-9 text-white hover:bg-white/10"
-              onClick={() => router.back()}
-              aria-label="Back"
+              onClick={closeViewer}
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -360,7 +497,7 @@ export function PptxPresentationViewer({
               variant="ghost"
               className="h-9 w-9 text-white hover:bg-white/10"
               onClick={toggleFullscreen}
-              disabled={!canFullscreen()}
+              disabled={!canFullscreen(viewportRef.current)}
               aria-label="Toggle fullscreen"
             >
               {isFullscreen ? (
@@ -409,7 +546,10 @@ export function PptxPresentationViewer({
               size="icon"
               variant="ghost"
               className="h-10 w-10 text-white hover:bg-white/10"
-              onClick={() => setIsPlaying((p) => !p)}
+              onClick={() => {
+                activeNarrationSlideIdRef.current = null
+                setIsPlaying((p) => !p)
+              }}
               disabled={!loaded}
               aria-label={isPlaying ? "Pause" : "Play"}
             >
@@ -422,7 +562,9 @@ export function PptxPresentationViewer({
           </div>
 
           <div className="pointer-events-auto rounded-2xl bg-black/45 px-3 py-2 text-xs text-white/70 backdrop-blur">
-            Tip: ← → to navigate, Space to play/pause, F for fullscreen
+            {hasNarration
+              ? "Tip: ← → to navigate, Space to play/pause narration, F for fullscreen"
+              : "Tip: ← → to navigate, Space to play/pause, F for fullscreen"}
           </div>
         </div>
       </div>

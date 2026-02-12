@@ -71,8 +71,10 @@ export function SlideDeckViewer({
                 onClick={() => {
                   if (!presentationUrl) return
                   setPopupBlocked(false)
+                  const from = `${window.location.pathname}${window.location.search}`
+                  const openUrl = `${presentationUrl}?from=${encodeURIComponent(from)}`
                   const w = window.open(
-                    presentationUrl,
+                    openUrl,
                     "_blank",
                     "noopener,noreferrer",
                   )
