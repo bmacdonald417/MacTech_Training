@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
 
+// PowerPoint slides are typically 16:9 in our training decks; keep a stable aspect ratio
+// so the viewer fits within its viewport without clipping or requiring page scrollbars.
+const SLIDE_ASPECT_RATIO = 16 / 9
+
 interface SlideForViewer {
   id: string
   notesRichText: string | null
@@ -35,11 +39,13 @@ export function PptxFullViewer({
   onComplete,
   isCompleted,
 }: PptxFullViewerProps) {
+  const viewportRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const previewerRef = useRef<PreviewerInstance | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [boxSize, setBoxSize] = useState({ w: 0, h: 0 })
 
   const goPrev = useCallback(() => {
     const p = previewerRef.current
@@ -56,9 +62,10 @@ export function PptxFullViewer({
   }, [])
 
   useEffect(() => {
-    if (!containerRef.current || !sourceFileId) return
+    if (!containerRef.current || !viewportRef.current || !sourceFileId) return
     let mounted = true
     const el = containerRef.current
+    const viewportEl = viewportRef.current
     const bufferRef = { current: null as ArrayBuffer | null }
     const sizeRef = { current: { w: 0, h: 0 } }
     let hasInited = false
@@ -106,12 +113,24 @@ export function PptxFullViewer({
       const entry = entries[0]
       if (!entry || !mounted) return
       const { width, height } = entry.contentRect
-      const w = Math.floor(width)
-      const h = Math.floor(height)
+      const availW = Math.floor(width)
+      const availH = Math.floor(height)
+      if (availW <= 0 || availH <= 0) return
+
+      // Fit a 16:9 box inside the available viewport.
+      let w = availW
+      let h = Math.floor(w / SLIDE_ASPECT_RATIO)
+      if (h > availH) {
+        h = availH
+        w = Math.floor(h * SLIDE_ASPECT_RATIO)
+      }
+
+      // Avoid needless rerenders/observer churn.
+      setBoxSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }))
       sizeRef.current = { w, h }
-      if (w > 0 && h > 0) tryInit()
+      tryInit()
     })
-    resizeObserver.observe(el)
+    resizeObserver.observe(viewportEl)
 
     // Fallback: if layout gives 0x0 (e.g. flex not resolved yet), retry with measured size or default after delay
     const fallbackTimer = setTimeout(() => {
@@ -121,17 +140,11 @@ export function PptxFullViewer({
         tryInit()
         return
       }
-      const elW = el.offsetWidth || 0
-      const elH = el.offsetHeight || 0
-      if (elW > 0 && elH > 0) {
-        sizeRef.current = { w: elW, h: elH }
-        tryInit()
-        return
-      }
       if (bufferRef.current) {
         const defaultW = 960
         const defaultH = 540
         sizeRef.current = { w: defaultW, h: defaultH }
+        setBoxSize({ w: defaultW, h: defaultH })
         tryInit()
       }
     }, 400)
@@ -179,9 +192,15 @@ export function PptxFullViewer({
       {/* Slide area: majority of space so slide is large and visible */}
       <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border/40 bg-slate-900/50">
         <div
-          ref={containerRef}
-          className="absolute inset-0 min-h-0 min-w-0 overflow-hidden bg-white"
-        />
+          ref={viewportRef}
+          className="absolute inset-0 flex min-h-0 min-w-0 items-center justify-center overflow-hidden"
+        >
+          <div
+            ref={containerRef}
+            className="shrink-0 overflow-hidden bg-white"
+            style={{ width: boxSize.w, height: boxSize.h }}
+          />
+        </div>
         {!loaded && (
           <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-900/50 rounded-xl">
             Loading presentation…
