@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
-import { PptxViewerModal } from "./pptx-viewer-modal"
+import { PptxFullViewer } from "./pptx-full-viewer"
 
 interface SlideDeckViewerProps {
   slideDeck: any
@@ -35,35 +35,32 @@ export function SlideDeckViewer({
   const sourceFileId = slideDeck.sourceFileId ?? slideDeck.sourceFile?.id
 
   if (sourceFileId) {
+    const standaloneUrl = `/org/${orgSlug}/slides/view/${sourceFileId}`
     return (
       <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
         <div className="flex shrink-0 items-center justify-end">
-          <PptxViewerModal
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() =>
+              window.open(standaloneUrl, "_blank", "noopener,noreferrer")
+            }
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open in new window
+          </Button>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <PptxFullViewer
             orgSlug={orgSlug}
             sourceFileId={sourceFileId}
-            slides={slides.map(
-              (s: { id: string; notesRichText?: string | null }) => ({
-                id: s.id,
-                notesRichText: s.notesRichText ?? null,
-              })
-            )}
+            slides={slides.map((s: { id: string; notesRichText?: string | null }) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
             canGenerateNarration={canGenerateNarration}
             onComplete={onComplete}
             isCompleted={isCompleted}
-            title={slideDeck.title ?? slideDeck.name ?? "Presentation"}
           />
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl border border-border/40 bg-muted/10 p-6 text-center">
-          <div className="max-w-lg space-y-2">
-            <div className="text-base font-semibold tracking-tight">
-              This deck opens in a full-screen viewer
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Click <span className="font-medium text-foreground">View slides</span>{" "}
-              to see the full slide, speaker notes, and the play button beneath
-              each slide.
-            </div>
-          </div>
         </div>
       </div>
     )
