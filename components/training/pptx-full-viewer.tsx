@@ -5,9 +5,15 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
 
-// PowerPoint slides are typically 16:9 in our training decks; keep a stable aspect ratio
-// so the viewer fits within its viewport without clipping or requiring page scrollbars.
-const SLIDE_ASPECT_RATIO = 16 / 9
+/**
+ * Custom embedded PPTX viewer strategy:
+ * - Render once at a fixed base resolution (crisp + predictable DOM from `pptx-preview`)
+ * - Scale the rendered output with CSS to fit the available viewport while preserving aspect ratio
+ * This avoids truncation/overflow quirks that can happen when re-initializing the previewer at
+ * varying sizes.
+ */
+const PPTX_BASE_WIDTH = 1280
+const PPTX_BASE_HEIGHT = 720
 
 interface SlideForViewer {
   id: string
@@ -45,7 +51,7 @@ export function PptxFullViewer({
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [boxSize, setBoxSize] = useState({ w: 0, h: 0 })
+  const [scale, setScale] = useState(1)
 
   const goPrev = useCallback(() => {
     const p = previewerRef.current
@@ -67,21 +73,21 @@ export function PptxFullViewer({
     const el = containerRef.current
     const viewportEl = viewportRef.current
     const bufferRef = { current: null as ArrayBuffer | null }
-    const sizeRef = { current: { w: 0, h: 0 } }
     let hasInited = false
 
     function tryInit() {
       if (hasInited) return
       const buf = bufferRef.current
-      const { w, h } = sizeRef.current
-      if (!buf || w <= 0 || h <= 0 || !mounted) return
+      if (!buf || !mounted) return
       hasInited = true
       import("pptx-preview").then(({ init }) => {
         if (!mounted || !el) return
+        // Clear any previous render output if this effect reruns.
+        el.innerHTML = ""
         previewerRef.current = null
         const previewer = init(el, {
-          width: w,
-          height: h,
+          width: PPTX_BASE_WIDTH,
+          height: PPTX_BASE_HEIGHT,
           mode: "slide",
         }) as unknown as PreviewerInstance
         previewer.preview(buf).then(() => {
@@ -92,6 +98,11 @@ export function PptxFullViewer({
         })
       })
     }
+
+    // Reset state when switching decks.
+    setLoaded(false)
+    setError(null)
+    setCurrentIndex(0)
 
     const url = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
     fetch(url, { credentials: "include" })
@@ -117,36 +128,18 @@ export function PptxFullViewer({
       const availH = Math.floor(height)
       if (availW <= 0 || availH <= 0) return
 
-      // Fit a 16:9 box inside the available viewport.
-      let w = availW
-      let h = Math.floor(w / SLIDE_ASPECT_RATIO)
-      if (h > availH) {
-        h = availH
-        w = Math.floor(h * SLIDE_ASPECT_RATIO)
-      }
-
-      // Avoid needless rerenders/observer churn.
-      setBoxSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }))
-      sizeRef.current = { w, h }
-      tryInit()
+      const nextScale = Math.min(
+        1,
+        Math.max(0.05, Math.min(availW / PPTX_BASE_WIDTH, availH / PPTX_BASE_HEIGHT)),
+      )
+      setScale((prev) => (Math.abs(prev - nextScale) < 0.001 ? prev : nextScale))
     })
     resizeObserver.observe(viewportEl)
 
-    // Fallback: if layout gives 0x0 (e.g. flex not resolved yet), retry with measured size or default after delay
+    // Kick init as soon as we have the buffer; scaling is handled separately via CSS.
     const fallbackTimer = setTimeout(() => {
-      if (!mounted || hasInited) return
-      const { w, h } = sizeRef.current
-      if (w > 0 && h > 0) {
-        tryInit()
-        return
-      }
-      if (bufferRef.current) {
-        const defaultW = 960
-        const defaultH = 540
-        sizeRef.current = { w: defaultW, h: defaultH }
-        setBoxSize({ w: defaultW, h: defaultH })
-        tryInit()
-      }
+      if (!mounted) return
+      tryInit()
     }, 400)
 
     return () => {
@@ -196,9 +189,21 @@ export function PptxFullViewer({
           className="absolute inset-0 flex min-h-0 min-w-0 items-center justify-center overflow-hidden"
         >
           <div
-            ref={containerRef}
             className="shrink-0 overflow-hidden bg-white"
-            style={{ width: boxSize.w, height: boxSize.h }}
+            style={{
+              width: Math.round(PPTX_BASE_WIDTH * scale),
+              height: Math.round(PPTX_BASE_HEIGHT * scale),
+            }}
+          />
+          <div
+            ref={containerRef}
+            className="absolute left-1/2 top-1/2 overflow-hidden bg-white"
+            style={{
+              width: PPTX_BASE_WIDTH,
+              height: PPTX_BASE_HEIGHT,
+              transform: `translate(-50%, -50%) scale(${scale})`,
+              transformOrigin: "top left",
+            }}
           />
         </div>
         {!loaded && (
