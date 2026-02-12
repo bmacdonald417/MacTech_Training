@@ -45,7 +45,8 @@ export function SlideDeckViewer({
         <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-border/40 bg-slate-950">
           <PptxBackdrop orgSlug={orgSlug} sourceFileId={sourceFileId} />
 
-          <div className="pointer-events-none absolute inset-0 bg-black/70" />
+          {/* Opaque overlay + stage lighting (keep the slide visible) */}
+          <div className="pointer-events-none absolute inset-0 bg-black/45" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_20%,hsl(var(--primary)/0.24),transparent_60%)]" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/80" />
 
@@ -95,32 +96,17 @@ export function SlideDeckViewer({
           </div>
         </div>
 
-        {/* Keep completion + narration in-dashboard */}
+        {/* No inline media tools / completion here; those belong in the actual viewer experience */}
         <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-2">
           <span className="text-sm text-slate-400">
             {slides.length} slide{slides.length === 1 ? "" : "s"}
           </span>
-          {!isCompleted ? (
-            <Button onClick={onComplete}>
-              <CheckCircle2 className="h-4 w-4" />
-              Complete
-            </Button>
-          ) : (
+          {isCompleted && (
             <div className="flex items-center gap-2 text-emerald-400">
               <CheckCircle2 className="h-5 w-5" />
               <span className="font-medium">Completed</span>
             </div>
           )}
-        </div>
-
-        <div className="shrink-0">
-          <NarrationPlayer
-            orgSlug={orgSlug}
-            entityType="SLIDE"
-            entityId={slides?.[0]?.id ?? ""}
-            canGenerate={canGenerateNarration}
-            showMediaControls
-          />
         </div>
       </div>
     )
@@ -300,7 +286,7 @@ function PptxBackdrop({
     <div ref={viewportRef} className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         ref={stageRef}
-        className="absolute left-1/2 top-1/2 opacity-55 blur-[1px] saturate-110"
+        className="absolute left-1/2 top-1/2 opacity-80 saturate-110"
         style={{
           width: BASE_W,
           height: BASE_H,
