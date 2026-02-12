@@ -18,14 +18,6 @@ interface PptxStandaloneViewerProps {
   filename?: string | null
 }
 
-/** Compute slide box size to fit viewport; use 16:9 so slide is never larger than screen. */
-function fitBoxInViewport(vw: number, vh: number): { w: number; h: number } {
-  if (vw <= 0 || vh <= 0) return { w: 0, h: 0 }
-  const w = Math.min(vw, Math.floor(vh * (16 / 9)))
-  const h = Math.min(vh, Math.floor(vw * (9 / 16)))
-  return { w, h }
-}
-
 export function PptxStandaloneViewer({
   orgSlug,
   sourceFileId,
@@ -38,15 +30,6 @@ export function PptxStandaloneViewer({
   const [error, setError] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [slideCount, setSlideCount] = useState<number | null>(null)
-  const [boxSize, setBoxSize] = useState({ w: 0, h: 0 })
-
-  useEffect(() => {
-    const update = () =>
-      setBoxSize(fitBoxInViewport(window.innerWidth, window.innerHeight))
-    update()
-    window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
-  }, [])
 
   const goPrev = useCallback(() => {
     const p = previewerRef.current
@@ -63,19 +46,19 @@ export function PptxStandaloneViewer({
   }, [])
 
   useEffect(() => {
-    if (!containerRef.current || !sourceFileId || boxSize.w <= 0 || boxSize.h <= 0)
-      return
+    if (!containerRef.current || !sourceFileId) return
 
     let mounted = true
     const el = containerRef.current
     const bufferRef = { current: null as ArrayBuffer | null }
+    const sizeRef = { current: { w: 0, h: 0 } }
     let hasInited = false
-    const { w, h } = boxSize
 
     function tryInit() {
       if (hasInited) return
       const buf = bufferRef.current
-      if (!buf || !mounted) return
+      const { w, h } = sizeRef.current
+      if (!buf || w <= 0 || h <= 0 || !mounted) return
 
       hasInited = true
       import("pptx-preview").then(({ init }) => {
@@ -113,11 +96,35 @@ export function PptxStandaloneViewer({
         if (mounted) setError(e instanceof Error ? e.message : "Failed to load")
       })
 
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry || !mounted) return
+      const { width, height } = entry.contentRect
+      sizeRef.current = { w: Math.floor(width), h: Math.floor(height) }
+      tryInit()
+    })
+    resizeObserver.observe(el)
+
+    // Fallback: if layout gives 0x0 momentarily, retry shortly
+    const fallbackTimer = setTimeout(() => {
+      if (!mounted || hasInited) return
+      const { w, h } = sizeRef.current
+      if (w > 0 && h > 0) return tryInit()
+      const elW = el.offsetWidth || 0
+      const elH = el.offsetHeight || 0
+      if (elW > 0 && elH > 0) {
+        sizeRef.current = { w: elW, h: elH }
+        tryInit()
+      }
+    }, 200)
+
     return () => {
       mounted = false
+      clearTimeout(fallbackTimer)
+      resizeObserver.disconnect()
       previewerRef.current = null
     }
-  }, [orgSlug, sourceFileId, boxSize.w, boxSize.h])
+  }, [orgSlug, sourceFileId])
 
   // Sync currentIndex from the library if user uses built-in nav.
   useEffect(() => {
@@ -147,15 +154,11 @@ export function PptxStandaloneViewer({
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black flex items-center justify-center">
-      {/* Slide surface: box fits in viewport (16:9), no scroll */}
+    <div className="fixed inset-0 overflow-hidden bg-black">
+      {/* Slide surface: true full viewport, no chrome */}
       <div
-        className="overflow-hidden bg-white shrink-0"
+        className="absolute inset-0 overflow-hidden bg-white"
         ref={containerRef}
-        style={{
-          width: boxSize.w,
-          height: boxSize.h,
-        }}
       />
 
       {!loaded && (
