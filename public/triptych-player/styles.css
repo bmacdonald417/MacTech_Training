@@ -6,7 +6,8 @@
   --dim-fill: #0b1020;
   --border-color: #f5e6a8;
   --border-width: 2.5px;
-  --transition-ms: 450;
+  --transition-ms: 520;
+  --transition-delay-ms: 80;
   --text: #e2e8f0;
   --text-muted: #94a3b8;
   --focus-ring: #60a5fa;
@@ -35,24 +36,24 @@ html, body {
   padding: 1rem;
 }
 
-/* 16:9 stage, scale to fit */
+/* 16:9 stage — fill viewport (no wide empty strips); cap width so content is prominent */
 .stage-wrapper {
   width: 100%;
-  max-width: 96vw;
   flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 0.5rem;
 }
 
 .stage {
-  width: 100%;
+  width: min(1280px, 96vw, calc((100vh - 180px) * 16 / 9));
   aspect-ratio: 16 / 9;
-  max-height: calc(100vh - 140px);
   background: var(--stage-bg);
   border-radius: 4px;
   overflow: hidden;
   position: relative;
+  flex-shrink: 0;
 }
 
 .stage-inner {
@@ -93,7 +94,7 @@ html, body {
   position: absolute;
   background: var(--dim-fill);
   opacity: 0;
-  transition: opacity calc(var(--transition-ms) * 1ms) ease;
+  transition: opacity calc(var(--transition-ms) * 1ms) ease-out;
 }
 
 .dim-overlay.dim-left   { left: 0; top: 0; width: 33.333%; height: 100%; }
@@ -114,11 +115,12 @@ html, body {
   border-radius: 2px;
   box-shadow: 0 0 12px rgba(245, 230, 168, 0.25);
   opacity: 0;
-  transition: opacity calc(var(--transition-ms) * 0.6) ease,
-              left calc(var(--transition-ms) * 1ms) ease,
-              top calc(var(--transition-ms) * 1ms) ease,
-              width calc(var(--transition-ms) * 1ms) ease,
-              height calc(var(--transition-ms) * 1ms) ease;
+  transition:
+    opacity calc(var(--transition-ms) * 1ms) ease-out calc(var(--transition-delay-ms, 0) * 1ms),
+    left calc(var(--transition-ms) * 1ms) ease-out,
+    top calc(var(--transition-ms) * 1ms) ease-out,
+    width calc(var(--transition-ms) * 1ms) ease-out,
+    height calc(var(--transition-ms) * 1ms) ease-out;
   pointer-events: none;
 }
 

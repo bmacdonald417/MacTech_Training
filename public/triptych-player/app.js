@@ -139,7 +139,8 @@
     const bounds = slide ? getPanelBounds(slide) : null;
 
     document.documentElement.style.setProperty('--dim-opacity', String(config.global.dimOpacity || 0.52));
-    document.documentElement.style.setProperty('--transition-ms', String(config.global.transitionMs || 450));
+    document.documentElement.style.setProperty('--transition-ms', String(config.global.transitionMs || 520));
+    document.documentElement.style.setProperty('--transition-delay-ms', String(config.global.transitionDelayMs != null ? config.global.transitionDelayMs : 80));
 
     setDimOpacity(el.dimLeft,   focus === 'center' || focus === 'right');
     setDimOpacity(el.dimCenter, focus === 'left' || focus === 'right');

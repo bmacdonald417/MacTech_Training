@@ -1,7 +1,8 @@
 {
   "global": {
     "dimOpacity": 0.52,
-    "transitionMs": 450
+    "transitionMs": 520,
+    "transitionDelayMs": 80
   },
   "slides": [
     {
