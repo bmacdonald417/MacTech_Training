@@ -24,6 +24,10 @@ type PreviewerInstance = {
 const BASE_W = 1600
 const BASE_H = 900
 
+const NARRATION_PRE_DELAY_MS = 450
+const NARRATION_POST_DELAY_MS = 550
+const NO_NARRATION_DWELL_MS = 900
+
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
@@ -281,7 +285,16 @@ export function PptxPresentationViewer({
     activeNarrationSlideIdRef.current = slideId
 
     const token = ++playbackTokenRef.current
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let dwellTimeoutId: ReturnType<typeof setTimeout> | null = null
+    let preDelayTimeoutId: ReturnType<typeof setTimeout> | null = null
+    let postDelayTimeoutId: ReturnType<typeof setTimeout> | null = null
+    let endedHandler: (() => void) | null = null
+    const audio = audioRef.current
+
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        preDelayTimeoutId = setTimeout(resolve, ms)
+      })
 
     async function run() {
       const url = await getNarrationStreamUrl(slideId)
@@ -291,19 +304,23 @@ export function PptxPresentationViewer({
 
       // If no narration saved, just dwell briefly.
       if (!url || !audioRef.current) {
-        timeoutId = setTimeout(() => {
+        dwellTimeoutId = setTimeout(() => {
           if (token !== playbackTokenRef.current) return
           if (isLast) {
             setIsPlaying(false)
             return
           }
           goNext()
-        }, 1800)
+        }, NO_NARRATION_DWELL_MS)
         return
       }
 
-      const audio = audioRef.current
+      if (!audio) return
       try {
+        // Small beat before narration starts (feels more natural).
+        await sleep(NARRATION_PRE_DELAY_MS)
+        if (token !== playbackTokenRef.current) return
+
         if (audio.src !== url) {
           audio.src = url
           audio.load()
@@ -316,22 +333,29 @@ export function PptxPresentationViewer({
         return
       }
 
-      const onEnded = () => {
-        audio.removeEventListener("ended", onEnded)
+      endedHandler = () => {
+        if (endedHandler) audio.removeEventListener("ended", endedHandler)
         if (token !== playbackTokenRef.current) return
         if (isLast) {
           setIsPlaying(false)
           return
         }
-        goNext()
+        // Small beat after narration ends before advancing.
+        postDelayTimeoutId = setTimeout(() => {
+          if (token !== playbackTokenRef.current) return
+          goNext()
+        }, NARRATION_POST_DELAY_MS)
       }
-      audio.addEventListener("ended", onEnded)
+      audio.addEventListener("ended", endedHandler)
     }
 
     run()
 
     return () => {
-      if (timeoutId) clearTimeout(timeoutId)
+      if (dwellTimeoutId) clearTimeout(dwellTimeoutId)
+      if (preDelayTimeoutId) clearTimeout(preDelayTimeoutId)
+      if (postDelayTimeoutId) clearTimeout(postDelayTimeoutId)
+      if (endedHandler && audio) audio.removeEventListener("ended", endedHandler)
     }
   }, [
     currentIndex,
