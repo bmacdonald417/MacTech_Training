@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, Play } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
 
 interface SlideDeckViewerProps {
@@ -20,14 +21,64 @@ export function SlideDeckViewer({
   onComplete,
   isCompleted,
 }: SlideDeckViewerProps) {
+  const router = useRouter()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [popupBlocked, setPopupBlocked] = useState(false)
 
   const slides = slideDeck?.slides ?? []
   const sourceFileId = slideDeck?.sourceFileId ?? slideDeck?.sourceFile?.id ?? null
   const presentationTitle = slideDeck?.sourceFile?.filename ?? "Presentation"
+  const deckId = slideDeck?.id ?? null
   const presentationUrl =
     sourceFileId != null ? `/org/${orgSlug}/slides/view/${sourceFileId}` : null
+  const trainingViewerUrl = useMemo(() => {
+    if (!presentationUrl || !deckId) return null
+    return `${presentationUrl}?training=1&deckId=${encodeURIComponent(deckId)}`
+  }, [deckId, presentationUrl])
+
+  // When the standalone viewer signals completion, mark this content item complete.
+  useEffect(() => {
+    if (!deckId || isCompleted) return
+
+    const channelName = "pptx-training"
+    let bc: BroadcastChannel | null = null
+    try {
+      bc = "BroadcastChannel" in window ? new BroadcastChannel(channelName) : null
+    } catch {
+      bc = null
+    }
+
+    const handleMessage = (data: any) => {
+      if (!data || typeof data !== "object") return
+      if (data.type !== "pptx-complete") return
+      if (data.deckId !== deckId) return
+      onComplete()
+    }
+
+    if (bc) {
+      bc.onmessage = (e) => handleMessage(e.data)
+    }
+
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || !e.newValue) return
+      if (!e.key.startsWith("pptxComplete:")) return
+      try {
+        const payload = JSON.parse(e.newValue)
+        handleMessage(payload)
+      } catch {
+        // ignore
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener("storage", onStorage)
+      try {
+        bc?.close()
+      } catch {
+        // ignore
+      }
+    }
+  }, [deckId, isCompleted, onComplete])
 
   if (!slideDeck || slides.length === 0) {
     return (
@@ -46,7 +97,7 @@ export function SlideDeckViewer({
           <PptxBackdrop orgSlug={orgSlug} sourceFileId={sourceFileId} />
 
           {/* Opaque overlay + stage lighting (keep the slide visible) */}
-          <div className="pointer-events-none absolute inset-0 bg-black/45" />
+          <div className="pointer-events-none absolute inset-0 bg-black/35" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_20%,hsl(var(--primary)/0.24),transparent_60%)]" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/80" />
 
@@ -58,18 +109,37 @@ export function SlideDeckViewer({
               {presentationTitle}
             </div>
             <div className="text-sm text-white/65">
-              Opens in a dedicated presentation viewer for the best experience.
+              Open the presentation to view and play slides. On mobile, use &quot;Play here&quot; to avoid popup blockers.
             </div>
 
-            <div className="mt-2 flex flex-col items-center gap-2">
+            <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+              {/* Same-tab navigation: works reliably on mobile (no popup blocking) */}
+              {(trainingViewerUrl ?? presentationUrl) && (
+                <Button
+                  type="button"
+                  className="gap-2"
+                  onClick={() => {
+                    const base = trainingViewerUrl ?? presentationUrl ?? ""
+                    const from = `${window.location.pathname}${window.location.search}`
+                    const join = base.includes("?") ? "&" : "?"
+                    router.push(`${base}${join}from=${encodeURIComponent(from)}`)
+                  }}
+                >
+                  <Play className="h-4 w-4" />
+                  Play here
+                </Button>
+              )}
               <Button
                 type="button"
-                className="gap-2"
+                variant="outline"
+                className="gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20"
                 onClick={() => {
-                  if (!presentationUrl) return
+                  const baseUrl = trainingViewerUrl ?? presentationUrl
+                  if (!baseUrl) return
                   setPopupBlocked(false)
                   const from = `${window.location.pathname}${window.location.search}`
-                  const openUrl = `${presentationUrl}?from=${encodeURIComponent(from)}`
+                  const joinChar = baseUrl.includes("?") ? "&" : "?"
+                  const openUrl = `${baseUrl}${joinChar}from=${encodeURIComponent(from)}`
                   const w = window.open(
                     openUrl,
                     "_blank",
@@ -78,21 +148,15 @@ export function SlideDeckViewer({
                   if (!w) setPopupBlocked(true)
                 }}
               >
-                Open presentation
+                Open in new tab
                 <ExternalLink className="h-4 w-4" />
               </Button>
-
-              {popupBlocked && presentationUrl && (
-                <a
-                  href={presentationUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-white/70 underline underline-offset-4 hover:text-white"
-                >
-                  Popup blocked. Click here to open.
-                </a>
-              )}
             </div>
+            {popupBlocked && (trainingViewerUrl ?? presentationUrl) && (
+              <p className="mt-2 text-xs text-white/70">
+                Popup blocked. Use &quot;Play here&quot; above to watch in this tab.
+              </p>
+            )}
           </div>
         </div>
 
@@ -101,12 +165,6 @@ export function SlideDeckViewer({
           <span className="text-sm text-slate-400">
             {slides.length} slide{slides.length === 1 ? "" : "s"}
           </span>
-          {isCompleted && (
-            <div className="flex items-center gap-2 text-emerald-400">
-              <CheckCircle2 className="h-5 w-5" />
-              <span className="font-medium">Completed</span>
-            </div>
-          )}
         </div>
       </div>
     )
@@ -286,7 +344,7 @@ function PptxBackdrop({
     <div ref={viewportRef} className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         ref={stageRef}
-        className="absolute left-1/2 top-1/2 opacity-80 saturate-110"
+        className="absolute left-1/2 top-1/2 opacity-95 saturate-110"
         style={{
           width: BASE_W,
           height: BASE_H,

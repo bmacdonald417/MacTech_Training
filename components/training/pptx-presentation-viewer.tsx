@@ -53,6 +53,8 @@ export function PptxPresentationViewer({
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const deckId = searchParams.get("deckId")
+  const isTraining = searchParams.get("training") === "1"
   const viewportRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const previewerRef = useRef<PreviewerInstance | null>(null)
@@ -81,6 +83,29 @@ export function PptxPresentationViewer({
     if (from && from.startsWith("/") && !from.startsWith("//")) return from
     return `/org/${orgSlug}/my-training`
   }, [orgSlug, searchParams])
+
+  const signalComplete = useCallback(() => {
+    if (!isTraining || !deckId) return
+    const payload = { type: "pptx-complete", deckId }
+    try {
+      if ("BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("pptx-training")
+        bc.postMessage(payload)
+        bc.close()
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      // localStorage fallback (also works for same-origin tabs)
+      localStorage.setItem(
+        `pptxComplete:${deckId}:${Date.now()}`,
+        JSON.stringify(payload)
+      )
+    } catch {
+      // ignore
+    }
+  }, [deckId, isTraining])
 
   const closeViewer = useCallback(() => {
     // When opened via window.open, back() does nothing (no history). Prefer close.
@@ -208,7 +233,7 @@ export function PptxPresentationViewer({
     return () => clearInterval(id)
   }, [loaded])
 
-  // Resize observer -> scale.
+  // Resize observer -> scale (keeps slide visible on resize and when viewport is ready).
   useEffect(() => {
     if (!viewportRef.current) return
     const el = viewportRef.current
@@ -219,7 +244,6 @@ export function PptxPresentationViewer({
       const availW = Math.floor(entry.contentRect.width)
       const availH = Math.floor(entry.contentRect.height)
       if (availW <= 0 || availH <= 0) return
-      // Leave a little breathing room for shadow/glow.
       const pad = 24
       const next = clamp(
         Math.min((availW - pad) / BASE_W, (availH - pad) / BASE_H),
@@ -231,6 +255,24 @@ export function PptxPresentationViewer({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+
+  // When deck finishes loading, re-measure viewport so scale is correct (helps mobile / small viewports).
+  useEffect(() => {
+    if (!loaded || !viewportRef.current) return
+    const el = viewportRef.current
+    const id = requestAnimationFrame(() => {
+      const { width: availW, height: availH } = el.getBoundingClientRect()
+      if (availW <= 0 || availH <= 0) return
+      const pad = 24
+      const next = clamp(
+        Math.min((availW - pad) / BASE_W, (availH - pad) / BASE_H),
+        0.15,
+        1.5,
+      )
+      setScale((prev) => (Math.abs(prev - next) < 0.002 ? prev : next))
+    })
+    return () => cancelAnimationFrame(id)
+  }, [loaded])
 
   // Auto-hide UI like a native presentation app.
   useEffect(() => {
@@ -338,6 +380,8 @@ export function PptxPresentationViewer({
         if (token !== playbackTokenRef.current) return
         if (isLast) {
           setIsPlaying(false)
+          // Mark complete when the final slide narration finishes.
+          signalComplete()
           return
         }
         // Small beat after narration ends before advancing.
@@ -364,6 +408,7 @@ export function PptxPresentationViewer({
     isLast,
     isPlaying,
     loaded,
+    signalComplete,
     slideIds,
   ])
 
@@ -418,6 +463,7 @@ export function PptxPresentationViewer({
       className="fixed inset-0 overflow-hidden bg-black text-white"
       onMouseMove={() => setShowUi(true)}
       onClick={() => setShowUi(true)}
+      onTouchStart={() => setShowUi(true)}
     >
       {/* Stage background */}
       <div className="pointer-events-none absolute inset-0">
@@ -426,8 +472,8 @@ export function PptxPresentationViewer({
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-black" />
       </div>
 
-      {/* Viewport */}
-      <div ref={viewportRef} className="absolute inset-0">
+      {/* Viewport: stage must scale from center so it stays on screen (especially on mobile) */}
+      <div ref={viewportRef} className="absolute inset-0 z-0">
         {/* Soft glow behind slide */}
         <div
           className="pointer-events-none absolute left-1/2 top-1/2 rounded-[32px] blur-2xl"
@@ -440,15 +486,15 @@ export function PptxPresentationViewer({
           }}
         />
 
-        {/* Render target (fixed base, CSS-scaled) */}
+        {/* Render target: scale from center so slide stays visible on all viewports */}
         <div
           ref={stageRef}
-          className="absolute left-1/2 top-1/2 overflow-hidden rounded-2xl bg-white"
+          className="absolute left-1/2 top-1/2 z-10 overflow-hidden rounded-2xl bg-white"
           style={{
             width: BASE_W,
             height: BASE_H,
             transform: `translate(-50%, -50%) scale(${scale})`,
-            transformOrigin: "top left",
+            transformOrigin: "50% 50%",
             boxShadow:
               "0 30px 90px rgba(0,0,0,0.70), 0 6px 22px rgba(0,0,0,0.45)",
           }}
@@ -457,14 +503,14 @@ export function PptxPresentationViewer({
 
       <audio ref={audioRef} className="sr-only" preload="metadata" />
 
-      {/* Loading / error overlays */}
+      {/* Loading / error overlays — only when not loaded so stage is visible once ready */}
       {!loaded && !error && (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-white/70">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 text-sm text-white/70">
           Loading presentation…
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center p-6">
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6">
           <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/60 p-6 backdrop-blur">
             <div className="text-sm font-medium">Couldn’t load the deck</div>
             <div className="mt-2 text-sm text-white/70">{error}</div>
@@ -487,10 +533,10 @@ export function PptxPresentationViewer({
         </div>
       )}
 
-      {/* UI chrome */}
+      {/* UI chrome — above stage so controls are tappable */}
       <div
         className={[
-          "absolute inset-x-0 top-0 transition-opacity duration-200",
+          "absolute inset-x-0 top-0 z-30 transition-opacity duration-200",
           showUi ? "opacity-100" : "opacity-0",
         ].join(" ")}
       >
@@ -536,7 +582,7 @@ export function PptxPresentationViewer({
 
       <div
         className={[
-          "absolute inset-x-0 bottom-0 transition-opacity duration-200",
+          "absolute inset-x-0 bottom-0 z-30 transition-opacity duration-200",
           showUi ? "opacity-100" : "opacity-0",
         ].join(" ")}
       >
@@ -583,6 +629,20 @@ export function PptxPresentationViewer({
                 <Play className="h-5 w-5" />
               )}
             </Button>
+
+            {isTraining && isLast && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="ml-2 h-10"
+                onClick={() => {
+                  signalComplete()
+                  closeViewer()
+                }}
+              >
+                Complete
+              </Button>
+            )}
           </div>
 
           <div className="pointer-events-auto rounded-2xl bg-black/45 px-3 py-2 text-xs text-white/70 backdrop-blur">
