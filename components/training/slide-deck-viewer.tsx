@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
 import { PptxFullViewer } from "./pptx-full-viewer"
 
@@ -35,34 +35,15 @@ export function SlideDeckViewer({
   const sourceFileId = slideDeck.sourceFileId ?? slideDeck.sourceFile?.id
 
   if (sourceFileId) {
-    const standaloneUrl = `/org/${orgSlug}/slides/view/${sourceFileId}`
     return (
-      <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-        <div className="flex shrink-0 items-center justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() =>
-              window.open(standaloneUrl, "_blank", "noopener,noreferrer")
-            }
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open in new window
-          </Button>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <PptxFullViewer
-            orgSlug={orgSlug}
-            sourceFileId={sourceFileId}
-            slides={slides.map((s: { id: string; notesRichText?: string | null }) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
-            canGenerateNarration={canGenerateNarration}
-            onComplete={onComplete}
-            isCompleted={isCompleted}
-          />
-        </div>
-      </div>
+      <PptxFullViewer
+        orgSlug={orgSlug}
+        sourceFileId={sourceFileId}
+        slides={slides.map((s: { id: string; notesRichText?: string | null }) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
+        canGenerateNarration={canGenerateNarration}
+        onComplete={onComplete}
+        isCompleted={isCompleted}
+      />
     )
   }
 
