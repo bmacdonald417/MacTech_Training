@@ -7,8 +7,17 @@ import { getSlideNarrationText, getArticleNarrationText } from "@/lib/tts-text"
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech"
 const TTS_MODEL_PREFERRED = "gpt-4o-mini-tts"
 const TTS_MODEL_FALLBACK = "tts-1"
-const VOICE = "alloy"
+const DEFAULT_VOICE = "alloy"
 const MAX_INPUT_LENGTH = 4096
+
+const ALLOWED_VOICES = new Set([
+  "alloy",
+  "nova",
+  "shimmer",
+  "echo",
+  "onyx",
+  "fable",
+])
 
 export async function POST(
   req: NextRequest,
@@ -18,7 +27,11 @@ export async function POST(
     const { slug } = await context.params
     const membership = await requireTrainerOrAdmin(slug)
     const body = await req.json()
-    const { entityType, entityId } = body as { entityType?: string; entityId?: string }
+    const { entityType, entityId, voice } = body as {
+      entityType?: string
+      entityId?: string
+      voice?: string
+    }
 
     if (!entityType || !entityId) {
       return NextResponse.json(
@@ -31,6 +44,9 @@ export async function POST(
     if (!allowed.includes(entityType)) {
       return NextResponse.json({ error: "Invalid entityType" }, { status: 400 })
     }
+
+    const voiceToUse =
+      typeof voice === "string" && ALLOWED_VOICES.has(voice) ? voice : DEFAULT_VOICE
 
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
@@ -114,7 +130,7 @@ export async function POST(
         body: JSON.stringify({
           model: TTS_MODEL_PREFERRED,
           input: trimmed,
-          voice: VOICE,
+          voice: voiceToUse,
           response_format: "mp3",
         }),
       })
@@ -131,7 +147,7 @@ export async function POST(
             body: JSON.stringify({
               model: TTS_MODEL_FALLBACK,
               input: trimmed,
-              voice: VOICE,
+              voice: voiceToUse,
               response_format: "mp3",
             }),
           })
@@ -193,13 +209,13 @@ export async function POST(
         storagePath,
         updatedAt: now,
         updatedByMembershipId: undefined,
-        voice: VOICE,
+        voice: voiceToUse,
       },
       create: {
         orgId: membership.orgId,
         entityType: entityType as "SLIDE" | "SLIDE_DECK" | "ARTICLE",
         entityId,
-        voice: VOICE,
+        voice: voiceToUse,
         format: "mp3",
         storagePath,
         updatedByMembershipId: undefined,
@@ -214,7 +230,8 @@ export async function POST(
         metadata: JSON.stringify({
           entityType,
           entityId,
-          voice: VOICE,
+          voice: voiceToUse,
+          model: modelUsed,
           storagePath,
         }),
       },

@@ -9,6 +9,7 @@ import {
   Award,
   FileText,
   GraduationCap,
+  MonitorPlay,
   Users,
   Settings,
   BarChart3,
@@ -39,6 +40,7 @@ const trainerLinks = [
 const adminLinks = [
   { href: (s: string) => `/org/${s}/admin/users`, label: "Users", icon: Users },
   { href: (s: string) => `/org/${s}/admin/groups`, label: "Groups", icon: Users },
+  { href: (s: string) => `/org/${s}/admin/presentations`, label: "Presentations", icon: MonitorPlay },
   { href: (s: string) => `/org/${s}/admin/reports`, label: "Reports", icon: BarChart3 },
   { href: (s: string) => `/org/${s}/admin/archive`, label: "Archive", icon: Archive },
   { href: (s: string) => `/org/${s}/admin/settings`, label: "Settings", icon: Settings },
