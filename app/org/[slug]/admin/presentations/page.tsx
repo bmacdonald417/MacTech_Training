@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { MonitorPlay, ExternalLink } from "lucide-react"
 import { PresentationsUpload } from "./presentations-upload"
+import { PresentationDeleteButton } from "./presentation-delete-button"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -99,6 +100,11 @@ export default async function PresentationsAdminPage({ params }: PageProps) {
                       </Link>
                     </Button>
                   )}
+                  <PresentationDeleteButton
+                    orgSlug={slug}
+                    slideDeckId={d.id}
+                    title={d.contentItem?.title ?? d.sourceFile?.filename ?? "Presentation"}
+                  />
                 </div>
               </TableShellRow>
             ))
