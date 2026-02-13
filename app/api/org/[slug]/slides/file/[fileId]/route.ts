@@ -23,20 +23,31 @@ export async function GET(
 
     const file = await prisma.storedFile.findFirst({
       where: { id: fileId, orgId: membership.orgId },
+      select: {
+        id: true,
+        mimeType: true,
+        filename: true,
+        storagePath: true,
+        contentBytes: true,
+      },
     })
     if (!file) {
       return NextResponse.json({ error: "File not found." }, { status: 404 })
     }
 
-    const fullPath = resolveStoredFileAbsolutePath(file.storagePath)
     let buffer: Buffer
-    try {
-      buffer = await fs.promises.readFile(fullPath)
-    } catch {
-      return NextResponse.json(
-        { error: "File not found on disk.", code: "FILE_MISSING_ON_DISK" },
-        { status: 404 }
-      )
+    if (file.storagePath === "db" && file.contentBytes && file.contentBytes.length > 0) {
+      buffer = Buffer.from(file.contentBytes)
+    } else {
+      const fullPath = resolveStoredFileAbsolutePath(file.storagePath)
+      try {
+        buffer = await fs.promises.readFile(fullPath)
+      } catch {
+        return NextResponse.json(
+          { error: "File not found on disk.", code: "FILE_MISSING_ON_DISK" },
+          { status: 404 }
+        )
+      }
     }
 
     if (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")) {

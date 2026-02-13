@@ -79,16 +79,37 @@ function collectTextFromNode(
   }
 }
 
+/** Normalize zip path for lookup: lowercase, forward slashes. */
+function normPath(name: string): string {
+  return name.replace(/\\/g, "/").toLowerCase()
+}
+
+/** Find a zip entry by path (case-insensitive, accepts / or \). */
+function findZipFile(zip: JSZip, want: string): JSZip.JSZipObject | null {
+  const wantNorm = normPath(want)
+  for (const [name, entry] of Object.entries(zip.files)) {
+    if (normPath(name) === wantNorm) return entry
+  }
+  return null
+}
+
+/** Get string from object with multiple possible keys (XML attr variants). */
+function getAttr(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const k of keys) {
+    const v = obj[k]
+    if (typeof v === "string" && v.trim()) return v.trim()
+  }
+  return undefined
+}
+
 /**
  * Extract ordered slide part paths from presentation.xml and its rels.
  */
 async function getOrderedSlidePaths(
   zip: JSZip
 ): Promise<{ path: string; index: number }[]> {
-  const prPath = "ppt/presentation.xml"
-  const prRelsPath = "ppt/_rels/presentation.xml.rels"
-  const prFile = zip.file(prPath)
-  const relsFile = zip.file(prRelsPath)
+  const prFile = findZipFile(zip, "ppt/presentation.xml")
+  const relsFile = findZipFile(zip, "ppt/_rels/presentation.xml.rels")
   if (!prFile || !relsFile) return []
 
   const parser = new XMLParser({
@@ -97,38 +118,44 @@ async function getOrderedSlidePaths(
   })
 
   const relsXml = await relsFile.async("string")
-  const rels = parser.parse(relsXml) as {
-    Relationships?: { Relationship?: Array<{ "@_Id": string; "@_Target": string }> | { "@_Id": string; "@_Target": string } }
-  }
+  const rels = parser.parse(relsXml) as { Relationships?: { Relationship?: unknown } }
   const relsList = rels.Relationships?.Relationship
   const relArray = Array.isArray(relsList) ? relsList : relsList ? [relsList] : []
   const idToTarget = new Map<string, string>()
   for (const r of relArray) {
     const rel = r as Record<string, string>
-    const id = rel["@_Id"] ?? rel["@_id"]
-    let target = rel["@_Target"] ?? rel["@_target"]
+    const id = getAttr(rel, "@_Id", "@_id", "Id", "id")
+    const target = getAttr(rel, "@_Target", "@_target", "Target", "target")
     if (!id || !target) continue
-    if (target.startsWith("slides/")) idToTarget.set(id, "ppt/" + target)
-    else if (target.startsWith("../")) idToTarget.set(id, "ppt/" + target.replace(/^\.\.\//, ""))
-    else idToTarget.set(id, "ppt/" + target)
+    const targetNorm = target.replace(/\\/g, "/")
+    if (targetNorm.toLowerCase().startsWith("slides/")) {
+      idToTarget.set(id, "ppt/" + targetNorm)
+    } else if (targetNorm.startsWith("../")) {
+      idToTarget.set(id, "ppt/" + targetNorm.replace(/^\.\.\//, ""))
+    } else {
+      idToTarget.set(id, "ppt/" + targetNorm)
+    }
   }
 
   const prXml = await prFile.async("string")
-  const pr = parser.parse(prXml) as {
-    "p:presentation"?: {
-      "p:sldIdLst"?: {
-        "p:sldId"?: Array<{ "@_id": string; "@_r:id"?: string }> | { "@_id": string; "@_r:id"?: string }
-      }
-    }
-  }
-  const sldIdLst = pr["p:presentation"]?.["p:sldIdLst"]?.["p:sldId"]
+  const pr = parser.parse(prXml) as Record<string, unknown>
+  const presentation = pr["p:presentation"] ?? pr["presentation"]
+  const pres = presentation && typeof presentation === "object" ? (presentation as Record<string, unknown>) : null
+  const sldIdLstObj = pres?.["p:sldIdLst"] ?? pres?.["sldIdLst"]
+  const sldIdLst = (sldIdLstObj as Record<string, unknown>)?.["p:sldId"] ?? (sldIdLstObj as Record<string, unknown>)?.["sldId"]
   const sldIds = Array.isArray(sldIdLst) ? sldIdLst : sldIdLst ? [sldIdLst] : []
   const ordered: { path: string; index: number }[] = []
+  const pathToActualKey = new Map<string, string>()
+  for (const name of Object.keys(zip.files)) {
+    pathToActualKey.set(normPath(name), name)
+  }
   sldIds.forEach((s, i) => {
     const slide = s as Record<string, string>
-    const rId = slide["@_r:id"] ?? slide["r:id"]
-    const path = rId ? idToTarget.get(rId) : undefined
-    if (path) ordered.push({ path, index: i + 1 })
+    const rId = getAttr(slide, "@_r:id", "r:id")
+    const targetPath = rId ? idToTarget.get(rId) : undefined
+    if (!targetPath) return
+    const actualKey = pathToActualKey.get(normPath(targetPath)) ?? targetPath
+    ordered.push({ path: actualKey, index: i + 1 })
   })
   return ordered
 }
@@ -137,7 +164,7 @@ async function getOrderedSlidePaths(
  * Extract all text from a slide XML (slideN.xml) in order.
  */
 async function extractTextFromSlideXml(zip: JSZip, slidePath: string): Promise<string[]> {
-  const file = zip.file(slidePath)
+  const file = zip.file(slidePath) ?? findZipFile(zip, slidePath)
   if (!file) return []
   const xml = await file.async("string")
   const parser = new XMLParser({
@@ -155,7 +182,7 @@ async function extractTextFromSlideXml(zip: JSZip, slidePath: string): Promise<s
  */
 async function extractNotesFromZip(zip: JSZip, slideIndex: number): Promise<string> {
   const path = `ppt/notesSlides/notesSlide${slideIndex}.xml`
-  const file = zip.file(path)
+  const file = zip.file(path) ?? findZipFile(zip, path)
   if (!file) return ""
   const xml = await file.async("string")
   const parser = new XMLParser({
@@ -206,7 +233,7 @@ export async function parsePptxBuffer(
   let pathsWithIndex: { path: string; index: number }[] = ordered
   if (ordered.length === 0) {
     const slideNames = Object.keys(zip.files).filter(
-      (n) => n.match(/^ppt\/slides\/slide\d+\.xml$/i)
+      (n) => /^ppt[\/\\]slides[\/\\]slide\d+\.xml$/i.test(normPath(n))
     )
     slideNames.sort((a, b) => {
       const na = parseInt(a.replace(/\D/g, ""), 10)

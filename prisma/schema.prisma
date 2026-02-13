@@ -229,7 +229,8 @@ model StoredFile {
   filename              String
   mimeType              String
   sizeBytes             Int
-  storagePath           String   // path on volume or bucket
+  storagePath           String   // path on volume/bucket, or "db" when contentBytes is set
+  contentBytes          Bytes?   // optional: store file in DB when disk is not writable
   createdAt             DateTime @default(now())
   createdByMembershipId String?
 

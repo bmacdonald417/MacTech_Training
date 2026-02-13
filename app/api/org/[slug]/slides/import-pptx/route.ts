@@ -85,12 +85,20 @@ export async function POST(
       })
       if (contentItem?.slideDeck?.id === slideDeckIdParam.trim()) {
         const fileId = nanoid()
-        const storagePath = await writeStoredFile(
-          membership.orgId,
-          fileId,
-          file.name,
-          buffer
-        )
+        let storagePath: string
+        let contentBytes: Buffer | undefined
+        try {
+          storagePath = await writeStoredFile(
+            membership.orgId,
+            fileId,
+            file.name,
+            buffer
+          )
+        } catch (writeErr) {
+          console.warn("[import-pptx] writeStoredFile failed (replace), storing in DB:", writeErr)
+          storagePath = "db"
+          contentBytes = buffer
+        }
         const storedFile = await prisma.storedFile.create({
           data: {
             orgId: membership.orgId,
@@ -98,6 +106,7 @@ export async function POST(
             mimeType: getPptxMimeType(),
             sizeBytes: file.size,
             storagePath,
+            ...(contentBytes ? { contentBytes } : {}),
             createdByMembershipId: membershipRow?.id ?? null,
           },
         })
@@ -140,12 +149,20 @@ export async function POST(
       file.name.replace(/\.pptx$/i, "").trim() || "Imported presentation"
 
     const fileId = nanoid()
-    const storagePath = await writeStoredFile(
-      membership.orgId,
-      fileId,
-      file.name,
-      buffer
-    )
+    let storagePath: string
+    let contentBytes: Buffer | undefined
+    try {
+      storagePath = await writeStoredFile(
+        membership.orgId,
+        fileId,
+        file.name,
+        buffer
+      )
+    } catch (writeErr) {
+      console.warn("[import-pptx] writeStoredFile failed, storing in DB:", writeErr)
+      storagePath = "db"
+      contentBytes = buffer
+    }
 
     const storedFile = await prisma.storedFile.create({
       data: {
@@ -154,6 +171,7 @@ export async function POST(
         mimeType: getPptxMimeType(),
         sizeBytes: file.size,
         storagePath,
+        ...(contentBytes ? { contentBytes } : {}),
         createdByMembershipId: membershipRow?.id ?? null,
       },
     })

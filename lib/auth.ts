@@ -1,3 +1,7 @@
+/**
+ * NextAuth config. Required env: NEXTAUTH_SECRET (use `openssl rand -base64 32`).
+ * For local dev also set NEXTAUTH_URL=http://localhost:3000 (or your dev port).
+ */
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "./prisma"
@@ -79,6 +83,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   session: {
     strategy: "jwt",

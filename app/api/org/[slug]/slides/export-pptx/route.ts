@@ -68,6 +68,15 @@ export async function GET(
 
     if (deck.sourceFileId && deck.sourceFile) {
       const storedFile = deck.sourceFile
+      const filename = (storedFile.filename || "export.pptx").replace(/[^\w\-.\s]/g, "_")
+      const headers = {
+        "Content-Type": storedFile.mimeType,
+        "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+        "Content-Length": String(storedFile.sizeBytes),
+      }
+      if (storedFile.storagePath === "db" && storedFile.contentBytes && storedFile.contentBytes.length > 0) {
+        return new NextResponse(new Uint8Array(storedFile.contentBytes), { headers })
+      }
       const fullPath = resolveStoredFileAbsolutePath(storedFile.storagePath)
       try {
         await fs.promises.access(fullPath, fs.constants.R_OK)
@@ -78,14 +87,7 @@ export async function GET(
         )
       }
       const stream = createStoredFileReadStream(storedFile.storagePath)
-      const filename = (storedFile.filename || "export.pptx").replace(/[^\w\-.\s]/g, "_")
-      return new NextResponse(stream as any, {
-        headers: {
-          "Content-Type": storedFile.mimeType,
-          "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
-          "Content-Length": String(storedFile.sizeBytes),
-        },
-      })
+      return new NextResponse(stream as any, { headers })
     }
 
     const pptx = new PptxGenJS()

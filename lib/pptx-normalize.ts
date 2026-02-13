@@ -10,13 +10,25 @@ import JSZip from "jszip"
 const DEFAULT_BG =
   '<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>'
 
-/** Match opening p:cSld tag (allows newlines and attributes). No /s flag for es5 target. */
+/** Match opening p:cSld tag (optional whitespace/attrs). */
 const cSldOpenRegex = /<p:cSld(\s[^>]*)?>/
 
+/**
+ * Inject p:bg right after the opening cSld tag so the slide has a defined background.
+ * Tries regex first; falls back to indexOf so odd XML (e.g. newlines, different formatting) still gets fixed.
+ */
 function injectBackgroundIfMissing(xml: string): string {
   if (xml.includes("<p:bg>")) return xml
-  if (!xml.includes("cSld")) return xml
-  return xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
+  if (xml.indexOf("cSld") === -1) return xml
+
+  const byRegex = xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
+  if (byRegex !== xml) return byRegex
+
+  const openIdx = xml.indexOf("<p:cSld")
+  if (openIdx === -1) return xml
+  const closeIdx = xml.indexOf(">", openIdx)
+  if (closeIdx === -1) return xml
+  return xml.slice(0, closeIdx + 1) + DEFAULT_BG + xml.slice(closeIdx + 1)
 }
 
 /**
@@ -38,13 +50,13 @@ export async function ensureSlideBackgrounds(buffer: Buffer): Promise<Buffer> {
     /^ppt[\/\\]slideMasters[\/\\]slideMaster\d+\.xml$/i.test(name)
   )
 
-  for (const path of [...slidePaths, ...layoutPaths, ...masterPaths]) {
-    const file = zip.file(path)
+  for (const filePath of [...slidePaths, ...layoutPaths, ...masterPaths]) {
+    const file = zip.file(filePath)
     if (!file) continue
     const xml = await file.async("string")
     const updated = injectBackgroundIfMissing(xml)
     if (updated !== xml) {
-      zip.file(path, updated)
+      zip.file(filePath, updated)
       changed = true
     }
   }
