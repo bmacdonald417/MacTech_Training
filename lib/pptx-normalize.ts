@@ -18,11 +18,14 @@ const cSldAnyNsRegex = /<[^:>]*:cSld(\s[^>]*)?>/
 /**
  * Replace any p:bg that doesn't have a concrete fill with an inline solid fill.
  * pptx-preview can't resolve theme refs (bgRef, schemeClr, etc.) and ends up with undefined .background.
+ * Only a:srgbClr (or a:blipFill) is treated as concrete; schemeClr and other refs are replaced.
  */
 function replaceBgRefWithSolid(xml: string): string {
-  if (!xml.includes("<p:bg>")) return xml
-  return xml.replace(/<p:bg>[\s\S]*?<\/p:bg>/g, (match) => {
-    if (match.includes("a:solidFill") || match.includes("a:blipFill")) return match
+  if (!xml.includes("bg>")) return xml
+  // Match p:bg with any namespace prefix (e.g. p:bg, px:bg)
+  const bgBlockRegex = /<[^:>]*:bg(\s[^>]*)?>[\s\S]*?<\/[^:>]*:bg>/g
+  return xml.replace(bgBlockRegex, (match) => {
+    if (match.includes("a:srgbClr") || match.includes("a:blipFill")) return match
     return DEFAULT_BG
   })
 }
@@ -37,7 +40,7 @@ function injectBackgroundIfMissing(xml: string): string {
   let out = replaceBgRefWithSolid(xml)
   if (out !== xml) return out
 
-  if (xml.includes("<p:bg>")) return xml
+  if (out.includes("<p:bg>") || /<[^:>]*:bg[\s>]/.test(out) || out.includes(":bg>")) return out
 
   out = xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
   if (out !== xml) return out
@@ -58,8 +61,11 @@ function injectBackgroundIfMissing(xml: string): string {
   return xml
 }
 
+/** Paths under ppt/ that are XML and may contain cSld (slides, layouts, masters, handout, notes). */
+const PPT_XML = /^ppt[\/\\].*\.xml$/i
+
 /**
- * Inject default p:bg into any slide, slide layout, or slide master XML that lacks it.
+ * Inject default p:bg into any slide, layout, master, handout, or notes XML that lacks it.
  * Returns a new buffer; does not mutate the input.
  */
 export async function ensureSlideBackgrounds(buffer: Buffer): Promise<Buffer> {
@@ -67,20 +73,13 @@ export async function ensureSlideBackgrounds(buffer: Buffer): Promise<Buffer> {
   let changed = false
 
   const allNames = Object.keys(zip.files)
-  const slidePaths = allNames.filter((name) =>
-    /^ppt[\/\\]slides[\/\\]slide\d+\.xml$/i.test(name)
-  )
-  const layoutPaths = allNames.filter((name) =>
-    /^ppt[\/\\]slideLayouts[\/\\]slideLayout\d+\.xml$/i.test(name)
-  )
-  const masterPaths = allNames.filter((name) =>
-    /^ppt[\/\\]slideMasters[\/\\]slideMaster\d+\.xml$/i.test(name)
-  )
+  const candidatePaths = allNames.filter((name) => PPT_XML.test(name))
 
-  for (const filePath of [...slidePaths, ...layoutPaths, ...masterPaths]) {
+  for (const filePath of candidatePaths) {
     const file = zip.file(filePath)
     if (!file) continue
     const xml = await file.async("string")
+    if (xml.indexOf("cSld") === -1) continue
     const updated = injectBackgroundIfMissing(xml)
     if (updated !== xml) {
       zip.file(filePath, updated)
