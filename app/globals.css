@@ -107,3 +107,97 @@
 .auth-form-panel select option {
   color: rgb(15 23 42);
 }
+
+/* ============================================
+   Resource reader — premium long-form prose
+   ============================================ */
+.resource-prose {
+  --prose-max-width: 65ch;
+  line-height: 1.7;
+  color: hsl(var(--foreground));
+}
+
+.resource-prose .resource-prose__h1 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-top: 0;
+}
+
+.resource-prose .resource-prose__h2 {
+  scroll-margin-top: 6rem;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.resource-prose .resource-prose__h3 {
+  scroll-margin-top: 6rem;
+  font-size: 1.0625rem;
+  color: hsl(var(--foreground) / 0.95);
+}
+
+.resource-prose .resource-prose__p {
+  margin-bottom: 1.25rem;
+}
+
+.resource-prose .resource-prose__list {
+  margin-top: 1rem;
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.resource-prose .resource-prose__list li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+.resource-prose .resource-prose__nested-list {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.resource-prose .resource-prose__codex-callout {
+  padding: 0.875rem 1rem;
+  margin: 0.5rem 0;
+  border-radius: 0.5rem;
+  border-left: 4px solid hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  list-style: none;
+  margin-left: -0.25rem;
+  padding-left: 1rem;
+}
+
+.resource-prose .resource-prose__codex-callout::marker {
+  content: none;
+}
+
+.resource-prose .resource-prose__codex-callout strong {
+  color: hsl(var(--primary));
+}
+
+.resource-prose .resource-prose__figure {
+  margin: 1.5rem 0;
+}
+
+.resource-prose .resource-prose__figure img {
+  max-height: 4rem;
+  width: auto;
+  object-fit: contain;
+}
+
+.resource-prose a {
+  color: hsl(var(--primary));
+  text-underline-offset: 0.2em;
+  transition: opacity 0.15s;
+}
+
+.resource-prose a:hover {
+  opacity: 0.9;
+}
+
+.resource-prose code {
+  font-size: 0.9em;
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+  background: hsl(var(--muted));
+}
