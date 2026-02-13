@@ -59,6 +59,7 @@ export function PptxPresentationViewer({
   const viewportRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const previewerRef = useRef<PreviewerInstance | null>(null)
+  const initTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const playbackTokenRef = useRef(0)
   const narrationCacheRef = useRef<Map<string, string | null>>(new Map())
@@ -135,6 +136,13 @@ export function PptxPresentationViewer({
     requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
   }, [])
 
+  const retryPaint = useCallback(() => {
+    const p = previewerRef.current
+    if (!p || typeof p.renderSingleSlide !== "function") return
+    p.renderSingleSlide(p.currentIndex)
+    requestAnimationFrame(() => p.renderSingleSlide(p.currentIndex))
+  }, [])
+
   const toggleFullscreen = useCallback(async () => {
     const target = viewportRef.current ?? document.documentElement
     if (!canFullscreen(target)) return
@@ -195,13 +203,22 @@ export function PptxPresentationViewer({
           previewerRef.current = previewer
           setCurrentIndex(previewer.currentIndex)
           setSlideCount(previewer.slideCount)
-          setLoaded(true)
-          // Force first slide to paint (library may not render until navigation otherwise)
-          requestAnimationFrame(() => {
-            if (!mounted || !previewerRef.current) return
+          const forceRender = () => {
             if (typeof previewer.renderSingleSlide === "function") {
               previewer.renderSingleSlide(0)
             }
+          }
+          forceRender()
+          requestAnimationFrame(forceRender)
+          setTimeout(forceRender, 100)
+          setTimeout(forceRender, 400)
+          setTimeout(forceRender, 800)
+          setTimeout(forceRender, 1500)
+          // Hide loading overlay after first paint so stage is visible when we paint
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (mounted) setLoaded(true)
+            })
           })
         }).catch((err) => {
           if (!mounted) return
@@ -247,7 +264,8 @@ export function PptxPresentationViewer({
           return
         }
         bufferRef.current = buf
-        tryInit()
+        // Defer init so the viewport has layout (fixes blank slides when stage mounts before layout)
+        initTimerRef.current = setTimeout(() => tryInit(), 100)
       })
       .catch((e) => {
         if (!mounted) return
@@ -268,6 +286,8 @@ export function PptxPresentationViewer({
 
     return () => {
       mounted = false
+      if (initTimerRef.current) clearTimeout(initTimerRef.current)
+      initTimerRef.current = null
       clearTimeout(loadTimeoutId)
       previewerRef.current = null
     }
@@ -541,7 +561,7 @@ export function PptxPresentationViewer({
         {/* Render target: scale from center so slide stays visible on all viewports */}
         <div
           ref={stageRef}
-          className="absolute left-1/2 top-1/2 z-10 overflow-hidden rounded-2xl bg-white"
+          className="absolute left-1/2 top-1/2 z-10 overflow-hidden rounded-2xl bg-white relative"
           style={{
             width: BASE_W,
             height: BASE_H,
@@ -699,10 +719,19 @@ export function PptxPresentationViewer({
             )}
           </div>
 
-          <div className="pointer-events-auto rounded-2xl bg-black/45 px-3 py-2 text-xs text-white/70 backdrop-blur">
-            {hasNarration
-              ? "Tip: ← → to navigate, Space to play/pause narration, F for fullscreen"
-              : "Tip: ← → to navigate, Space to play/pause, F for fullscreen"}
+          <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-black/45 px-3 py-2 text-xs text-white/70 backdrop-blur">
+            <span>
+              {hasNarration
+                ? "Tip: ← → to navigate, Space to play/pause narration, F for fullscreen"
+                : "Tip: ← → to navigate, Space to play/pause, F for fullscreen"}
+            </span>
+            <button
+              type="button"
+              onClick={retryPaint}
+              className="shrink-0 text-white/90 underline hover:text-white"
+            >
+              Slides not showing? Retry
+            </button>
           </div>
         </div>
       </div>

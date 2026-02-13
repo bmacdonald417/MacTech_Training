@@ -317,11 +317,15 @@ function PptxBackdrop({
         }
         previewer.preview(buf).then(() => {
           if (!mounted) return
-          requestAnimationFrame(() => {
-            if (mounted && typeof previewer.renderSingleSlide === "function") {
+          const forceRender = () => {
+            if (typeof previewer.renderSingleSlide === "function") {
               previewer.renderSingleSlide(0)
             }
-          })
+          }
+          forceRender()
+          requestAnimationFrame(forceRender)
+          setTimeout(forceRender, 100)
+          setTimeout(forceRender, 400)
         }).catch(() => {
           // ignore backdrop failures (launch UI still works)
         })

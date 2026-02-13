@@ -96,12 +96,15 @@ export function PptxFullViewer({
           previewerRef.current = previewer
           setCurrentIndex(previewer.currentIndex)
           setLoaded(true)
-          requestAnimationFrame(() => {
-            if (!mounted || !previewerRef.current) return
+          const forceRender = () => {
             if (typeof previewer.renderSingleSlide === "function") {
               previewer.renderSingleSlide(0)
             }
-          })
+          }
+          forceRender()
+          requestAnimationFrame(forceRender)
+          setTimeout(forceRender, 100)
+          setTimeout(forceRender, 400)
         })
       })
     }
@@ -126,7 +129,7 @@ export function PptxFullViewer({
       .then((buf) => {
         if (mounted) {
           bufferRef.current = buf
-          tryInit()
+          setTimeout(() => tryInit(), 100)
         }
       })
       .catch((e) => {
