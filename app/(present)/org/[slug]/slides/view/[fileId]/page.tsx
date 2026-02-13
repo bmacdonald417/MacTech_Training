@@ -22,17 +22,25 @@ export default async function Page({
       contentItem: { select: { title: true } },
       slides: {
         orderBy: { order: "asc" },
-        select: { id: true },
+        select: { id: true, title: true, content: true },
       },
     },
   })
+
+  const slides = slideDeck?.slides ?? []
+  const slideIds = slides.map((s) => s.id)
+  const fallbackSlides =
+    slides.length > 0
+      ? slides.map((s) => ({ id: s.id, title: s.title ?? "", content: s.content ?? "" }))
+      : undefined
 
   return (
     <PptxPresentationViewer
       orgSlug={slug}
       sourceFileId={fileId}
       title={slideDeck?.contentItem?.title ?? "Presentation"}
-      slideIds={slideDeck?.slides?.map((s) => s.id) ?? []}
+      slideIds={slideIds}
+      fallbackSlides={fallbackSlides}
     />
   )
 }
