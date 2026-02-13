@@ -198,7 +198,13 @@ export function PptxPresentationViewer({
         }).catch((err) => {
           if (!mounted) return
           console.error("[pptx-viewer] preview failed:", err)
-          setError("Could not parse the presentation. The file may be corrupted or in an unsupported format.")
+          const msg = String(err?.message ?? err)
+          const isBackgroundError = /background|undefined/i.test(msg)
+          setError(
+            isBackgroundError
+              ? "This presentation uses a slide format the viewer doesn't support (e.g. custom or missing slide background). Re-save the file in PowerPoint as a standard .pptx, or try simplifying slide designs."
+              : "Could not parse the presentation. The file may be corrupted or in an unsupported format."
+          )
         })
       }).catch((err) => {
         if (!mounted) return
