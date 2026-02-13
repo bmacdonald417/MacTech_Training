@@ -33,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: "File not found on disk." }, { status: 404 })
     }
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": file.mimeType,
         "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
