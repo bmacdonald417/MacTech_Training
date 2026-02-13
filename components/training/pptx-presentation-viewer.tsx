@@ -41,31 +41,16 @@ function canFullscreen(el: HTMLElement | null) {
   return typeof anyEl?.requestFullscreen === "function"
 }
 
-function renderOutlineContent(content: string): string {
-  let html = content
-    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
-    .replace(/^\- (.*$)/gim, "<li>$1</li>")
-    .replace(/\n/gim, "<br />")
-  return html.replace(/(<li>.*<\/li>)/gim, "<ul>$1</ul>")
-}
-
-export type FallbackSlide = { id: string; title: string; content: string }
-
 export function PptxPresentationViewer({
   orgSlug,
   sourceFileId,
   title,
   slideIds,
-  fallbackSlides,
 }: {
   orgSlug: string
   sourceFileId: string
   title?: string
   slideIds: string[]
-  fallbackSlides?: FallbackSlide[]
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -83,7 +68,6 @@ export function PptxPresentationViewer({
 
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [useFallbackView, setUseFallbackView] = useState(false)
   const [scale, setScale] = useState(1)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [slideCount, setSlideCount] = useState<number | null>(null)
@@ -138,29 +122,20 @@ export function PptxPresentationViewer({
   }, [router, safeReturnTo])
 
   const goPrev = useCallback(() => {
-    if (useFallbackView) {
-      setCurrentIndex((i) => Math.max(0, i - 1))
-      return
-    }
     const p = previewerRef.current
     if (!p || p.currentIndex <= 0) return
     p.renderPreSlide()
     requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
-  }, [useFallbackView])
+  }, [])
 
   const goNext = useCallback(() => {
-    if (useFallbackView) {
-      const n = slideCount ?? 0
-      setCurrentIndex((i) => (n <= 0 ? 0 : Math.min(n - 1, i + 1)))
-      return
-    }
     const p = previewerRef.current
     if (!p) return
     const last = p.slideCount - 1
     if (p.currentIndex >= last) return
     p.renderNextSlide()
     requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
-  }, [useFallbackView, slideCount])
+  }, [])
 
   const retryPaint = useCallback(() => {
     const p = previewerRef.current
@@ -335,17 +310,7 @@ export function PptxPresentationViewer({
             const countNow = previewer.slideCount
             log("8c. After defer", { slideCount: countNow })
             if (countNow > 0) applySuccess()
-            else if (fallbackSlides && fallbackSlides.length > 0) {
-              log("8d. Using outline fallback:", { slideCount: fallbackSlides.length })
-              if (loadTimeoutIdRef.current) {
-                clearTimeout(loadTimeoutIdRef.current)
-                loadTimeoutIdRef.current = null
-              }
-              setSlideCount(fallbackSlides.length)
-              setCurrentIndex(0)
-              setUseFallbackView(true)
-              setLoaded(true)
-            } else {
+            else {
               logError("8d. Final: pptx-preview reports 0 slides", { previewerKeys: Object.keys(previewer) })
               if (loadTimeoutIdRef.current) {
                 clearTimeout(loadTimeoutIdRef.current)
@@ -399,7 +364,7 @@ export function PptxPresentationViewer({
       }
       previewerRef.current = null
     }
-  }, [deckUrl, fallbackSlides])
+  }, [deckUrl])
 
   // Keep currentIndex/slideCount in sync with library.
   useEffect(() => {
@@ -654,60 +619,33 @@ export function PptxPresentationViewer({
 
       {/* Viewport: stage must scale from center so it stays on screen (especially on mobile) */}
       <div ref={viewportRef} className="absolute inset-0 z-0">
-        {/* Outline fallback when pptx-preview reports 0 slides but we have imported slide data */}
-        {useFallbackView && fallbackSlides && fallbackSlides.length > 0 && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center p-6">
-            <div
-              className="w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-black/70 p-8 shadow-2xl backdrop-blur"
-              style={{ maxHeight: "80vh" }}
-            >
-              <p className="mb-4 text-xs font-medium uppercase tracking-wider text-white/50">
-                Outline view (slide content from import)
-              </p>
-              <h2 className="mb-6 text-2xl font-semibold tracking-tight text-white">
-                {fallbackSlides[currentIndex]?.title ?? `Slide ${currentIndex + 1}`}
-              </h2>
-              <div
-                className="prose prose-invert max-w-none prose-headings:font-semibold prose-headings:text-slate-100 prose-p:text-slate-200 prose-ul:text-slate-200 prose-li:text-slate-200"
-                dangerouslySetInnerHTML={{
-                  __html: renderOutlineContent(fallbackSlides[currentIndex]?.content ?? ""),
-                }}
-              />
-            </div>
-          </div>
-        )}
+        {/* Soft glow behind slide */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 rounded-[32px] blur-2xl"
+          style={{
+            width: BASE_W * scale,
+            height: BASE_H * scale,
+            transform: "translate(-50%, -50%)",
+            background:
+              "radial-gradient(60% 60% at 50% 40%, rgba(255,255,255,0.15), rgba(255,255,255,0.02) 60%, transparent 75%)",
+          }}
+        />
 
-        {!useFallbackView && (
-          <>
-            {/* Soft glow behind slide */}
-            <div
-              className="pointer-events-none absolute left-1/2 top-1/2 rounded-[32px] blur-2xl"
-              style={{
-                width: BASE_W * scale,
-                height: BASE_H * scale,
-                transform: "translate(-50%, -50%)",
-                background:
-                  "radial-gradient(60% 60% at 50% 40%, rgba(255,255,255,0.15), rgba(255,255,255,0.02) 60%, transparent 75%)",
-              }}
-            />
-
-            {/* Render target: scale from center so slide stays visible on all viewports */}
-            <div
-              ref={stageRef}
-              className="absolute left-1/2 top-1/2 z-10 overflow-hidden rounded-2xl bg-white relative"
-              style={{
-                width: BASE_W,
-                height: BASE_H,
-                minWidth: BASE_W,
-                minHeight: BASE_H,
-                transform: `translate(-50%, -50%) scale(${scale})`,
-                transformOrigin: "50% 50%",
-                boxShadow:
-                  "0 30px 90px rgba(0,0,0,0.70), 0 6px 22px rgba(0,0,0,0.45)",
-              }}
-            />
-          </>
-        )}
+        {/* Render target: scale from center so slide stays visible on all viewports */}
+        <div
+          ref={stageRef}
+          className="absolute left-1/2 top-1/2 z-10 overflow-hidden rounded-2xl bg-white relative"
+          style={{
+            width: BASE_W,
+            height: BASE_H,
+            minWidth: BASE_W,
+            minHeight: BASE_H,
+            transform: `translate(-50%, -50%) scale(${scale})`,
+            transformOrigin: "50% 50%",
+            boxShadow:
+              "0 30px 90px rgba(0,0,0,0.70), 0 6px 22px rgba(0,0,0,0.45)",
+          }}
+        />
       </div>
 
       <audio ref={audioRef} className="sr-only" preload="metadata" />
