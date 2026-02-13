@@ -16,14 +16,31 @@ const cSldOpenRegex = /<p:cSld(\s[^>]*)?>/
 const cSldAnyNsRegex = /<[^:>]*:cSld(\s[^>]*)?>/
 
 /**
+ * Replace p:bg that only has a theme reference (p:bgRef) with an inline solid fill.
+ * pptx-preview can't resolve bgRef and ends up with undefined .background.
+ */
+function replaceBgRefWithSolid(xml: string): string {
+  if (!xml.includes("<p:bg>") || !xml.includes("bgRef")) return xml
+  if (xml.includes("a:solidFill") || xml.includes("a:blipFill")) return xml
+  return xml.replace(/<p:bg>[\s\S]*?<\/p:bg>/g, (match) => {
+    if (match.includes("bgRef") && !match.includes("a:solidFill") && !match.includes("a:blipFill")) return DEFAULT_BG
+    return match
+  })
+}
+
+/**
  * Inject p:bg right after the opening cSld tag so the slide has a defined background.
- * Tries multiple patterns so different XML formats and namespaces are covered.
+ * Also replaces theme-only p:bg (bgRef) with inline fill so the viewer gets a concrete background.
  */
 function injectBackgroundIfMissing(xml: string): string {
-  if (xml.includes("<p:bg>")) return xml
   if (xml.indexOf("cSld") === -1) return xml
 
-  let out = xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
+  let out = replaceBgRefWithSolid(xml)
+  if (out !== xml) return out
+
+  if (xml.includes("<p:bg>")) return xml
+
+  out = xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
   if (out !== xml) return out
   out = xml.replace(cSldAnyNsRegex, (match) => match + DEFAULT_BG)
   if (out !== xml) return out
