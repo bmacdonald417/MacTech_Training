@@ -10,8 +10,8 @@ import JSZip from "jszip"
 const DEFAULT_BG =
   '<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>'
 
-/** Match opening p:cSld tag (allows newlines and attributes). */
-const cSldOpenRegex = /<p:cSld(\s[^>]*)?>/s
+/** Match opening p:cSld tag (allows newlines and attributes). No /s flag for es5 target. */
+const cSldOpenRegex = /<p:cSld(\s[^>]*)?>/
 
 function injectBackgroundIfMissing(xml: string): string {
   if (xml.includes("<p:bg>")) return xml
