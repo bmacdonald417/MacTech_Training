@@ -11,7 +11,7 @@ import type { DocumentStatus, DocumentType } from "@prisma/client"
 /**
  * GET /api/org/[slug]/documents
  * List controlled documents. Access: internal only. Filter by type, status.
- * Server enforces: TRAINEE sees only EFFECTIVE/APPROVED; ADMIN/TRAINER see more; OBSOLETE only ADMIN.
+ * Server enforces: USER sees only EFFECTIVE/APPROVED; ADMIN sees more; OBSOLETE only ADMIN.
  */
 export async function GET(
   req: NextRequest,
@@ -33,16 +33,13 @@ export async function GET(
     const where: Where = { orgId: membership.orgId }
     if (documentType) where.documentType = documentType
 
-    if (role === "TRAINEE") {
+    if (role === "USER") {
       if (status && status !== "EFFECTIVE" && status !== "APPROVED") {
         return NextResponse.json({ documents: [] })
       }
       where.status = status ? status : { in: ["EFFECTIVE", "APPROVED"] }
-    } else if (role === "TRAINER") {
-      if (status === "OBSOLETE") return NextResponse.json({ documents: [] })
-      if (!status) where.status = { not: "OBSOLETE" }
-      else where.status = status
     } else {
+      // ADMIN: full access; filter by status if requested
       if (status) where.status = status
     }
 

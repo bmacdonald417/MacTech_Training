@@ -10,9 +10,8 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 
 const ROLES = [
-  { value: "TRAINEE", label: "Trainee" },
-  { value: "TRAINER", label: "Trainer" },
-  { value: "ADMIN", label: "Admin" },
+  { value: "USER", label: "User" },
+  { value: "ADMIN", label: "Site Admin" },
 ] as const
 
 interface GroupOption {
@@ -37,7 +36,7 @@ export function NewUserForm({ slug, groups }: { slug: string; groups: GroupOptio
     const email = (formData.get("email") as string)?.trim()
     const name = (formData.get("name") as string)?.trim()
     const password = formData.get("password") as string
-    const role = (formData.get("role") as string) || "TRAINEE"
+    const role = (formData.get("role") as string) || "USER"
     const groupId = (formData.get("groupId") as string)?.trim() || null
 
     if (!email) {
@@ -162,7 +161,7 @@ export function NewUserForm({ slug, groups }: { slug: string; groups: GroupOptio
                 name="role"
                 disabled={loading}
                 className="flex h-10 w-full rounded-lg border border-input bg-background px-3.5 py-2 text-sm text-foreground transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground hover:border-input/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-0 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
-                defaultValue="TRAINEE"
+                defaultValue="USER"
               >
                 {ROLES.map((r) => (
                   <option key={r.value} value={r.value}>

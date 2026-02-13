@@ -144,7 +144,7 @@ export function Sidebar({ orgSlug, role, userGroupNames = [], mobileOpen = false
             orgSlug={orgSlug}
             pathname={pathname}
           />
-          {(role === "TRAINER" || role === "ADMIN") && (
+          {role === "ADMIN" && (
             <NavSection
               title="Training"
               links={trainerLinks}

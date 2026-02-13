@@ -71,7 +71,7 @@ export const authOptions: NextAuthOptions = {
         session.user.memberships = (token.m as { i: string; s: string; r: string }[]).map((m) => ({
           orgId: m.i,
           orgSlug: m.s,
-          role: m.r,
+          role: m.r === "ADMIN" ? "ADMIN" : "USER",
         }))
       }
       return session

@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label"
 import { updateMemberRole } from "../../actions"
 
 const ROLES = [
-  { value: "TRAINEE", label: "Trainee" },
-  { value: "TRAINER", label: "Trainer" },
-  { value: "ADMIN", label: "Admin" },
+  { value: "USER", label: "User" },
+  { value: "ADMIN", label: "Site Admin" },
 ] as const
 
 interface EditRoleFormProps {
@@ -19,10 +18,17 @@ interface EditRoleFormProps {
   currentRole: string
 }
 
+/** Map legacy roles to current (USER | ADMIN). */
+function normalizeRoleForDisplay(role: string): "USER" | "ADMIN" {
+  if (role === "ADMIN") return "ADMIN"
+  return "USER"
+}
+
 export function EditRoleForm({ orgSlug, membershipId, currentRole }: EditRoleFormProps) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const displayRole = normalizeRoleForDisplay(currentRole)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -31,7 +37,7 @@ export function EditRoleForm({ orgSlug, membershipId, currentRole }: EditRoleFor
 
     const form = e.currentTarget
     const formData = new FormData(form)
-    const role = (formData.get("role") as string) || "TRAINEE"
+    const role = (formData.get("role") as string) || "USER"
 
     const result = await updateMemberRole(orgSlug, membershipId, role)
     setPending(false)
@@ -60,7 +66,7 @@ export function EditRoleForm({ orgSlug, membershipId, currentRole }: EditRoleFor
         <select
           id="role"
           name="role"
-          defaultValue={currentRole}
+          defaultValue={displayRole}
           disabled={pending}
           className="flex h-10 w-full rounded-lg border border-input bg-background px-3.5 py-2 text-sm text-foreground"
         >

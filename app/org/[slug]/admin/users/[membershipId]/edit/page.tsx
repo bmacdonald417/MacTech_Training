@@ -49,7 +49,7 @@ export default async function EditUserRolePage({ params }: EditUserRolePageProps
         <CardHeader>
           <CardTitle>Role</CardTitle>
           <CardDescription>
-            Change this member&apos;s role in the organization. Admins can manage users and settings; trainers can manage content and assignments; trainees can view assigned training.
+            Change this member&apos;s role in the organization. Site admins can manage users, groups, content, and settings; users can view assigned training.
           </CardDescription>
         </CardHeader>
         <CardContent>

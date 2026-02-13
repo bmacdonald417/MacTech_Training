@@ -89,6 +89,12 @@ export async function POST(req: Request) {
         }
         orgId = first.id
       }
+      // New users without a join link go into the "intro" group
+      const introGroup = await prisma.group.findFirst({
+        where: { orgId, name: "intro" },
+        select: { id: true },
+      })
+      if (introGroup) groupId = introGroup.id
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -105,7 +111,7 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         orgId,
-        role: "TRAINEE",
+        role: "USER",
       },
     })
 
@@ -132,6 +138,24 @@ export async function POST(req: Request) {
       })
       const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
       await enrollUserInGroupAssignments(user.id, groupId)
+    }
+    // If no group yet (e.g. org has no "intro" group), ensure intro exists and add user
+    if (!groupId) {
+      let introGroup = await prisma.group.findFirst({
+        where: { orgId, name: "intro" },
+        select: { id: true },
+      })
+      if (!introGroup) {
+        introGroup = await prisma.group.create({
+          data: { orgId, name: "intro" },
+          select: { id: true },
+        })
+      }
+      await prisma.groupMember.create({
+        data: { groupId: introGroup.id, userId: user.id },
+      })
+      const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
+      await enrollUserInGroupAssignments(user.id, introGroup.id)
     }
 
     return NextResponse.json({ success: true, userId: user.id })

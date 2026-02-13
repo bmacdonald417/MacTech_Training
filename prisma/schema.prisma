@@ -95,7 +95,7 @@ model Membership {
   id     String   @id @default(cuid())
   userId String
   orgId  String
-  role   String // "ADMIN" | "TRAINER" | "TRAINEE"
+  role   String // "ADMIN" (site admin) | "USER"
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)

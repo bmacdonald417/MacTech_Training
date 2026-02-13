@@ -39,7 +39,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     certificates: 0,
   }
 
-  if (membership.role === "TRAINEE") {
+  if (membership.role === "USER") {
     const enrollments = await prisma.enrollment.findMany({
       where: {
         userId: membership.userId,
@@ -56,7 +56,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       },
     })
     stats.certificates = certs.length
-  } else if (membership.role === "TRAINER" || membership.role === "ADMIN") {
+  } else if (membership.role === "ADMIN") {
     const assignments = await prisma.assignment.findMany({
       where: { orgId: membership.orgId },
     })
@@ -72,7 +72,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     stats.certificates = certs.length
   }
 
-  const isTrainerOrAdmin = membership.role === "TRAINER" || membership.role === "ADMIN"
   const isAdmin = membership.role === "ADMIN"
 
   return (
@@ -81,7 +80,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         title="Dashboard"
         description="Training activity at a glance"
         action={
-          isTrainerOrAdmin ? (
+          isAdmin ? (
             <Button asChild>
               <Link href={`/org/${slug}/trainer/assignments/new`}>
                 <PlusCircle className="h-4 w-4" />
@@ -136,7 +135,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               hint="Assignments with due dates will show here."
             />
           </SectionCard>
-          {isTrainerOrAdmin && (
+          {isAdmin && (
             <SectionCard title="Quick Actions" description="Shortcuts">
               <div className="space-y-2">
                 <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>

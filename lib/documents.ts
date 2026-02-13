@@ -8,23 +8,22 @@ import type { DocumentStatus } from "@prisma/client"
  * - External: never see internal QMS.
  */
 
-export type DocumentRole = "ADMIN" | "TRAINER" | "TRAINEE"
+export type DocumentRole = "ADMIN" | "USER"
 
 const CAN_SEE_OBSOLETE: DocumentRole[] = ["ADMIN"]
-const CAN_EDIT_DRAFT: DocumentRole[] = ["ADMIN", "TRAINER"]
-const CAN_SUBMIT_FOR_REVIEW: DocumentRole[] = ["ADMIN", "TRAINER"]
-const CAN_APPROVE: DocumentRole[] = ["ADMIN", "TRAINER"]
-const CAN_MAKE_EFFECTIVE: DocumentRole[] = ["ADMIN", "TRAINER"]
-const CAN_OBSOLETE: DocumentRole[] = ["ADMIN", "TRAINER"]
-const CAN_SEE_DRAFT_OR_IN_REVIEW: DocumentRole[] = ["ADMIN", "TRAINER"]
+const CAN_EDIT_DRAFT: DocumentRole[] = ["ADMIN"]
+const CAN_SUBMIT_FOR_REVIEW: DocumentRole[] = ["ADMIN"]
+const CAN_APPROVE: DocumentRole[] = ["ADMIN"]
+const CAN_MAKE_EFFECTIVE: DocumentRole[] = ["ADMIN"]
+const CAN_OBSOLETE: DocumentRole[] = ["ADMIN"]
+const CAN_SEE_DRAFT_OR_IN_REVIEW: DocumentRole[] = ["ADMIN"]
 
-/** Statuses visible to staff (read-only). */
+/** Statuses visible to regular users (read-only). */
 const STAFF_VISIBLE_STATUSES: DocumentStatus[] = ["EFFECTIVE", "APPROVED"]
 
 export function canSeeDocument(role: DocumentRole, status: DocumentStatus): boolean {
   if (role === "ADMIN") return true
-  if (role === "TRAINER") return status !== "OBSOLETE" || CAN_SEE_OBSOLETE.includes(role)
-  if (role === "TRAINEE") return STAFF_VISIBLE_STATUSES.includes(status)
+  if (role === "USER") return STAFF_VISIBLE_STATUSES.includes(status)
   return false
 }
 
@@ -54,10 +53,10 @@ export function canObsolete(role: DocumentRole, status: DocumentStatus): boolean
 }
 
 export function canAcknowledgeDocument(role: DocumentRole): boolean {
-  return ["ADMIN", "TRAINER", "TRAINEE"].includes(role)
+  return ["ADMIN", "USER"].includes(role)
 }
 
 export function normalizeDocumentRole(role: string): DocumentRole {
-  if (role === "ADMIN" || role === "TRAINER" || role === "TRAINEE") return role
-  return "TRAINEE"
+  if (role === "ADMIN" || role === "USER") return role
+  return "USER"
 }

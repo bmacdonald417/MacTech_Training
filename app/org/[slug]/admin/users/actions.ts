@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { enrollUserInGroupAssignments } from "@/lib/enroll-group-member"
 import type { Role } from "@/lib/rbac"
 
-const VALID_ROLES: Role[] = ["ADMIN", "TRAINER", "TRAINEE"]
+const VALID_ROLES: Role[] = ["ADMIN", "USER"]
 
 /** Set a user's single group in this org: remove from other org groups, add to selected (or remove from all if groupId is empty). */
 export async function setUserGroup(
