@@ -88,7 +88,14 @@ export async function ensureSlideBackgrounds(buffer: Buffer): Promise<Buffer> {
   }
 
   if (!changed) return buffer
-  const out = await zip.generateAsync({
+  // Normalize all paths to forward slashes so pptx-preview's layout/master lookup by path matches
+  const normalizedZip = new JSZip()
+  for (const [path, file] of Object.entries(zip.files)) {
+    if (file.dir) continue
+    const content = await file.async("nodebuffer")
+    normalizedZip.file(path.replace(/\\/g, "/"), content)
+  }
+  const out = await normalizedZip.generateAsync({
     type: "nodebuffer",
     compression: "DEFLATE",
     compressionOptions: { level: 6 },
