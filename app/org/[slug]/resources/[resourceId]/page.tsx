@@ -2,7 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireAuth } from "@/lib/rbac"
 import { getResourceById, getResourceContent } from "@/lib/resources"
-import { markdownToHtml, extractToc } from "@/lib/markdown"
+import { markdownToHtml } from "@/lib/markdown"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, BookOpen } from "lucide-react"
@@ -22,7 +22,6 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
   if (rawContent == null) notFound()
 
   const html = markdownToHtml(rawContent)
-  const toc = extractToc(html)
 
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -49,42 +48,10 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_minmax(12rem,16rem)]">
-        {/* Main article — optimal reading width */}
-        <article
-          className="resource-prose min-w-0 max-w-[65ch]"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-
-        {/* Sticky TOC */}
-        {toc.length > 0 && (
-          <aside
-            aria-label="On this page"
-            className="hidden lg:block lg:sticky lg:top-6 lg:self-start"
-          >
-            <nav className="rounded-lg border border-border bg-card/60 p-4 backdrop-blur-sm">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                On this page
-              </p>
-              <ul className="space-y-1.5 text-sm">
-                {toc.map((item) => (
-                  <li
-                    key={item.id}
-                    className={item.level === 3 ? "pl-3" : ""}
-                  >
-                    <a
-                      href={`#${item.id}`}
-                      className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                    >
-                      {item.text}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </aside>
-        )}
-      </div>
+      <article
+        className="resource-prose min-w-0 max-w-[65ch]"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </div>
   )
 }
