@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
-import {
-  createStoredFileReadStream,
-  resolveStoredFileAbsolutePath,
-} from "@/lib/stored-file-storage"
+import { resolveStoredFileAbsolutePath } from "@/lib/stored-file-storage"
 import fs from "fs"
 
 /**
  * GET /api/org/[slug]/slides/file/[fileId]
- * Stream the stored PPTX file. Auth: any org member (trainee can view training content).
+ * Serve the stored PPTX file. Auth: any org member (trainee can view training content).
+ * Returns the file as a buffer so the client receives the full bytes (streaming Node
+ * streams can be unreliable in Next.js response body).
  */
 export async function GET(
   req: NextRequest,
@@ -27,18 +26,18 @@ export async function GET(
     }
 
     const fullPath = resolveStoredFileAbsolutePath(file.storagePath)
+    let buffer: Buffer
     try {
-      await fs.promises.access(fullPath, fs.constants.R_OK)
+      buffer = await fs.promises.readFile(fullPath)
     } catch {
       return NextResponse.json({ error: "File not found on disk." }, { status: 404 })
     }
 
-    const stream = createStoredFileReadStream(file.storagePath)
-    return new NextResponse(stream as any, {
+    return new NextResponse(buffer, {
       headers: {
         "Content-Type": file.mimeType,
         "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
-        "Content-Length": String(file.sizeBytes),
+        "Content-Length": String(buffer.length),
       },
     })
   } catch (err) {

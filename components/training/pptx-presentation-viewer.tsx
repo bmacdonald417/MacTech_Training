@@ -171,6 +171,8 @@ export function PptxPresentationViewer({
       audioRef.current.load()
     }
 
+    const LOAD_TIMEOUT_MS = 25000
+
     function tryInit() {
       if (hasInited) return
       const buf = bufferRef.current
@@ -193,17 +195,37 @@ export function PptxPresentationViewer({
           setCurrentIndex(previewer.currentIndex)
           setSlideCount(previewer.slideCount)
           setLoaded(true)
+        }).catch((err) => {
+          if (!mounted) return
+          console.error("[pptx-viewer] preview failed:", err)
+          setError("Could not parse the presentation. The file may be corrupted or in an unsupported format.")
         })
+      }).catch((err) => {
+        if (!mounted) return
+        console.error("[pptx-viewer] pptx-preview load failed:", err)
+        setError("Failed to load the presentation viewer.")
       })
     }
 
     fetch(deckUrl, { credentials: "include" })
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to load presentation")
+        if (!res.ok) {
+          const status = res.status
+          if (status === 404) throw new Error("Presentation file not found. It may not have been saved yet.")
+          throw new Error(`Failed to load presentation (${status})`)
+        }
+        const ct = res.headers.get("Content-Type") ?? ""
+        if (ct.includes("text/html") || ct.includes("application/json")) {
+          throw new Error("Server returned an error instead of the presentation file.")
+        }
         return res.arrayBuffer()
       })
       .then((buf) => {
         if (!mounted) return
+        if (!buf || buf.byteLength < 100) {
+          setError("Presentation file is empty or too small.")
+          return
+        }
         bufferRef.current = buf
         tryInit()
       })
@@ -212,11 +234,15 @@ export function PptxPresentationViewer({
         setError(e instanceof Error ? e.message : "Failed to load")
       })
 
-    const fallbackTimer = setTimeout(() => tryInit(), 250)
+    const loadTimeoutId = setTimeout(() => {
+      if (mounted && !previewerRef.current) {
+        setError("Loading timed out. The file may be missing on the server or the presentation format may not be supported.")
+      }
+    }, LOAD_TIMEOUT_MS)
 
     return () => {
       mounted = false
-      clearTimeout(fallbackTimer)
+      clearTimeout(loadTimeoutId)
       previewerRef.current = null
     }
   }, [deckUrl])
