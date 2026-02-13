@@ -60,9 +60,14 @@ export function markdownToHtml(content: string): string {
     const isCodex =
       body.includes("How the Codex Accelerator Helps") ||
       body.includes("How the Codex Helps")
-    const liClass = isCodex
-      ? "resource-prose__codex-callout"
-      : ""
+    const methodMatch = !isNested && body.match(/^\s*\*\*(Interview|Examine|Test)\*\*/)
+    const method = methodMatch ? methodMatch[1].toLowerCase() : ""
+    const liClass = [
+      isCodex ? "resource-prose__codex-callout" : "",
+      method ? `resource-prose__li--${method}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ")
 
     if (isNested) {
       if (listDepth === 0) {

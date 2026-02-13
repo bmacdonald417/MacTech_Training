@@ -48,10 +48,12 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
         </div>
       </div>
 
-      <article
-        className="resource-prose min-w-0 max-w-[65ch]"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div className="rounded-2xl border border-border/60 bg-card/40 px-6 py-8 sm:px-8 sm:py-10">
+        <article
+          className="resource-prose min-w-0 max-w-[65ch]"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
     </div>
   )
 }
