@@ -58,8 +58,15 @@ export async function GET(
       }
     }
 
+    const skipNormalize = req.nextUrl.searchParams.get("raw") === "1"
+    if (skipNormalize) {
+      console.info("[slides/file] Serving raw PPTX (normalization skipped).", { fileId })
+    }
     const originalLength = buffer.byteLength
-    if (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")) {
+    if (
+      !skipNormalize &&
+      (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx"))
+    ) {
       try {
         const normalized = await ensureSlideBackgrounds(buffer)
         // Only use normalized result if it looks valid (avoid serving corrupted ZIP)

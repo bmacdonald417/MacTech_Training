@@ -75,10 +75,10 @@ export function PptxPresentationViewer({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [hasNarration, setHasNarration] = useState(false)
 
-  const deckUrl = useMemo(
-    () => `/api/org/${orgSlug}/slides/file/${sourceFileId}`,
-    [orgSlug, sourceFileId],
-  )
+  const deckUrl = useMemo(() => {
+    const base = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
+    return searchParams.get("raw") === "1" ? `${base}?raw=1` : base
+  }, [orgSlug, sourceFileId, searchParams])
 
   const safeReturnTo = useMemo(() => {
     const from = searchParams.get("from")
@@ -200,32 +200,42 @@ export function PptxPresentationViewer({
 
         previewer.preview(buf).then(() => {
           if (!mounted) return
-          if (previewer.slideCount === 0) {
-            setError(
-              "The presentation has no slides the viewer could render. Try re-saving in PowerPoint with standard slide layouts, or re-upload the file."
-            )
+          const applySuccess = () => {
+            if (!mounted) return
+            previewerRef.current = previewer
+            setCurrentIndex(previewer.currentIndex)
+            setSlideCount(previewer.slideCount)
+            const forceRender = () => {
+              if (typeof previewer.renderSingleSlide === "function") {
+                previewer.renderSingleSlide(0)
+              }
+            }
+            forceRender()
+            requestAnimationFrame(forceRender)
+            setTimeout(forceRender, 100)
+            setTimeout(forceRender, 400)
+            setTimeout(forceRender, 800)
+            setTimeout(forceRender, 1500)
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                if (mounted) setLoaded(true)
+              })
+            })
+          }
+          if (previewer.slideCount > 0) {
+            applySuccess()
             return
           }
-          previewerRef.current = previewer
-          setCurrentIndex(previewer.currentIndex)
-          setSlideCount(previewer.slideCount)
-          const forceRender = () => {
-            if (typeof previewer.renderSingleSlide === "function") {
-              previewer.renderSingleSlide(0)
+          // Defer 0-slides error: library may set slideCount asynchronously
+          setTimeout(() => {
+            if (!mounted) return
+            if (previewer.slideCount > 0) applySuccess()
+            else {
+              setError(
+                "The presentation has no slides the viewer could render. Try “Try original file” below, or re-save in PowerPoint with standard slide layouts."
+              )
             }
-          }
-          forceRender()
-          requestAnimationFrame(forceRender)
-          setTimeout(forceRender, 100)
-          setTimeout(forceRender, 400)
-          setTimeout(forceRender, 800)
-          setTimeout(forceRender, 1500)
-          // Hide loading overlay after first paint so stage is visible when we paint
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              if (mounted) setLoaded(true)
-            })
-          })
+          }, 450)
         }).catch((err) => {
           if (!mounted) return
           console.error("[pptx-viewer] preview failed:", err)
@@ -594,7 +604,7 @@ export function PptxPresentationViewer({
           <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/60 p-6 backdrop-blur">
             <div className="text-sm font-medium">Couldn’t load the deck</div>
             <div className="mt-2 text-sm text-white/70">{error}</div>
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="secondary"
@@ -602,6 +612,20 @@ export function PptxPresentationViewer({
               >
                 Back
               </Button>
+              {searchParams.get("raw") !== "1" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10"
+                  onClick={() => {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set("raw", "1")
+                    window.location.href = url.toString()
+                  }}
+                >
+                  Try original file
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={() => window.location.reload()}
@@ -623,7 +647,7 @@ export function PptxPresentationViewer({
         <div className="pointer-events-none mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="pointer-events-auto flex items-center gap-2 rounded-xl bg-black/45 px-3 py-2 text-xs backdrop-blur">
             <span className="font-medium">{title?.trim() ? title : "Presentation"}</span>
-            {(slideCount != null || slideIds.length > 0) && (
+            {!error && (slideCount != null || slideIds.length > 0) && (
               <span className="text-white/70">
                 {currentIndex + 1}/{slideCount ?? slideIds.length}
               </span>
