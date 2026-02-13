@@ -3,13 +3,9 @@ import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import { writeNarrationFile } from "@/lib/narration-storage"
 import { getSlideNarrationText, getArticleNarrationText } from "@/lib/tts-text"
+import { generateTtsMp3, MAX_TTS_INPUT_LENGTH } from "@/lib/tts-openai"
 
-const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech"
-const TTS_MODEL_PREFERRED = "gpt-4o-mini-tts"
-const TTS_MODEL_FALLBACK = "tts-1"
 const DEFAULT_VOICE = "alloy"
-const MAX_INPUT_LENGTH = 4096
-
 const ALLOWED_VOICES = new Set([
   "alloy",
   "nova",
@@ -49,8 +45,7 @@ export async function POST(
     const voiceToUse =
       typeof voice === "string" && ALLOWED_VOICES.has(voice) ? voice : DEFAULT_VOICE
 
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "TTS is not configured. OPENAI_API_KEY is missing." },
         { status: 503 }
@@ -120,7 +115,7 @@ export async function POST(
       )
     }
 
-    const trimmed = textToSpeak.slice(0, MAX_INPUT_LENGTH)
+    const trimmed = textToSpeak.slice(0, MAX_TTS_INPUT_LENGTH)
     if (trimmed.length === 0) {
       return NextResponse.json(
         { error: "No text content to convert to speech" },
@@ -128,67 +123,22 @@ export async function POST(
       )
     }
 
-    let buffer: Buffer
-    let modelUsed = TTS_MODEL_PREFERRED
-
-    try {
-      const res = await fetch(OPENAI_TTS_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: TTS_MODEL_PREFERRED,
-          input: trimmed,
-          voice: voiceToUse,
-          response_format: "mp3",
-        }),
-      })
-
-      if (!res.ok) {
-        const errText = await res.text()
-        if (res.status === 404 || errText.includes("model") || errText.includes("gpt-4o-mini-tts")) {
-          const fallback = await fetch(OPENAI_TTS_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: TTS_MODEL_FALLBACK,
-              input: trimmed,
-              voice: voiceToUse,
-              response_format: "mp3",
-            }),
-          })
-          if (!fallback.ok) {
-            const fallbackText = await fallback.text()
-            console.error("[tts/generate] OpenAI fallback failed:", fallback.status, fallbackText)
-            return NextResponse.json(
-              { error: "Text-to-speech failed. Please try again later." },
-              { status: 502 }
-            )
-          }
-          modelUsed = TTS_MODEL_FALLBACK
-          buffer = Buffer.from(await fallback.arrayBuffer())
-        } else {
-          console.error("[tts/generate] OpenAI error:", res.status, errText)
-          return NextResponse.json(
-            { error: "Text-to-speech failed. Please try again later." },
-            { status: 502 }
-          )
-        }
-      } else {
-        buffer = Buffer.from(await res.arrayBuffer())
+    const ttsResult = await generateTtsMp3(trimmed, voiceToUse)
+    if (!ttsResult.ok) {
+      if (ttsResult.error.includes("OPENAI_API_KEY")) {
+        return NextResponse.json(
+          { error: "TTS is not configured. OPENAI_API_KEY is missing." },
+          { status: 503 }
+        )
       }
-    } catch (e) {
-      console.error("[tts/generate] OpenAI request error:", e)
+      console.error("[tts/generate]", ttsResult.error)
       return NextResponse.json(
-        { error: "Text-to-speech service unavailable. Please try again later." },
+        { error: "Text-to-speech failed. Please try again later." },
         { status: 502 }
       )
     }
+    const buffer = ttsResult.buffer
+    const modelUsed = ttsResult.modelUsed
 
     let storagePath: string
     try {

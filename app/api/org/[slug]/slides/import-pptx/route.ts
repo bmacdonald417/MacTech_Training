@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { ContentType } from "@prisma/client"
 import { parsePptxBuffer, getPptxMimeType, getMaxPptxSizeBytes } from "@/lib/pptx-parser"
 import { writeStoredFile } from "@/lib/stored-file-storage"
+import { getSlideNarrationText } from "@/lib/tts-text"
 import { nanoid } from "nanoid"
 
 const ALLOWED_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -64,6 +65,11 @@ export async function POST(
     }
 
     const { slides: parsedSlides, warnings } = parseResult
+    // Generate narrator notes from title+body when PPTX has no speaker notes
+    const slidesWithNotes = parsedSlides.map((s, i) => ({
+      ...s,
+      notes: (s.notes?.trim() || getSlideNarrationText(i, s.title, s.body, null)).trim() || undefined,
+    }))
     const contentItemIdParam = formData.get("contentItemId") as string | null
     const slideDeckIdParam = formData.get("slideDeckId") as string | null
 
@@ -103,7 +109,7 @@ export async function POST(
           where: { slideDeckId: contentItem.slideDeck.id },
         })
         await prisma.slide.createMany({
-          data: parsedSlides.map((s, i) => ({
+          data: slidesWithNotes.map((s, i) => ({
             slideDeckId: contentItem.slideDeck!.id,
             title: s.title,
             content: s.body,
@@ -113,7 +119,7 @@ export async function POST(
             importedFromPptx: true,
           })),
         })
-        const slidesForClient = parsedSlides.map((s, i) => ({
+        const slidesForClient = slidesWithNotes.map((s, i) => ({
           title: s.title,
           content: s.body,
           order: i + 1,
@@ -168,7 +174,7 @@ export async function POST(
     })
 
     await prisma.slide.createMany({
-      data: parsedSlides.map((s, i) => ({
+      data: slidesWithNotes.map((s, i) => ({
         slideDeckId: slideDeck.id,
         title: s.title,
         content: s.body,
@@ -181,7 +187,7 @@ export async function POST(
     })
 
     const redirectUrl = `/org/${slug}/trainer/content/${contentItem.id}/edit`
-    const slidesForClient = parsedSlides.map((s, i) => ({
+    const slidesForClient = slidesWithNotes.map((s, i) => ({
       title: s.title,
       content: s.body,
       order: i + 1,

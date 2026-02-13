@@ -15,7 +15,10 @@
     "db:deploy": "prisma db push && npm run db:seed",
     "db:studio": "prisma studio",
     "triptych:parse": "node scripts/parse-cmmc-script.js",
-    "triptych:generate": "node scripts/generate-cmmc-triptych-audio.js"
+    "triptych:generate": "node scripts/generate-cmmc-triptych-audio.js",
+    "upload-trust-codex": "tsx scripts/upload-trust-codex-deck.ts",
+    "generate-trust-codex-mp3s": "tsx scripts/generate-trust-codex-narration-mp3s.ts",
+    "trust-codex:all": "tsx scripts/upload-trust-codex-deck.ts && tsx scripts/generate-trust-codex-narration-mp3s.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
