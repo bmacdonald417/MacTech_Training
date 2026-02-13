@@ -106,8 +106,14 @@ export function PptxFullViewer({
 
     const url = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
     fetch(url, { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load presentation")
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          if (res.status === 404 && body?.code === "FILE_MISSING_ON_DISK") {
+            throw new Error("FILE_MISSING_ON_DISK")
+          }
+          throw new Error("Failed to load presentation")
+        }
         return res.arrayBuffer()
       })
       .then((buf) => {
@@ -117,7 +123,15 @@ export function PptxFullViewer({
         }
       })
       .catch((e) => {
-        if (mounted) setError(e instanceof Error ? e.message : "Failed to load")
+        if (mounted) {
+          setError(
+            e instanceof Error && e.message === "FILE_MISSING_ON_DISK"
+              ? "Presentation file is missing on the server. Re-upload the deck from Admin → Presentations."
+              : e instanceof Error
+                ? e.message
+                : "Failed to load"
+          )
+        }
       })
 
     const resizeObserver = new ResizeObserver((entries) => {

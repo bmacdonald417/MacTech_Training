@@ -15,7 +15,9 @@ import path from "path"
 import fs from "fs"
 import { config } from "dotenv"
 
-config({ path: path.resolve(__dirname, "..", ".env") })
+const root = path.resolve(__dirname, "..")
+config({ path: path.join(root, ".env") })
+config({ path: path.join(root, ".env.local") })
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is not set.")

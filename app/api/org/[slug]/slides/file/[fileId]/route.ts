@@ -33,7 +33,10 @@ export async function GET(
     try {
       buffer = await fs.promises.readFile(fullPath)
     } catch {
-      return NextResponse.json({ error: "File not found on disk." }, { status: 404 })
+      return NextResponse.json(
+        { error: "File not found on disk.", code: "FILE_MISSING_ON_DISK" },
+        { status: 404 }
+      )
     }
 
     if (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")) {

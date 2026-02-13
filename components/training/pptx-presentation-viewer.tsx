@@ -214,10 +214,16 @@ export function PptxPresentationViewer({
     }
 
     fetch(deckUrl, { credentials: "include" })
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) {
           const status = res.status
-          if (status === 404) throw new Error("Presentation file not found. It may not have been saved yet.")
+          if (status === 404) {
+            const body = await res.json().catch(() => ({}))
+            if (body?.code === "FILE_MISSING_ON_DISK") {
+              throw new Error("FILE_MISSING_ON_DISK")
+            }
+            throw new Error("Presentation file not found. It may not have been saved yet.")
+          }
           throw new Error(`Failed to load presentation (${status})`)
         }
         const ct = res.headers.get("Content-Type") ?? ""
@@ -237,7 +243,13 @@ export function PptxPresentationViewer({
       })
       .catch((e) => {
         if (!mounted) return
-        setError(e instanceof Error ? e.message : "Failed to load")
+        setError(
+          e instanceof Error && e.message === "FILE_MISSING_ON_DISK"
+            ? "Presentation file is missing on the server. Re-upload the deck from Admin → Presentations."
+            : e instanceof Error
+              ? e.message
+              : "Failed to load"
+        )
       })
 
     const loadTimeoutId = setTimeout(() => {
