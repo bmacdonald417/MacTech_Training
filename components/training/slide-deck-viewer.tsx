@@ -311,8 +311,18 @@ function PptxBackdrop({
           width: BASE_W,
           height: BASE_H,
           mode: "slide",
-        }) as unknown as { preview: (b: ArrayBuffer) => Promise<unknown> }
-        previewer.preview(buf).catch(() => {
+        }) as unknown as {
+          preview: (b: ArrayBuffer) => Promise<unknown>
+          renderSingleSlide?: (slideIndex: number) => void
+        }
+        previewer.preview(buf).then(() => {
+          if (!mounted) return
+          requestAnimationFrame(() => {
+            if (mounted && typeof previewer.renderSingleSlide === "function") {
+              previewer.renderSingleSlide(0)
+            }
+          })
+        }).catch(() => {
           // ignore backdrop failures (launch UI still works)
         })
       })

@@ -17,6 +17,7 @@ type PreviewerInstance = {
   preview: (buffer: ArrayBuffer) => Promise<unknown>
   renderPreSlide: () => void
   renderNextSlide: () => void
+  renderSingleSlide: (slideIndex: number) => void
   get currentIndex(): number
   get slideCount(): number
 }
@@ -195,6 +196,13 @@ export function PptxPresentationViewer({
           setCurrentIndex(previewer.currentIndex)
           setSlideCount(previewer.slideCount)
           setLoaded(true)
+          // Force first slide to paint (library may not render until navigation otherwise)
+          requestAnimationFrame(() => {
+            if (!mounted || !previewerRef.current) return
+            if (typeof previewer.renderSingleSlide === "function") {
+              previewer.renderSingleSlide(0)
+            }
+          })
         }).catch((err) => {
           if (!mounted) return
           console.error("[pptx-viewer] preview failed:", err)
@@ -537,6 +545,8 @@ export function PptxPresentationViewer({
           style={{
             width: BASE_W,
             height: BASE_H,
+            minWidth: BASE_W,
+            minHeight: BASE_H,
             transform: `translate(-50%, -50%) scale(${scale})`,
             transformOrigin: "50% 50%",
             boxShadow:

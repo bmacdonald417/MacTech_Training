@@ -33,6 +33,7 @@ type PreviewerInstance = {
   preview: (buffer: ArrayBuffer) => Promise<unknown>
   renderPreSlide: () => void
   renderNextSlide: () => void
+  renderSingleSlide: (slideIndex: number) => void
   get currentIndex(): number
   get slideCount(): number
 }
@@ -95,6 +96,12 @@ export function PptxFullViewer({
           previewerRef.current = previewer
           setCurrentIndex(previewer.currentIndex)
           setLoaded(true)
+          requestAnimationFrame(() => {
+            if (!mounted || !previewerRef.current) return
+            if (typeof previewer.renderSingleSlide === "function") {
+              previewer.renderSingleSlide(0)
+            }
+          })
         })
       })
     }
