@@ -16,15 +16,14 @@ const cSldOpenRegex = /<p:cSld(\s[^>]*)?>/
 const cSldAnyNsRegex = /<[^:>]*:cSld(\s[^>]*)?>/
 
 /**
- * Replace p:bg that only has a theme reference (p:bgRef) with an inline solid fill.
- * pptx-preview can't resolve bgRef and ends up with undefined .background.
+ * Replace any p:bg that doesn't have a concrete fill with an inline solid fill.
+ * pptx-preview can't resolve theme refs (bgRef, schemeClr, etc.) and ends up with undefined .background.
  */
 function replaceBgRefWithSolid(xml: string): string {
-  if (!xml.includes("<p:bg>") || !xml.includes("bgRef")) return xml
-  if (xml.includes("a:solidFill") || xml.includes("a:blipFill")) return xml
+  if (!xml.includes("<p:bg>")) return xml
   return xml.replace(/<p:bg>[\s\S]*?<\/p:bg>/g, (match) => {
-    if (match.includes("bgRef") && !match.includes("a:solidFill") && !match.includes("a:blipFill")) return DEFAULT_BG
-    return match
+    if (match.includes("a:solidFill") || match.includes("a:blipFill")) return match
+    return DEFAULT_BG
   })
 }
 
