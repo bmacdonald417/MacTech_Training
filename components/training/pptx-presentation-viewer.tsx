@@ -200,6 +200,12 @@ export function PptxPresentationViewer({
 
         previewer.preview(buf).then(() => {
           if (!mounted) return
+          if (previewer.slideCount === 0) {
+            setError(
+              "The presentation has no slides the viewer could render. Try re-saving in PowerPoint with standard slide layouts, or re-upload the file."
+            )
+            return
+          }
           previewerRef.current = previewer
           setCurrentIndex(previewer.currentIndex)
           setSlideCount(previewer.slideCount)

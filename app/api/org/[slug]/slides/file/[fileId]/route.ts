@@ -32,17 +32,25 @@ export async function GET(
       },
     })
     if (!file) {
+      console.warn("[slides/file] File not found.", { fileId, orgId: membership.orgId })
       return NextResponse.json({ error: "File not found." }, { status: 404 })
     }
 
     let buffer: Buffer
     if (file.storagePath === "db" && file.contentBytes && file.contentBytes.length > 0) {
-      buffer = Buffer.from(file.contentBytes)
+      buffer = Buffer.isBuffer(file.contentBytes)
+        ? file.contentBytes
+        : Buffer.from(file.contentBytes as ArrayBuffer)
     } else {
       const fullPath = resolveStoredFileAbsolutePath(file.storagePath)
       try {
         buffer = await fs.promises.readFile(fullPath)
-      } catch {
+      } catch (e) {
+        console.warn("[slides/file] File missing on disk.", {
+          fileId,
+          storagePath: file.storagePath,
+          err: e instanceof Error ? e.message : String(e),
+        })
         return NextResponse.json(
           { error: "File not found on disk.", code: "FILE_MISSING_ON_DISK" },
           { status: 404 }
@@ -50,18 +58,49 @@ export async function GET(
       }
     }
 
+    const originalLength = buffer.byteLength
     if (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")) {
       try {
-        buffer = await ensureSlideBackgrounds(buffer)
+        const normalized = await ensureSlideBackgrounds(buffer)
+        // Only use normalized result if it looks valid (avoid serving corrupted ZIP)
+        if (
+          normalized &&
+          normalized.byteLength >= 100 &&
+          normalized.byteLength >= originalLength * 0.5
+        ) {
+          buffer = normalized
+          console.info("[slides/file] Serving normalized PPTX.", {
+            fileId,
+            originalBytes: originalLength,
+            normalizedBytes: buffer.byteLength,
+          })
+        } else {
+          console.info("[slides/file] Serving original PPTX (normalized skipped: invalid or unchanged).", {
+            fileId,
+            originalBytes: originalLength,
+            normalizedBytes: normalized?.byteLength ?? 0,
+          })
+        }
       } catch (e) {
         console.warn("[slides/file] pptx normalize failed, serving original:", e)
       }
     }
 
+    if (!buffer || buffer.byteLength < 100) {
+      console.warn("[slides/file] FILE_EMPTY: stored file empty or invalid.", {
+        fileId,
+        byteLength: buffer?.byteLength ?? 0,
+      })
+      return NextResponse.json(
+        { error: "Stored file is empty or invalid.", code: "FILE_EMPTY" },
+        { status: 404 }
+      )
+    }
+
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": file.mimeType,
-        "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
+        "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename ?? "presentation.pptx")}"`,
         "Content-Length": String(buffer.byteLength),
       },
     })
