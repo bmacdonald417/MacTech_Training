@@ -16,6 +16,7 @@ import {
   Archive,
   X,
   LayoutPanelLeft,
+  Library,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -29,6 +30,7 @@ interface SidebarProps {
 const traineeLinks = [
   { href: (s: string) => `/org/${s}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
   { href: (s: string) => `/org/${s}/my-training`, label: "My Training", icon: BookOpen },
+  { href: (s: string) => `/org/${s}/resources`, label: "Resources", icon: Library },
   { href: (s: string) => `/org/${s}/triptych`, label: "CMMC Triptych", icon: LayoutPanelLeft },
   { href: (s: string) => `/org/${s}/certificates`, label: "Certificates", icon: Award },
 ]
@@ -67,7 +69,9 @@ function NavSection({
       {links.map((link) => {
         const href = link.href(orgSlug)
         const Icon = link.icon
-        const isActive = pathname === href
+        const isActive =
+          pathname === href ||
+          (href.endsWith("/resources") && pathname.startsWith(href + "/"))
         return (
           <Link
             key={href}
