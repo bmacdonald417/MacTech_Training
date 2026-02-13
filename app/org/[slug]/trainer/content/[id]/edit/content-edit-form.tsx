@@ -288,6 +288,75 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
 
   return (
     <form onSubmit={handleSubmit}>
+      {contentItem.type === "SLIDE_DECK" && (
+        <Card className="mb-6 border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileUp className="h-5 w-5" />
+              Upload PowerPoint (.pptx)
+            </CardTitle>
+            <CardDescription>
+              Drag and drop a .pptx file or click the button below. This replaces the current deck and imports slide text and speaker notes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {importSuccess && (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+                {importSuccess}
+              </p>
+            )}
+            <input
+              type="file"
+              accept=".pptx"
+              className="hidden"
+              id="import-pptx"
+              onChange={handleImportPptx}
+              disabled={importing}
+            />
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={cn(
+                "rounded-xl border-2 border-dashed p-8 text-center transition-colors",
+                "border-primary/40 bg-background/80 hover:border-primary/60 hover:bg-primary/5",
+                dragActive && "border-primary bg-primary/10",
+                importing && "pointer-events-none opacity-70"
+              )}
+            >
+              <p className="text-sm font-medium text-foreground mb-1">Drop your .pptx here or click to browse</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {contentItem.slideDeck?.sourceFile && contentItem.slideDeck.slides?.length != null
+                  ? `Current: ${contentItem.slideDeck.sourceFile.filename} (${contentItem.slideDeck.slides.length} slides)`
+                  : "No file uploaded yet."}
+              </p>
+              <Button
+                type="button"
+                size="lg"
+                onClick={() => document.getElementById("import-pptx")?.click()}
+                disabled={importing}
+              >
+                <FileUp className="h-4 w-4 mr-2" />
+                {importing ? "Importing…" : "Upload or replace PPTX"}
+              </Button>
+            </div>
+            {contentItem.slideDeck?.id && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPptx}
+                  disabled={exporting}
+                >
+                  <FileDown className="h-4 w-4 mr-1" />
+                  {exporting ? "Exporting…" : "Download as PowerPoint"}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>Edit</CardTitle>
@@ -299,7 +368,7 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
               {error}
             </p>
           )}
-          {importSuccess && (
+          {contentItem.type !== "SLIDE_DECK" && importSuccess && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
               {importSuccess}
             </p>
@@ -370,66 +439,6 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
                 value={attestationText}
                 onChange={(e) => setAttestationText(e.target.value)}
               />
-            </div>
-          )}
-
-          {contentItem.type === "SLIDE_DECK" && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label>Slide deck (PowerPoint)</Label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept=".pptx"
-                    className="hidden"
-                    id="import-pptx"
-                    onChange={handleImportPptx}
-                    disabled={importing}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportPptx}
-                    disabled={exporting || !contentItem.slideDeck?.id}
-                  >
-                    <FileDown className="h-4 w-4 mr-1" />
-                    {exporting ? "Exporting…" : "Download as PowerPoint"}
-                  </Button>
-                </div>
-              </div>
-
-              {contentItem.slideDeck?.sourceFile && contentItem.slideDeck.slides?.length != null && (
-                <p className="text-sm text-muted-foreground">
-                  Current: {contentItem.slideDeck.sourceFile.filename},{" "}
-                  {contentItem.slideDeck.slides.length} slide{contentItem.slideDeck.slides.length === 1 ? "" : "s"}.
-                </p>
-              )}
-
-              <div
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                className={cn(
-                  "rounded-xl border-2 border-dashed border-border/60 bg-muted/30 p-8 text-center transition-colors",
-                  dragActive && "border-primary/50 bg-muted/50",
-                  importing && "pointer-events-none opacity-70"
-                )}
-              >
-                <p className="text-sm text-muted-foreground mb-3">
-                  Build your deck in PowerPoint, then upload it here. Drag and drop a .pptx file or click to browse.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById("import-pptx")?.click()}
-                  disabled={importing}
-                >
-                  <FileUp className="h-4 w-4 mr-1" />
-                  {importing ? "Importing…" : "Upload or replace PPTX"}
-                </Button>
-              </div>
             </div>
           )}
 
