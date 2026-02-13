@@ -58,11 +58,20 @@ export async function GET(
       }
     }
 
-    const skipNormalize = req.nextUrl.searchParams.get("raw") === "1"
-    if (skipNormalize) {
-      console.info("[slides/file] Serving raw PPTX (normalization skipped).", { fileId })
-    }
     const originalLength = buffer.byteLength
+    const rawParam = req.nextUrl.searchParams.get("raw") === "1"
+    const LARGE_FILE_THRESHOLD = 2 * 1024 * 1024 // 2MB: skip normalization for large decks (avoids breaking complex/large PPTX)
+    const skipNormalize =
+      rawParam || (originalLength > LARGE_FILE_THRESHOLD && (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")))
+    if (rawParam) {
+      console.info("[slides/file] Serving raw PPTX (normalization skipped via ?raw=1).", { fileId })
+    } else if (originalLength > LARGE_FILE_THRESHOLD) {
+      console.info("[slides/file] Serving raw PPTX (file large, normalization skipped).", {
+        fileId,
+        bytes: originalLength,
+        threshold: LARGE_FILE_THRESHOLD,
+      })
+    }
     if (
       !skipNormalize &&
       (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx"))

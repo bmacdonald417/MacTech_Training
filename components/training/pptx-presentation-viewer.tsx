@@ -226,7 +226,8 @@ export function PptxPresentationViewer({
             applySuccess()
             return
           }
-          // Defer 0-slides error: library may set slideCount asynchronously
+          // Defer 0-slides error: library may set slideCount asynchronously (large files need more time)
+          const deferMs = buf.byteLength > 2 * 1024 * 1024 ? 1400 : 450
           setTimeout(() => {
             if (!mounted) return
             if (previewer.slideCount > 0) applySuccess()
@@ -235,7 +236,7 @@ export function PptxPresentationViewer({
                 "The presentation has no slides the viewer could render. Try “Try original file” below, or re-save in PowerPoint with standard slide layouts."
               )
             }
-          }, 450)
+          }, deferMs)
         }).catch((err) => {
           if (!mounted) return
           console.error("[pptx-viewer] preview failed:", err)
@@ -280,6 +281,12 @@ export function PptxPresentationViewer({
           return
         }
         bufferRef.current = buf
+        if (typeof console !== "undefined" && buf.byteLength > 2 * 1024 * 1024) {
+          console.info("[pptx-viewer] Large file loaded, parsing may take a few seconds.", {
+            bytes: buf.byteLength,
+            mb: (buf.byteLength / 1024 / 1024).toFixed(2),
+          })
+        }
         // Defer init so the viewport has layout (fixes blank slides when stage mounts before layout)
         initTimerRef.current = setTimeout(() => tryInit(), 100)
       })
