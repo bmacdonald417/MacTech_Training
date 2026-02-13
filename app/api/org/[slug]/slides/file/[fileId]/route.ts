@@ -32,21 +32,25 @@ export async function GET(
       },
     })
     if (!file) {
-      console.warn("[slides/file] File not found.", { fileId, orgId: membership.orgId })
+      console.warn("[slides/file] 1. File not found.", { fileId, orgId: membership.orgId })
       return NextResponse.json({ error: "File not found." }, { status: 404 })
     }
+    console.info("[slides/file] 1. File found.", { fileId, storagePath: file.storagePath, filename: file.filename })
 
     let buffer: Buffer
     if (file.storagePath === "db" && file.contentBytes && file.contentBytes.length > 0) {
+      console.info("[slides/file] 2. Using contentBytes from DB.", { byteLength: file.contentBytes.length })
       buffer = Buffer.isBuffer(file.contentBytes)
         ? file.contentBytes
         : Buffer.from(file.contentBytes as ArrayBuffer)
     } else {
       const fullPath = resolveStoredFileAbsolutePath(file.storagePath)
+      console.info("[slides/file] 2. Reading from disk.", { storagePath: file.storagePath })
       try {
         buffer = await fs.promises.readFile(fullPath)
+        console.info("[slides/file] 2. Read OK.", { byteLength: buffer.byteLength })
       } catch (e) {
-        console.warn("[slides/file] File missing on disk.", {
+        console.warn("[slides/file] 2. File missing on disk.", {
           fileId,
           storagePath: file.storagePath,
           err: e instanceof Error ? e.message : String(e),
@@ -113,6 +117,7 @@ export async function GET(
       )
     }
 
+    console.info("[slides/file] 3. Sending response.", { fileId, byteLength: buffer.byteLength, mimeType: file.mimeType })
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": file.mimeType,
@@ -121,7 +126,7 @@ export async function GET(
       },
     })
   } catch (err) {
-    console.error("[slides/file]", err)
+    console.error("[slides/file] ERROR", err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to serve file" },
       { status: 500 }

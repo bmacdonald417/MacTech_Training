@@ -165,6 +165,17 @@ export function PptxPresentationViewer({
     const el = stageRef.current
     const bufferRef = { current: null as ArrayBuffer | null }
     let hasInited = false
+    const log = (step: string, data?: Record<string, unknown>) => {
+      if (typeof console !== "undefined") {
+        console.info(`[pptx-viewer] ${step}`, data ?? "")
+      }
+    }
+    const logError = (step: string, err: unknown) => {
+      if (typeof console !== "undefined") {
+        console.error(`[pptx-viewer] ERROR at ${step}:`, err)
+        if (err instanceof Error && err.stack) console.error("[pptx-viewer] stack:", err.stack)
+      }
+    }
 
     setLoaded(false)
     setError(null)
@@ -182,13 +193,64 @@ export function PptxPresentationViewer({
 
     const LOAD_TIMEOUT_MS = 25000
 
+    log("1. Fetch starting", { url: deckUrl })
+    fetch(deckUrl, { credentials: "include" })
+      .then(async (res) => {
+        const status = res.status
+        const ct = res.headers.get("Content-Type") ?? ""
+        const cl = res.headers.get("Content-Length") ?? ""
+        log("2. Fetch response received", { status, contentType: ct, contentLength: cl, ok: res.ok })
+        if (!res.ok) {
+          if (status === 404) {
+            const body = await res.json().catch(() => ({}))
+            if (body?.code === "FILE_MISSING_ON_DISK") {
+              throw new Error("FILE_MISSING_ON_DISK")
+            }
+            throw new Error("Presentation file not found. It may not have been saved yet.")
+          }
+          throw new Error(`Failed to load presentation (${status})`)
+        }
+        if (ct.includes("text/html") || ct.includes("application/json")) {
+          const text = await res.text()
+          logError("2. Fetch body is not binary", { contentType: ct, bodyPreview: text.slice(0, 200) })
+          throw new Error("Server returned an error instead of the presentation file.")
+        }
+        const buf = await res.arrayBuffer()
+        log("3. ArrayBuffer received", { byteLength: buf.byteLength })
+        return buf
+      })
+      .then((buf) => {
+        if (!mounted) return
+        if (!buf || buf.byteLength < 100) {
+          logError("3. Buffer too small", { byteLength: buf?.byteLength ?? 0 })
+          setError("Presentation file is empty or too small.")
+          return
+        }
+        bufferRef.current = buf
+        log("4. Buffer stored, scheduling tryInit in 100ms", { byteLength: buf.byteLength })
+        initTimerRef.current = setTimeout(() => tryInit(), 100)
+      })
+      .catch((e) => {
+        if (!mounted) return
+        logError("Fetch or buffer", e)
+        setError(
+          e instanceof Error && e.message === "FILE_MISSING_ON_DISK"
+            ? "Presentation file is missing on the server. Re-upload the deck from Admin → Presentations."
+            : e instanceof Error
+              ? e.message
+              : "Failed to load"
+        )
+      })
+
     function tryInit() {
       if (hasInited) return
       const buf = bufferRef.current
       if (!buf || !mounted) return
       hasInited = true
+      log("5. tryInit: calling dynamic import('pptx-preview')", { bufferBytes: buf.byteLength })
       import("pptx-preview").then(({ init }) => {
         if (!mounted) return
+        log("6. pptx-preview module loaded, calling init()")
         el.innerHTML = ""
         previewerRef.current = null
 
@@ -198,10 +260,21 @@ export function PptxPresentationViewer({
           mode: "slide",
         }) as unknown as PreviewerInstance
 
+        log("7. init() done, calling preview(buffer)")
         previewer.preview(buf).then(() => {
           if (!mounted) return
+          const count = previewer.slideCount
+          const idx = previewer.currentIndex
+          const previewerKeys = typeof previewer === "object" && previewer !== null ? Object.keys(previewer) : []
+          log("8. preview() RESOLVED", {
+            slideCount: count,
+            currentIndex: idx,
+            previewerKeys,
+            hasRenderSingleSlide: typeof (previewer as { renderSingleSlide?: unknown }).renderSingleSlide,
+          })
           const applySuccess = () => {
             if (!mounted) return
+            log("9. applySuccess: setting previewerRef, state, forceRender(0)")
             previewerRef.current = previewer
             setCurrentIndex(previewer.currentIndex)
             setSlideCount(previewer.slideCount)
@@ -218,7 +291,10 @@ export function PptxPresentationViewer({
             setTimeout(forceRender, 1500)
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                if (mounted) setLoaded(true)
+                if (mounted) {
+                  log("10. setLoaded(true) — viewer ready")
+                  setLoaded(true)
+                }
               })
             })
           }
@@ -226,12 +302,15 @@ export function PptxPresentationViewer({
             applySuccess()
             return
           }
-          // Defer 0-slides error: library may set slideCount asynchronously (large files need more time)
-          const deferMs = buf.byteLength > 2 * 1024 * 1024 ? 1400 : 450
+          const deferMs = buf.byteLength > 2 * 1024 * 1024 ? 2500 : 450
+          log("8b. slideCount is 0 — deferring error for ms", { deferMs })
           setTimeout(() => {
             if (!mounted) return
-            if (previewer.slideCount > 0) applySuccess()
+            const countNow = previewer.slideCount
+            log("8c. After defer", { slideCount: countNow })
+            if (countNow > 0) applySuccess()
             else {
+              logError("8d. Final: pptx-preview reports 0 slides", { previewerKeys: Object.keys(previewer) })
               setError(
                 "The presentation has no slides the viewer could render. Try “Try original file” below, or re-save in PowerPoint with standard slide layouts."
               )
@@ -239,7 +318,7 @@ export function PptxPresentationViewer({
           }, deferMs)
         }).catch((err) => {
           if (!mounted) return
-          console.error("[pptx-viewer] preview failed:", err)
+          logError("8. preview() REJECTED", err)
           const msg = String(err?.message ?? err)
           const isBackgroundError = /background|undefined/i.test(msg)
           setError(
@@ -250,59 +329,14 @@ export function PptxPresentationViewer({
         })
       }).catch((err) => {
         if (!mounted) return
-        console.error("[pptx-viewer] pptx-preview load failed:", err)
+        logError("6. dynamic import(pptx-preview) REJECTED", err)
         setError("Failed to load the presentation viewer.")
       })
     }
 
-    fetch(deckUrl, { credentials: "include" })
-      .then(async (res) => {
-        if (!res.ok) {
-          const status = res.status
-          if (status === 404) {
-            const body = await res.json().catch(() => ({}))
-            if (body?.code === "FILE_MISSING_ON_DISK") {
-              throw new Error("FILE_MISSING_ON_DISK")
-            }
-            throw new Error("Presentation file not found. It may not have been saved yet.")
-          }
-          throw new Error(`Failed to load presentation (${status})`)
-        }
-        const ct = res.headers.get("Content-Type") ?? ""
-        if (ct.includes("text/html") || ct.includes("application/json")) {
-          throw new Error("Server returned an error instead of the presentation file.")
-        }
-        return res.arrayBuffer()
-      })
-      .then((buf) => {
-        if (!mounted) return
-        if (!buf || buf.byteLength < 100) {
-          setError("Presentation file is empty or too small.")
-          return
-        }
-        bufferRef.current = buf
-        if (typeof console !== "undefined" && buf.byteLength > 2 * 1024 * 1024) {
-          console.info("[pptx-viewer] Large file loaded, parsing may take a few seconds.", {
-            bytes: buf.byteLength,
-            mb: (buf.byteLength / 1024 / 1024).toFixed(2),
-          })
-        }
-        // Defer init so the viewport has layout (fixes blank slides when stage mounts before layout)
-        initTimerRef.current = setTimeout(() => tryInit(), 100)
-      })
-      .catch((e) => {
-        if (!mounted) return
-        setError(
-          e instanceof Error && e.message === "FILE_MISSING_ON_DISK"
-            ? "Presentation file is missing on the server. Re-upload the deck from Admin → Presentations."
-            : e instanceof Error
-              ? e.message
-              : "Failed to load"
-        )
-      })
-
     const loadTimeoutId = setTimeout(() => {
       if (mounted && !previewerRef.current) {
+        logError("Load timeout: previewer never ready", { timeoutMs: LOAD_TIMEOUT_MS })
         setError("Loading timed out. The file may be missing on the server or the presentation format may not be supported.")
       }
     }, LOAD_TIMEOUT_MS)
@@ -611,6 +645,11 @@ export function PptxPresentationViewer({
           <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/60 p-6 backdrop-blur">
             <div className="text-sm font-medium">Couldn’t load the deck</div>
             <div className="mt-2 text-sm text-white/70">{error}</div>
+            {slideIds.length > 0 && (
+              <p className="mt-2 text-xs text-white/50">
+                This deck has {slideIds.length} slides in the system; the viewer couldn’t render this file.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
