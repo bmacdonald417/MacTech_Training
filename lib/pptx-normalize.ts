@@ -12,23 +12,34 @@ const DEFAULT_BG =
 
 /** Match opening p:cSld tag (optional whitespace/attrs). */
 const cSldOpenRegex = /<p:cSld(\s[^>]*)?>/
+/** Match any namespace prefix + cSld (e.g. p:cSld, x:cSld). */
+const cSldAnyNsRegex = /<[^:>]*:cSld(\s[^>]*)?>/
 
 /**
  * Inject p:bg right after the opening cSld tag so the slide has a defined background.
- * Tries regex first; falls back to indexOf so odd XML (e.g. newlines, different formatting) still gets fixed.
+ * Tries multiple patterns so different XML formats and namespaces are covered.
  */
 function injectBackgroundIfMissing(xml: string): string {
   if (xml.includes("<p:bg>")) return xml
   if (xml.indexOf("cSld") === -1) return xml
 
-  const byRegex = xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
-  if (byRegex !== xml) return byRegex
+  let out = xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
+  if (out !== xml) return out
+  out = xml.replace(cSldAnyNsRegex, (match) => match + DEFAULT_BG)
+  if (out !== xml) return out
 
   const openIdx = xml.indexOf("<p:cSld")
-  if (openIdx === -1) return xml
-  const closeIdx = xml.indexOf(">", openIdx)
-  if (closeIdx === -1) return xml
-  return xml.slice(0, closeIdx + 1) + DEFAULT_BG + xml.slice(closeIdx + 1)
+  if (openIdx !== -1) {
+    const closeIdx = xml.indexOf(">", openIdx)
+    if (closeIdx !== -1) return xml.slice(0, closeIdx + 1) + DEFAULT_BG + xml.slice(closeIdx + 1)
+  }
+  const cSldIdx = xml.indexOf("cSld")
+  if (cSldIdx !== -1) {
+    const open = xml.lastIndexOf("<", cSldIdx)
+    const close = xml.indexOf(">", cSldIdx)
+    if (open !== -1 && close !== -1 && close > open) return xml.slice(0, close + 1) + DEFAULT_BG + xml.slice(close + 1)
+  }
+  return xml
 }
 
 /**

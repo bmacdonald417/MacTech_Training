@@ -9,6 +9,9 @@ import { nanoid } from "nanoid"
 
 const ALLOWED_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
+// Allow long-running upload + parse + DB write (e.g. large PPTX)
+export const maxDuration = 60
+
 /**
  * POST /api/org/[slug]/slides/import-pptx
  * Admin/Trainer only. multipart/form-data with file field "file" (.pptx).
