@@ -60,6 +60,7 @@ export function PptxPresentationViewer({
   const stageRef = useRef<HTMLDivElement>(null)
   const previewerRef = useRef<PreviewerInstance | null>(null)
   const initTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loadTimeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const playbackTokenRef = useRef(0)
   const narrationCacheRef = useRef<Map<string, string | null>>(new Map())
@@ -311,7 +312,10 @@ export function PptxPresentationViewer({
             if (countNow > 0) applySuccess()
             else {
               logError("8d. Final: pptx-preview reports 0 slides", { previewerKeys: Object.keys(previewer) })
-              clearTimeout(loadTimeoutId)
+              if (loadTimeoutIdRef.current) {
+                clearTimeout(loadTimeoutIdRef.current)
+                loadTimeoutIdRef.current = null
+              }
               setError(
                 "The presentation has no slides the viewer could render. Try “Try original file” below, or re-save in PowerPoint with standard slide layouts."
               )
@@ -320,7 +324,10 @@ export function PptxPresentationViewer({
         }).catch((err) => {
           if (!mounted) return
           logError("8. preview() REJECTED", err)
-          clearTimeout(loadTimeoutId)
+          if (loadTimeoutIdRef.current) {
+            clearTimeout(loadTimeoutIdRef.current)
+            loadTimeoutIdRef.current = null
+          }
           const msg = String(err?.message ?? err)
           const isBackgroundError = /background|undefined/i.test(msg)
           setError(
@@ -332,23 +339,29 @@ export function PptxPresentationViewer({
       }).catch((err) => {
         if (!mounted) return
         logError("6. dynamic import(pptx-preview) REJECTED", err)
-        clearTimeout(loadTimeoutId)
+        if (loadTimeoutIdRef.current) {
+          clearTimeout(loadTimeoutIdRef.current)
+          loadTimeoutIdRef.current = null
+        }
         setError("Failed to load the presentation viewer.")
       })
     }
 
-    const loadTimeoutId = setTimeout(() => {
-      if (mounted && !previewerRef.current) {
-        logError("Load timeout: previewer never ready", { timeoutMs: LOAD_TIMEOUT_MS })
-        setError("Loading timed out. The file may be missing on the server or the presentation format may not be supported.")
-      }
+    loadTimeoutIdRef.current = setTimeout(() => {
+      if (!mounted || previewerRef.current) return
+      if (loadTimeoutIdRef.current === null) return // already cleared by error path
+      logError("Load timeout: previewer never ready", { timeoutMs: LOAD_TIMEOUT_MS })
+      setError("Loading timed out. The file may be missing on the server or the presentation format may not be supported.")
     }, LOAD_TIMEOUT_MS)
 
     return () => {
       mounted = false
       if (initTimerRef.current) clearTimeout(initTimerRef.current)
       initTimerRef.current = null
-      clearTimeout(loadTimeoutId)
+      if (loadTimeoutIdRef.current) {
+        clearTimeout(loadTimeoutIdRef.current)
+        loadTimeoutIdRef.current = null
+      }
       previewerRef.current = null
     }
   }, [deckUrl])
