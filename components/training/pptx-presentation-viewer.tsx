@@ -311,6 +311,7 @@ export function PptxPresentationViewer({
             if (countNow > 0) applySuccess()
             else {
               logError("8d. Final: pptx-preview reports 0 slides", { previewerKeys: Object.keys(previewer) })
+              clearTimeout(loadTimeoutId)
               setError(
                 "The presentation has no slides the viewer could render. Try “Try original file” below, or re-save in PowerPoint with standard slide layouts."
               )
@@ -319,6 +320,7 @@ export function PptxPresentationViewer({
         }).catch((err) => {
           if (!mounted) return
           logError("8. preview() REJECTED", err)
+          clearTimeout(loadTimeoutId)
           const msg = String(err?.message ?? err)
           const isBackgroundError = /background|undefined/i.test(msg)
           setError(
@@ -330,6 +332,7 @@ export function PptxPresentationViewer({
       }).catch((err) => {
         if (!mounted) return
         logError("6. dynamic import(pptx-preview) REJECTED", err)
+        clearTimeout(loadTimeoutId)
         setError("Failed to load the presentation viewer.")
       })
     }
