@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table-shell"
 import { Button } from "@/components/ui/button"
 import { MonitorPlay, ExternalLink } from "lucide-react"
+import { PresentationsUpload } from "./presentations-upload"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -38,8 +39,10 @@ export default async function PresentationsAdminPage({ params }: PageProps) {
     <div className="space-y-10">
       <PageHeader
         title="Presentations"
-        description="Backdoor settings for PPTX decks (speaker notes + narration/TTS)"
+        description="Backdoor settings for PPTX decks (speaker notes + narration/TTS). Upload a .pptx below to add a deck to the table; use Manage to edit narrator notes and generate audio."
       />
+
+      <PresentationsUpload orgSlug={slug} />
 
       <TableShell>
         <TableShellHeader>
@@ -55,7 +58,7 @@ export default async function PresentationsAdminPage({ params }: PageProps) {
         <TableShellBody>
           {decks.length === 0 ? (
             <div className="px-4 py-8 text-sm text-muted-foreground">
-              No PowerPoint-backed slide decks found for this org.
+              No PowerPoint-backed slide decks yet. Upload a .pptx above to add one; it will appear in this table and you can open Manage to edit narrator notes and generate audio.
             </div>
           ) : (
             decks.map((d) => (
