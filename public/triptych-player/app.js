@@ -14,7 +14,7 @@
     right:  { x: 2 / 3, y: 0, w: 1 / 3, h: 1 },
   };
 
-  let config = { global: { dimOpacity: 0.52, transitionMs: 450 }, slides: [] };
+  let config = { global: { dimOpacity: 0.624, transitionMs: 450 }, slides: [] };
   let currentSlideIndex = 0;
   let currentFocusState = 'intro';
   let segmentStartTime = 0;
@@ -71,13 +71,39 @@
     return m + ':' + s.toFixed(1).padStart(3, '0');
   }
 
-  /** Resolve panel bounds (normalized 0–1). Default equal thirds. */
+  /** Inset (as fraction of stage 0–1) so the highlight sits inside the section frame. */
+  const BORDER_INSET = 0.006;
+
+  /** Get the image's rendered rect as fractions of the stage (0–1). null if image not ready. */
+  function getImageBoundsInStage() {
+    if (!el.stage || !el.slideImage) return null;
+    const stageR = el.stage.getBoundingClientRect();
+    const imgR = el.slideImage.getBoundingClientRect();
+    if (stageR.width <= 0 || stageR.height <= 0 || imgR.width <= 0 || imgR.height <= 0) return null;
+    return {
+      left:   (imgR.left - stageR.left) / stageR.width,
+      top:    (imgR.top - stageR.top) / stageR.height,
+      width:  imgR.width / stageR.width,
+      height: imgR.height / stageR.height,
+    };
+  }
+
+  /** Resolve panel bounds (normalized 0–1). Uses image rect when no custom panels so highlight aligns with slide. */
   function getPanelBounds(slide) {
-    if (slide.panels && typeof slide.panels.left === 'object') {
+    if (slide && slide.panels && typeof slide.panels.left === 'object') {
       return {
         left:   slide.panels.left,
         center: slide.panels.center,
         right:  slide.panels.right,
+      };
+    }
+    const img = getImageBoundsInStage();
+    if (img) {
+      const t = img.height;
+      return {
+        left:   { x: img.left,              y: img.top, w: img.width / 3, h: t },
+        center: { x: img.left + img.width/3, y: img.top, w: img.width / 3, h: t },
+        right:  { x: img.left + 2*img.width/3, y: img.top, w: img.width / 3, h: t },
       };
     }
     return DEFAULT_PANELS;
@@ -124,11 +150,11 @@
     const border = el.activeBorder;
     const stage = el.stage;
     if (!border || !stage || !bounds) return;
-    const r = stage.getBoundingClientRect();
-    border.style.left   = (bounds.x * 100) + '%';
-    border.style.top    = (bounds.y * 100) + '%';
-    border.style.width  = (bounds.w * 100) + '%';
-    border.style.height = (bounds.h * 100) + '%';
+    const ins = BORDER_INSET * 100;
+    border.style.left   = (bounds.x * 100 + ins) + '%';
+    border.style.top    = (bounds.y * 100 + ins) + '%';
+    border.style.width  = (bounds.w * 100 - 2 * ins) + '%';
+    border.style.height = (bounds.h * 100 - 2 * ins) + '%';
   }
 
   function render() {
@@ -138,13 +164,15 @@
     const focus = segments ? stateAtTime(segments, t) : 'intro';
     const bounds = slide ? getPanelBounds(slide) : null;
 
-    document.documentElement.style.setProperty('--dim-opacity', String(config.global.dimOpacity || 0.52));
+    document.documentElement.style.setProperty('--dim-opacity', String(config.global.dimOpacity || 0.624));
     document.documentElement.style.setProperty('--transition-ms', String(config.global.transitionMs || 520));
     document.documentElement.style.setProperty('--transition-delay-ms', String(config.global.transitionDelayMs != null ? config.global.transitionDelayMs : 80));
 
     setDimOpacity(el.dimLeft,   focus === 'center' || focus === 'right');
     setDimOpacity(el.dimCenter, focus === 'left' || focus === 'right');
     setDimOpacity(el.dimRight,  focus === 'left' || focus === 'center');
+
+    if (bounds) applyPanelBoundsToOverlays(bounds);
 
     const showBorder = focus === 'left' || focus === 'center' || focus === 'right';
     el.activeBorder.classList.toggle('visible', showBorder);
@@ -178,7 +206,7 @@
       el.slideImage.alt = slide.title || ('Slide ' + (index + 1));
     }
     const bounds = slide ? getPanelBounds(slide) : null;
-    if (slide && slide.panels && bounds) applyPanelBoundsToOverlays(bounds);
+    if (bounds) applyPanelBoundsToOverlays(bounds);
     else resetOverlayDefaults();
     render();
   }
@@ -426,6 +454,11 @@
         this.classList.add('load-error');
         if (el.labelFocus) el.labelFocus.textContent = 'Image failed to load';
       };
+      el.slideImage.onload = function () { render(); };
+    }
+    if (el.stage) {
+      var ro = new ResizeObserver(function () { render(); });
+      ro.observe(el.stage);
     }
     loadConfig(function (err) {
       if (err) {

@@ -167,7 +167,7 @@ async function main() {
   }
 
   const timeline = {
-    global: { dimOpacity: 0.52, transitionMs: 450 },
+    global: { dimOpacity: 0.624, transitionMs: 450 },
     slides,
   }
   fs.writeFileSync(TIMELINE_PATH, JSON.stringify(timeline, null, 2))

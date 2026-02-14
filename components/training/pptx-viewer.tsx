@@ -80,6 +80,7 @@ export function PptxPresentationViewer({
   const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false)
   const [hasNarration, setHasNarration] = useState(false)
   const [fullscreenApiAvailable, setFullscreenApiAvailable] = useState(false)
+  const [preferPseudoFullscreen, setPreferPseudoFullscreen] = useState(false)
 
   const deckUrl = useMemo(() => {
     const base = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
@@ -153,22 +154,23 @@ export function PptxPresentationViewer({
   }, [])
 
   const toggleFullscreen = useCallback(async () => {
-    if (fullscreenApiAvailable) {
-      const target = viewportRef.current ?? document.documentElement
-      try {
-        if (!document.fullscreenElement) {
-          await (target as unknown as { requestFullscreen: () => Promise<void> }).requestFullscreen()
-        } else {
-          await document.exitFullscreen()
-        }
-      } catch {
-        // ignore
+    const usePseudo = preferPseudoFullscreen || !fullscreenApiAvailable
+    if (usePseudo) {
+      setIsPseudoFullscreen((p) => !p)
+      return
+    }
+    const target = viewportRef.current ?? document.documentElement
+    try {
+      if (!document.fullscreenElement) {
+        await (target as unknown as { requestFullscreen: () => Promise<void> }).requestFullscreen()
+      } else {
+        await document.exitFullscreen()
       }
-    } else {
-      // Mobile fallback: pseudo-fullscreen (take over viewport with high z-index + 100dvh)
+    } catch {
+      // Fullscreen API failed (e.g. not user gesture on mobile); fall back to pseudo
       setIsPseudoFullscreen((p) => !p)
     }
-  }, [fullscreenApiAvailable])
+  }, [fullscreenApiAvailable, preferPseudoFullscreen])
 
   const setError = useCallback((msg: string) => {
     setStatus("error")
@@ -521,6 +523,11 @@ export function PptxPresentationViewer({
 
   useEffect(() => {
     setFullscreenApiAvailable(supportsFullscreenApi())
+    const mobileQuery = window.matchMedia("(max-width: 768px), (pointer: coarse)")
+    const setPrefer = () => setPreferPseudoFullscreen(mobileQuery.matches)
+    setPrefer()
+    mobileQuery.addEventListener("change", setPrefer)
+    return () => mobileQuery.removeEventListener("change", setPrefer)
   }, [])
 
   useEffect(() => {
@@ -531,22 +538,60 @@ export function PptxPresentationViewer({
 
   useEffect(() => {
     if (!isPseudoFullscreen) return
-    const prevOverflow = document.body.style.overflow
-    const prevHeight = document.documentElement.style.height
-    document.body.style.overflow = "hidden"
-    document.documentElement.style.height = "100dvh"
+    const html = document.documentElement
+    const body = document.body
+    const prevHtml = { overflow: html.style.overflow, height: html.style.height, position: html.style.position }
+    const prevBody = { overflow: body.style.overflow, height: body.style.height, position: body.style.position, width: body.style.width, top: body.style.top, left: body.style.left, right: body.style.right, bottom: body.style.bottom }
+    html.style.overflow = "hidden"
+    html.style.height = "100dvh"
+    html.style.position = "fixed"
+    body.style.overflow = "hidden"
+    body.style.height = "100dvh"
+    body.style.position = "fixed"
+    body.style.width = "100%"
+    body.style.top = "0"
+    body.style.left = "0"
+    body.style.right = "0"
+    body.style.bottom = "0"
     return () => {
-      document.body.style.overflow = prevOverflow
-      document.documentElement.style.height = prevHeight
+      html.style.overflow = prevHtml.overflow
+      html.style.height = prevHtml.height
+      html.style.position = prevHtml.position
+      body.style.overflow = prevBody.overflow
+      body.style.height = prevBody.height
+      body.style.position = prevBody.position
+      body.style.width = prevBody.width
+      body.style.top = prevBody.top
+      body.style.left = prevBody.left
+      body.style.right = prevBody.right
+      body.style.bottom = prevBody.bottom
     }
   }, [isPseudoFullscreen])
+
+  const pseudoFullscreenStyle: React.CSSProperties = isPseudoFullscreen
+    ? {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100%",
+        height: "100%",
+        minHeight: "100dvh",
+        zIndex: 2147483647,
+        overflow: "hidden",
+        backgroundColor: "#000",
+        color: "#fff",
+      }
+    : undefined
 
   const viewerContent = (
     <div
       className={cn(
-        "fixed inset-0 overflow-hidden bg-black text-white",
-        isPseudoFullscreen && "z-[99999] min-h-[100dvh] h-[100dvh]"
+        !isPseudoFullscreen && "fixed inset-0 overflow-hidden bg-black text-white",
+        isPseudoFullscreen && "pptx-pseudo-fullscreen"
       )}
+      style={pseudoFullscreenStyle}
       onMouseMove={() => setShowUi(true)}
       onClick={() => setShowUi(true)}
       onTouchStart={() => setShowUi(true)}

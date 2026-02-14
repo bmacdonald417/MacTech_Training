@@ -102,7 +102,7 @@ html, body {
 .dim-overlay.dim-right  { left: 66.667%; top: 0; width: 33.333%; height: 100%; }
 
 .dim-overlay.active {
-  opacity: var(--dim-opacity, 0.52);
+  opacity: var(--dim-opacity, 0.624);
 }
 
 .border-layer {
