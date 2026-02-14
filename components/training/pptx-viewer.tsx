@@ -263,7 +263,7 @@ export function PptxPresentationViewer({
                 if (previewer.slideCount > 0) finishReady(previewer)
                 else {
                   finishError(
-                    "This presentation could not be rendered in the browser. Use "Open original file" to download and open in Keynote or PowerPoint."
+                    "This presentation could not be rendered in the browser. Use \"Open original file\" to download and open in Keynote or PowerPoint."
                   )
                 }
               }, deferMs)
