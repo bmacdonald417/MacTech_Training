@@ -103,7 +103,7 @@ export function PresentationsTableWithBulkDelete({
                     {d.sourceFile?.id && (
                       <Button variant="ghost" size="sm" asChild>
                         <Link
-                          href={`/org/${orgSlug}/slides/view/${d.sourceFile.id}?images=1&from=${encodeURIComponent(
+                          href={`/org/${orgSlug}/slides/view/${d.sourceFile.id}?from=${encodeURIComponent(
                             `/org/${orgSlug}/admin/presentations`
                           )}`}
                           target="_blank"

@@ -26,8 +26,9 @@ type PreviewerInstance = {
 
 const BASE_W = 1600
 const BASE_H = 900
-const LOAD_TIMEOUT_MS = 25000
-const ZERO_SLIDES_DEFER_MS = 500
+const LOAD_TIMEOUT_MS = 30000
+const ZERO_SLIDES_DEFER_MS = 800
+const LARGE_FILE_DEFER_MS = 3500
 const NARRATION_PRE_DELAY_MS = 450
 const NARRATION_POST_DELAY_MS = 550
 const NO_NARRATION_DWELL_MS = 900
@@ -73,7 +74,6 @@ export function PptxPresentationViewer({
   const [scale, setScale] = useState(1)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [slideCount, setSlideCount] = useState<number | null>(null)
-  const [imageMode, setImageMode] = useState(false)
   const [showUi, setShowUi] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -81,8 +81,6 @@ export function PptxPresentationViewer({
   const [hasNarration, setHasNarration] = useState(false)
   const [fullscreenApiAvailable, setFullscreenApiAvailable] = useState(false)
   const [preferPseudoFullscreen, setPreferPseudoFullscreen] = useState(false)
-  const [slideImageError, setSlideImageError] = useState<string | null>(null)
-  const slideImageCheckDoneRef = useRef(false)
 
   const deckUrl = useMemo(() => {
     const base = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
@@ -124,29 +122,20 @@ export function PptxPresentationViewer({
   }, [deckId, isTraining])
 
   const goPrev = useCallback(() => {
-    if (imageMode) {
-      setCurrentIndex((i) => Math.max(0, i - 1))
-      return
-    }
     const p = previewerRef.current
     if (!p || p.currentIndex <= 0) return
     p.renderPreSlide()
     requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
-  }, [imageMode])
+  }, [])
 
   const goNext = useCallback(() => {
-    if (imageMode) {
-      const last = (slideCount ?? slideIds.length) - 1
-      setCurrentIndex((i) => Math.min(last, i + 1))
-      return
-    }
     const p = previewerRef.current
     if (!p) return
     const last = p.slideCount - 1
     if (p.currentIndex >= last) return
     p.renderNextSlide()
     requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
-  }, [imageMode, slideCount, slideIds.length])
+  }, [])
 
   const retryPaint = useCallback(() => {
     const p = previewerRef.current
@@ -179,23 +168,10 @@ export function PptxPresentationViewer({
     setErrorMessage(msg)
   }, [])
 
-  // When ?images=1, use LibreOffice slide images only (skip pptx-preview)
-  const useImagesOnly = searchParams.get("images") === "1"
-
-  // Load and init: single effect with full cleanup
+  // Load and init: fetch PPTX and render with pptx-preview (client-side only)
   useEffect(() => {
     const el = stageRef.current
     if (!el) return
-
-    if (useImagesOnly && slideIds.length > 0) {
-      setStatus("loading")
-      setErrorMessage(null)
-      setCurrentIndex(0)
-      setSlideCount(slideIds.length)
-      setImageMode(true)
-      setStatus("ready")
-      return () => {}
-    }
 
     let mounted = true
     let loadTimeoutId: ReturnType<typeof setTimeout> | null = null
@@ -229,20 +205,9 @@ export function PptxPresentationViewer({
       setError(msg)
     }
 
-    function finishImageMode() {
-      if (!mounted) return
-      clearLoadTimeout()
-      if (el?.firstChild) el.innerHTML = ""
-      setSlideCount(slideIds.length)
-      setImageMode(true)
-      setStatus("ready")
-    }
-
     // Reset UI state
     setStatus("loading")
     setErrorMessage(null)
-    setSlideImageError(null)
-    slideImageCheckDoneRef.current = false
     setCurrentIndex(0)
     setSlideCount(null)
     setIsPlaying(false)
@@ -292,14 +257,13 @@ export function PptxPresentationViewer({
                 finishReady(previewer)
                 return
               }
-              const deferMs = buffer!.byteLength > 2 * 1024 * 1024 ? 2000 : ZERO_SLIDES_DEFER_MS
+              const deferMs = buffer!.byteLength > 2 * 1024 * 1024 ? LARGE_FILE_DEFER_MS : ZERO_SLIDES_DEFER_MS
               setTimeout(() => {
                 if (!mounted) return
                 if (previewer.slideCount > 0) finishReady(previewer)
-                else if (slideIds.length > 0) finishImageMode()
                 else {
                   finishError(
-                    "The presentation has no slides the viewer could render. Try “Try original file” or re-save in PowerPoint with standard slide layouts."
+                    "This presentation could not be rendered in the browser. Use "Open original file" to download and open in Keynote or PowerPoint."
                   )
                 }
               }, deferMs)
@@ -309,8 +273,8 @@ export function PptxPresentationViewer({
               const isBg = /background|undefined/i.test(msg)
               finishError(
                 isBg
-                  ? "Slide format not supported (e.g. missing background). Re-save as standard .pptx."
-                  : "Could not parse the presentation. The file may be corrupted or unsupported."
+                  ? "Slide format not supported (e.g. missing background). Use \"Open original file\" to open in Keynote or PowerPoint."
+                  : "Could not parse the presentation. Use \"Open original file\" to download and open in Keynote or PowerPoint."
               )
             })
           }).catch(() => {
@@ -342,7 +306,7 @@ export function PptxPresentationViewer({
       clearLoadTimeout()
       previewerRef.current = null
     }
-  }, [deckUrl, setError, slideIds.length, useImagesOnly])
+  }, [deckUrl, setError])
 
   // Sync index/count from library when ready
   useEffect(() => {
@@ -393,29 +357,6 @@ export function PptxPresentationViewer({
   const isFirst = currentIndex <= 0
   const isLast = slideCount == null ? false : currentIndex >= Math.max(0, slideCount - 1)
   const loaded = status === "ready"
-  const slideImageUrl = useMemo(
-    () =>
-      imageMode && loaded
-        ? `/api/org/${orgSlug}/slides/slide-image/${sourceFileId}/${currentIndex}`
-        : null,
-    [imageMode, loaded, orgSlug, sourceFileId, currentIndex]
-  )
-
-  // When in image mode, probe first slide to surface 503 (e.g. file too large / OOM) before showing broken img
-  useEffect(() => {
-    if (!imageMode || status !== "ready" || slideImageCheckDoneRef.current) return
-    slideImageCheckDoneRef.current = true
-    const url = `/api/org/${orgSlug}/slides/slide-image/${sourceFileId}/0`
-    fetch(url, { credentials: "include" })
-      .then((res) => {
-        if (res.status === 503) {
-          return res.json().then((body: { error?: string }) => {
-            setSlideImageError(body?.error ?? "Slide images could not be generated.")
-          })
-        }
-      })
-      .catch(() => setSlideImageError("Slide images could not be loaded."))
-  }, [imageMode, status, orgSlug, sourceFileId])
 
   const getNarrationStreamUrl = useCallback(
     async (slideId: string) => {
@@ -643,30 +584,8 @@ export function PptxPresentationViewer({
             transform: `translate(-50%, -50%) scale(${scale})`,
             transformOrigin: "50% 50%",
             boxShadow: "0 30px 90px rgba(0,0,0,0.70), 0 6px 22px rgba(0,0,0,0.45)",
-            visibility: imageMode ? "hidden" : undefined,
           }}
         />
-        {imageMode && loaded && slideImageUrl && (
-          <div
-            className="absolute left-1/2 top-1/2 z-10 flex overflow-hidden rounded-2xl bg-white"
-            style={{
-              width: BASE_W,
-              height: BASE_H,
-              minWidth: BASE_W,
-              minHeight: BASE_H,
-              transform: `translate(-50%, -50%) scale(${scale})`,
-              transformOrigin: "50% 50%",
-              boxShadow: "0 30px 90px rgba(0,0,0,0.70), 0 6px 22px rgba(0,0,0,0.45)",
-            }}
-          >
-            <img
-              src={slideImageUrl}
-              alt=""
-              className="h-full w-full object-contain"
-              onError={() => setSlideImageError((prev) => prev ?? "Slide image failed to load.")}
-            />
-          </div>
-        )}
       </div>
 
       <audio ref={audioRef} className="sr-only" preload="metadata" />
@@ -674,44 +593,6 @@ export function PptxPresentationViewer({
       {status === "loading" && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 text-sm text-white/70">
           Loading presentation…
-        </div>
-      )}
-
-      {slideImageError && imageMode && (
-        <div className="absolute inset-x-0 top-0 z-20 flex justify-center p-4">
-          <div className="flex max-w-2xl flex-wrap items-center gap-2 rounded-xl border border-amber-500/40 bg-black/70 px-4 py-3 text-sm backdrop-blur">
-            <span className="text-amber-200">{slideImageError}</span>
-            <div className="flex gap-2">
-              {searchParams.get("raw") !== "1" && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="border-amber-500/50 text-amber-200 hover:bg-amber-500/20"
-                  onClick={() => {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set("raw", "1")
-                    window.location.href = url.toString()
-                  }}
-                >
-                  Open original file
-                </Button>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-white/80 hover:bg-white/10"
-                onClick={() => {
-                  setSlideImageError(null)
-                  slideImageCheckDoneRef.current = false
-                  window.location.reload()
-                }}
-              >
-                Retry
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -740,7 +621,7 @@ export function PptxPresentationViewer({
                     window.location.href = url.toString()
                   }}
                 >
-                  Try original file
+                  Open original file
                 </Button>
               )}
               <Button type="button" onClick={() => window.location.reload()}>
@@ -843,11 +724,9 @@ export function PptxPresentationViewer({
                 ? "Tip: ← → navigate, Space play/pause narration, F fullscreen"
                 : "Tip: ← → navigate, Space play/pause, F fullscreen"}
             </span>
-            {!imageMode && (
-              <button type="button" onClick={retryPaint} className="shrink-0 text-white/90 underline hover:text-white">
-                Slides not showing? Retry
-              </button>
-            )}
+            <button type="button" onClick={retryPaint} className="shrink-0 text-white/90 underline hover:text-white">
+              Slides not showing? Retry
+            </button>
           </div>
         </div>
       </div>
