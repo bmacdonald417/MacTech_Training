@@ -31,7 +31,7 @@ const traineeLinks = [
   { href: (s: string) => `/org/${s}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
   { href: (s: string) => `/org/${s}/my-training`, label: "My Training", icon: BookOpen },
   { href: (s: string) => `/org/${s}/resources`, label: "Resources", icon: Library },
-  { href: (s: string) => `/org/${s}/triptych`, label: "CMMC Triptych", icon: LayoutPanelLeft },
+  { href: (s: string) => `/org/${s}/triptych`, label: "CUI Enclave User Training", icon: LayoutPanelLeft },
   { href: (s: string) => `/org/${s}/certificates`, label: "Certificates", icon: Award },
 ]
 
