@@ -76,7 +76,7 @@ export function PresentationAdminEditor({
 
   const viewerUrl = useMemo(() => {
     if (!sourceFileId) return null
-    return `/org/${orgSlug}/slides/view/${sourceFileId}?from=${encodeURIComponent(
+    return `/org/${orgSlug}/slides/view/${sourceFileId}?images=1&from=${encodeURIComponent(
       `/org/${orgSlug}/admin/presentations/${slideDeckId}`,
     )}`
   }, [orgSlug, slideDeckId, sourceFileId])

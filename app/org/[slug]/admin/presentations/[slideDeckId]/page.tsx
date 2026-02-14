@@ -70,7 +70,7 @@ export default async function PresentationAdminDetailPage({ params }: PageProps)
             {deck.sourceFile?.id && (
               <Button asChild className="gap-2">
                 <Link
-                  href={`/org/${slug}/slides/view/${deck.sourceFile.id}?from=${encodeURIComponent(
+                  href={`/org/${slug}/slides/view/${deck.sourceFile.id}?images=1&from=${encodeURIComponent(
                     `/org/${slug}/admin/presentations/${deck.id}`,
                   )}`}
                   target="_blank"

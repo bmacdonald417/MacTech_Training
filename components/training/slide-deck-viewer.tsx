@@ -30,10 +30,10 @@ export function SlideDeckViewer({
   const presentationTitle = slideDeck?.sourceFile?.filename ?? "Presentation"
   const deckId = slideDeck?.id ?? null
   const presentationUrl =
-    sourceFileId != null ? `/org/${orgSlug}/slides/view/${sourceFileId}` : null
+    sourceFileId != null ? `/org/${orgSlug}/slides/view/${sourceFileId}?images=1` : null
   const trainingViewerUrl = useMemo(() => {
     if (!presentationUrl || !deckId) return null
-    return `${presentationUrl}?training=1&deckId=${encodeURIComponent(deckId)}`
+    return `${presentationUrl}&training=1&deckId=${encodeURIComponent(deckId)}`
   }, [deckId, presentationUrl])
 
   // When the standalone viewer signals completion, mark this content item complete.

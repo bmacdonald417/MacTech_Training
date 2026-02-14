@@ -167,10 +167,23 @@ export function PptxPresentationViewer({
     setErrorMessage(msg)
   }, [])
 
+  // When ?images=1, use LibreOffice slide images only (skip pptx-preview)
+  const useImagesOnly = searchParams.get("images") === "1"
+
   // Load and init: single effect with full cleanup
   useEffect(() => {
     const el = stageRef.current
     if (!el) return
+
+    if (useImagesOnly && slideIds.length > 0) {
+      setStatus("loading")
+      setErrorMessage(null)
+      setCurrentIndex(0)
+      setSlideCount(slideIds.length)
+      setImageMode(true)
+      setStatus("ready")
+      return () => {}
+    }
 
     let mounted = true
     let loadTimeoutId: ReturnType<typeof setTimeout> | null = null
@@ -315,7 +328,7 @@ export function PptxPresentationViewer({
       clearLoadTimeout()
       previewerRef.current = null
     }
-  }, [deckUrl, setError, slideIds.length])
+  }, [deckUrl, setError, slideIds.length, useImagesOnly])
 
   // Sync index/count from library when ready
   useEffect(() => {
