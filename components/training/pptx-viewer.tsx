@@ -26,9 +26,9 @@ type PreviewerInstance = {
 
 const BASE_W = 1600
 const BASE_H = 900
-const LOAD_TIMEOUT_MS = 30000
-const ZERO_SLIDES_DEFER_MS = 800
-const LARGE_FILE_DEFER_MS = 3500
+const LOAD_TIMEOUT_MS = 120000
+const ZERO_SLIDES_DEFER_MS = 1200
+const LARGE_FILE_DEFER_MS = 8000
 const NARRATION_PRE_DELAY_MS = 450
 const NARRATION_POST_DELAY_MS = 550
 const NO_NARRATION_DWELL_MS = 900
@@ -81,6 +81,7 @@ export function PptxPresentationViewer({
   const [hasNarration, setHasNarration] = useState(false)
   const [fullscreenApiAvailable, setFullscreenApiAvailable] = useState(false)
   const [preferPseudoFullscreen, setPreferPseudoFullscreen] = useState(false)
+  const [loadingLong, setLoadingLong] = useState(false)
 
   const deckUrl = useMemo(() => {
     const base = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
@@ -208,6 +209,7 @@ export function PptxPresentationViewer({
     // Reset UI state
     setStatus("loading")
     setErrorMessage(null)
+    setLoadingLong(false)
     setCurrentIndex(0)
     setSlideCount(null)
     setIsPlaying(false)
@@ -216,6 +218,10 @@ export function PptxPresentationViewer({
     playbackTokenRef.current += 1
     audioRef.current?.pause()
     audioRef.current?.removeAttribute("src")
+
+    const longLoadTimer = setTimeout(() => {
+      if (mounted) setLoadingLong(true)
+    }, 8000)
 
     fetch(deckUrl, { credentials: "include" })
       .then(async (res) => {
@@ -296,12 +302,13 @@ export function PptxPresentationViewer({
     loadTimeoutId = setTimeout(() => {
       loadTimeoutId = null
       if (mounted && !previewerRef.current) {
-        finishError("Loading timed out. The file may be missing or the format may not be supported.")
+        finishError("Loading timed out. Try \"Open original file\" to download and open in Keynote or PowerPoint.")
       }
     }, LOAD_TIMEOUT_MS)
 
     return () => {
       mounted = false
+      clearTimeout(longLoadTimer)
       if (initTimerId) clearTimeout(initTimerId)
       clearLoadTimeout()
       previewerRef.current = null
@@ -591,8 +598,11 @@ export function PptxPresentationViewer({
       <audio ref={audioRef} className="sr-only" preload="metadata" />
 
       {status === "loading" && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 text-sm text-white/70">
-          Loading presentation…
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/80 text-sm text-white/70">
+          <span>Loading presentation…</span>
+          {loadingLong && (
+            <span className="text-white/50">Large files may take a minute.</span>
+          )}
         </div>
       )}
 
