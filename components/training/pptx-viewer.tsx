@@ -71,6 +71,7 @@ export function PptxPresentationViewer({
   const [scale, setScale] = useState(1)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [slideCount, setSlideCount] = useState<number | null>(null)
+  const [imageMode, setImageMode] = useState(false)
   const [showUi, setShowUi] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -116,20 +117,29 @@ export function PptxPresentationViewer({
   }, [deckId, isTraining])
 
   const goPrev = useCallback(() => {
+    if (imageMode) {
+      setCurrentIndex((i) => Math.max(0, i - 1))
+      return
+    }
     const p = previewerRef.current
     if (!p || p.currentIndex <= 0) return
     p.renderPreSlide()
     requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
-  }, [])
+  }, [imageMode])
 
   const goNext = useCallback(() => {
+    if (imageMode) {
+      const last = (slideCount ?? slideIds.length) - 1
+      setCurrentIndex((i) => Math.min(last, i + 1))
+      return
+    }
     const p = previewerRef.current
     if (!p) return
     const last = p.slideCount - 1
     if (p.currentIndex >= last) return
     p.renderNextSlide()
     requestAnimationFrame(() => setCurrentIndex(p.currentIndex))
-  }, [])
+  }, [imageMode, slideCount, slideIds.length])
 
   const retryPaint = useCallback(() => {
     const p = previewerRef.current
@@ -194,6 +204,15 @@ export function PptxPresentationViewer({
       setError(msg)
     }
 
+    function finishImageMode() {
+      if (!mounted) return
+      clearLoadTimeout()
+      if (el?.firstChild) el.innerHTML = ""
+      setSlideCount(slideIds.length)
+      setImageMode(true)
+      setStatus("ready")
+    }
+
     // Reset UI state
     setStatus("loading")
     setErrorMessage(null)
@@ -250,6 +269,7 @@ export function PptxPresentationViewer({
               setTimeout(() => {
                 if (!mounted) return
                 if (previewer.slideCount > 0) finishReady(previewer)
+                else if (slideIds.length > 0) finishImageMode()
                 else {
                   finishError(
                     "The presentation has no slides the viewer could render. Try “Try original file” or re-save in PowerPoint with standard slide layouts."
@@ -295,7 +315,7 @@ export function PptxPresentationViewer({
       clearLoadTimeout()
       previewerRef.current = null
     }
-  }, [deckUrl, setError])
+  }, [deckUrl, setError, slideIds.length])
 
   // Sync index/count from library when ready
   useEffect(() => {
@@ -346,6 +366,13 @@ export function PptxPresentationViewer({
   const isFirst = currentIndex <= 0
   const isLast = slideCount == null ? false : currentIndex >= Math.max(0, slideCount - 1)
   const loaded = status === "ready"
+  const slideImageUrl = useMemo(
+    () =>
+      imageMode && loaded
+        ? `/api/org/${orgSlug}/slides/slide-image/${sourceFileId}/${currentIndex}`
+        : null,
+    [imageMode, loaded, orgSlug, sourceFileId, currentIndex]
+  )
 
   const getNarrationStreamUrl = useCallback(
     async (slideId: string) => {
@@ -507,8 +534,29 @@ export function PptxPresentationViewer({
             transform: `translate(-50%, -50%) scale(${scale})`,
             transformOrigin: "50% 50%",
             boxShadow: "0 30px 90px rgba(0,0,0,0.70), 0 6px 22px rgba(0,0,0,0.45)",
+            visibility: imageMode ? "hidden" : undefined,
           }}
         />
+        {imageMode && loaded && slideImageUrl && (
+          <div
+            className="absolute left-1/2 top-1/2 z-10 flex overflow-hidden rounded-2xl bg-white"
+            style={{
+              width: BASE_W,
+              height: BASE_H,
+              minWidth: BASE_W,
+              minHeight: BASE_H,
+              transform: `translate(-50%, -50%) scale(${scale})`,
+              transformOrigin: "50% 50%",
+              boxShadow: "0 30px 90px rgba(0,0,0,0.70), 0 6px 22px rgba(0,0,0,0.45)",
+            }}
+          >
+            <img
+              src={slideImageUrl}
+              alt=""
+              className="h-full w-full object-contain"
+            />
+          </div>
+        )}
       </div>
 
       <audio ref={audioRef} className="sr-only" preload="metadata" />
@@ -648,9 +696,11 @@ export function PptxPresentationViewer({
                 ? "Tip: ← → navigate, Space play/pause narration, F fullscreen"
                 : "Tip: ← → navigate, Space play/pause, F fullscreen"}
             </span>
-            <button type="button" onClick={retryPaint} className="shrink-0 text-white/90 underline hover:text-white">
-              Slides not showing? Retry
-            </button>
+            {!imageMode && (
+              <button type="button" onClick={retryPaint} className="shrink-0 text-white/90 underline hover:text-white">
+                Slides not showing? Retry
+              </button>
+            )}
           </div>
         </div>
       </div>

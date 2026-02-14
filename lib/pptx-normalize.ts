@@ -87,8 +87,7 @@ export async function ensureSlideBackgrounds(buffer: Buffer): Promise<Buffer> {
     }
   }
 
-  if (!changed) return buffer
-  // Normalize all paths to forward slashes so pptx-preview's layout/master lookup by path matches
+  // Always re-pack with forward-slash paths so pptx-preview's path lookups find slides
   const normalizedZip = new JSZip()
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue
