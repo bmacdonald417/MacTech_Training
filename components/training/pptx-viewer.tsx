@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ChevronLeft,
@@ -12,6 +13,7 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 type PreviewerInstance = {
   preview: (buffer: ArrayBuffer) => Promise<unknown>
@@ -34,10 +36,10 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
 
-function canFullscreen(el: HTMLElement | null) {
+function supportsFullscreenApi(): boolean {
   if (typeof document === "undefined") return false
-  const anyEl = (el ?? document.documentElement) as unknown as { requestFullscreen?: () => Promise<void> }
-  return typeof anyEl?.requestFullscreen === "function"
+  const docEl = document.documentElement as unknown as { requestFullscreen?: () => Promise<void> }
+  return typeof docEl?.requestFullscreen === "function"
 }
 
 type ViewStatus = "loading" | "ready" | "error"
@@ -75,7 +77,9 @@ export function PptxPresentationViewer({
   const [showUi, setShowUi] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false)
   const [hasNarration, setHasNarration] = useState(false)
+  const [fullscreenApiAvailable, setFullscreenApiAvailable] = useState(false)
 
   const deckUrl = useMemo(() => {
     const base = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
@@ -149,18 +153,22 @@ export function PptxPresentationViewer({
   }, [])
 
   const toggleFullscreen = useCallback(async () => {
-    const target = viewportRef.current ?? document.documentElement
-    if (!canFullscreen(target)) return
-    try {
-      if (!document.fullscreenElement) {
-        await (target as unknown as { requestFullscreen: () => Promise<void> }).requestFullscreen()
-      } else {
-        await document.exitFullscreen()
+    if (fullscreenApiAvailable) {
+      const target = viewportRef.current ?? document.documentElement
+      try {
+        if (!document.fullscreenElement) {
+          await (target as unknown as { requestFullscreen: () => Promise<void> }).requestFullscreen()
+        } else {
+          await document.exitFullscreen()
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
+    } else {
+      // Mobile fallback: pseudo-fullscreen (take over viewport with high z-index + 100dvh)
+      setIsPseudoFullscreen((p) => !p)
     }
-  }, [])
+  }, [fullscreenApiAvailable])
 
   const setError = useCallback((msg: string) => {
     setStatus("error")
@@ -501,11 +509,19 @@ export function PptxPresentationViewer({
         e.preventDefault()
         setShowUi(true)
         toggleFullscreen()
-      } else if (e.key === "Escape") setShowUi(true)
+      } else if (e.key === "Escape") {
+        setShowUi(true)
+        setIsPseudoFullscreen(false)
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+      }
     }
     window.addEventListener("keydown", onKey, { passive: false })
     return () => window.removeEventListener("keydown", onKey)
   }, [goNext, goPrev, toggleFullscreen])
+
+  useEffect(() => {
+    setFullscreenApiAvailable(supportsFullscreenApi())
+  }, [])
 
   useEffect(() => {
     const onFs = () => setIsFullscreen(!!document.fullscreenElement)
@@ -513,9 +529,24 @@ export function PptxPresentationViewer({
     return () => document.removeEventListener("fullscreenchange", onFs)
   }, [])
 
-  return (
+  useEffect(() => {
+    if (!isPseudoFullscreen) return
+    const prevOverflow = document.body.style.overflow
+    const prevHeight = document.documentElement.style.height
+    document.body.style.overflow = "hidden"
+    document.documentElement.style.height = "100dvh"
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.documentElement.style.height = prevHeight
+    }
+  }, [isPseudoFullscreen])
+
+  const viewerContent = (
     <div
-      className="fixed inset-0 overflow-hidden bg-black text-white"
+      className={cn(
+        "fixed inset-0 overflow-hidden bg-black text-white",
+        isPseudoFullscreen && "z-[99999] min-h-[100dvh] h-[100dvh]"
+      )}
       onMouseMove={() => setShowUi(true)}
       onClick={() => setShowUi(true)}
       onTouchStart={() => setShowUi(true)}
@@ -638,10 +669,9 @@ export function PptxPresentationViewer({
               variant="ghost"
               className="h-9 w-9 text-white hover:bg-white/10"
               onClick={toggleFullscreen}
-              disabled={!canFullscreen(viewportRef.current)}
               aria-label="Toggle fullscreen"
             >
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              {(isFullscreen || isPseudoFullscreen) ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </div>
         </div>
@@ -719,4 +749,9 @@ export function PptxPresentationViewer({
       </div>
     </div>
   )
+
+  if (isPseudoFullscreen && typeof document !== "undefined" && document.body) {
+    return createPortal(viewerContent, document.body)
+  }
+  return viewerContent
 }

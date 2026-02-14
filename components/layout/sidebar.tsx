@@ -55,11 +55,13 @@ function NavSection({
   links,
   orgSlug,
   pathname,
+  onNavigate,
 }: {
   title: string
   links: { href: (s: string) => string; label: string; icon: typeof FileText }[]
   orgSlug: string
   pathname: string
+  onNavigate?: () => void
 }) {
   return (
     <div className="space-y-0.5">
@@ -76,6 +78,7 @@ function NavSection({
           <Link
             key={href}
             href={href}
+            onClick={onNavigate}
             className={cn(
               "relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors duration-150",
               isActive
@@ -147,6 +150,7 @@ export function Sidebar({ orgSlug, role, userGroupNames = [], mobileOpen = false
             links={traineeLinks}
             orgSlug={orgSlug}
             pathname={pathname}
+            onNavigate={onClose}
           />
           {role === "ADMIN" && (
             <NavSection
@@ -154,6 +158,7 @@ export function Sidebar({ orgSlug, role, userGroupNames = [], mobileOpen = false
               links={trainerLinks}
               orgSlug={orgSlug}
               pathname={pathname}
+              onNavigate={onClose}
             />
           )}
           {role === "ADMIN" && (
@@ -162,6 +167,7 @@ export function Sidebar({ orgSlug, role, userGroupNames = [], mobileOpen = false
               links={adminLinks}
               orgSlug={orgSlug}
               pathname={pathname}
+              onNavigate={onClose}
             />
           )}
         </nav>

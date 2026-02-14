@@ -87,7 +87,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
                 Create Assignment
               </Link>
             </Button>
-          ) : undefined
+          ) : (
+            <Button asChild>
+              <Link href={`/org/${slug}/my-training`}>
+                <BookOpen className="h-4 w-4" />
+                My Training
+              </Link>
+            </Button>
+          )
         }
       />
 
@@ -96,21 +103,25 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           label="Total Assignments"
           value={stats.totalAssignments}
           icon={BookOpen}
+          href={isAdmin ? `/org/${slug}/trainer/assignments` : `/org/${slug}/my-training`}
         />
         <StatCard
           label="In Progress"
           value={stats.inProgress}
           icon={FileText}
+          href={isAdmin ? `/org/${slug}/trainer/assignments` : `/org/${slug}/my-training`}
         />
         <StatCard
           label="Completed"
           value={stats.completed}
           icon={Award}
+          href={isAdmin ? `/org/${slug}/trainer/assignments` : `/org/${slug}/my-training`}
         />
         <StatCard
           label="Certificates Issued"
           value={stats.certificates}
           icon={Award}
+          href={`/org/${slug}/certificates`}
         />
       </section>
 
