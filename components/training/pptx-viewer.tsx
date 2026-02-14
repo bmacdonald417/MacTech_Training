@@ -81,6 +81,8 @@ export function PptxPresentationViewer({
   const [hasNarration, setHasNarration] = useState(false)
   const [fullscreenApiAvailable, setFullscreenApiAvailable] = useState(false)
   const [preferPseudoFullscreen, setPreferPseudoFullscreen] = useState(false)
+  const [slideImageError, setSlideImageError] = useState<string | null>(null)
+  const slideImageCheckDoneRef = useRef(false)
 
   const deckUrl = useMemo(() => {
     const base = `/api/org/${orgSlug}/slides/file/${sourceFileId}`
@@ -239,6 +241,8 @@ export function PptxPresentationViewer({
     // Reset UI state
     setStatus("loading")
     setErrorMessage(null)
+    setSlideImageError(null)
+    slideImageCheckDoneRef.current = false
     setCurrentIndex(0)
     setSlideCount(null)
     setIsPlaying(false)
@@ -396,6 +400,22 @@ export function PptxPresentationViewer({
         : null,
     [imageMode, loaded, orgSlug, sourceFileId, currentIndex]
   )
+
+  // When in image mode, probe first slide to surface 503 (e.g. file too large / OOM) before showing broken img
+  useEffect(() => {
+    if (!imageMode || status !== "ready" || slideImageCheckDoneRef.current) return
+    slideImageCheckDoneRef.current = true
+    const url = `/api/org/${orgSlug}/slides/slide-image/${sourceFileId}/0`
+    fetch(url, { credentials: "include" })
+      .then((res) => {
+        if (res.status === 503) {
+          return res.json().then((body: { error?: string }) => {
+            setSlideImageError(body?.error ?? "Slide images could not be generated.")
+          })
+        }
+      })
+      .catch(() => setSlideImageError("Slide images could not be loaded."))
+  }, [imageMode, status, orgSlug, sourceFileId])
 
   const getNarrationStreamUrl = useCallback(
     async (slideId: string) => {
@@ -643,6 +663,7 @@ export function PptxPresentationViewer({
               src={slideImageUrl}
               alt=""
               className="h-full w-full object-contain"
+              onError={() => setSlideImageError((prev) => prev ?? "Slide image failed to load.")}
             />
           </div>
         )}
@@ -653,6 +674,44 @@ export function PptxPresentationViewer({
       {status === "loading" && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 text-sm text-white/70">
           Loading presentation…
+        </div>
+      )}
+
+      {slideImageError && imageMode && (
+        <div className="absolute inset-x-0 top-0 z-20 flex justify-center p-4">
+          <div className="flex max-w-2xl flex-wrap items-center gap-2 rounded-xl border border-amber-500/40 bg-black/70 px-4 py-3 text-sm backdrop-blur">
+            <span className="text-amber-200">{slideImageError}</span>
+            <div className="flex gap-2">
+              {searchParams.get("raw") !== "1" && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-500/50 text-amber-200 hover:bg-amber-500/20"
+                  onClick={() => {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set("raw", "1")
+                    window.location.href = url.toString()
+                  }}
+                >
+                  Open original file
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-white/80 hover:bg-white/10"
+                onClick={() => {
+                  setSlideImageError(null)
+                  slideImageCheckDoneRef.current = false
+                  window.location.reload()
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

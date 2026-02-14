@@ -66,7 +66,7 @@ export async function GET(
       if ("error" in result) {
         console.warn("[slides/slide-image] generateSlideImages failed:", result.error)
         return NextResponse.json(
-          { error: result.error, code: "CONVERSION_FAILED" },
+          { error: result.error, code: result.code ?? "CONVERSION_FAILED" },
           { status: 503 }
         )
       }

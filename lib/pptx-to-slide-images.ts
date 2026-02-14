@@ -51,6 +51,24 @@ export async function getExistingSlideImageCount(fileId: string): Promise<number
 const LIBREOFFICE_BIN = process.env.LIBREOFFICE_PATH ?? "libreoffice"
 const PDFTOPPM_BIN = process.env.PDFTOPPM_PATH ?? "pdftoppm"
 
+/** Max file size (bytes) for server-side conversion. Larger files often OOM (exit 137) in constrained containers. Default 1.5 MB; set PPTX_MAX_CONVERSION_BYTES to allow more (e.g. 5242880 for 5 MB) if you increase container memory. */
+const MAX_CONVERSION_BYTES = Number(process.env.PPTX_MAX_CONVERSION_BYTES) || 1.5 * 1024 * 1024
+
+export type SlideImageErrorCode =
+  | "STORAGE_NOT_WRITABLE"
+  | "FILE_TOO_LARGE"
+  | "LIBREOFFICE_NOT_FOUND"
+  | "LIBREOFFICE_FAILED"
+  | "CONVERSION_OOM"
+  | "CONVERSION_FAILED"
+  | "PDF_NOT_PRODUCED"
+  | "PDFTOPPM_FAILED"
+  | "NO_PNG_OUTPUT"
+
+export type GenerateSlideImagesResult =
+  | { count: number }
+  | { error: string; code?: SlideImageErrorCode }
+
 /**
  * Generate PNG images for each slide: PPTX → PDF (LibreOffice) → PNG per page (pdftoppm).
  * Writes slide-images/{fileId}/1.png, 2.png, ...
@@ -59,10 +77,18 @@ const PDFTOPPM_BIN = process.env.PDFTOPPM_PATH ?? "pdftoppm"
 export async function generateSlideImages(
   fileId: string,
   buffer: Buffer
-): Promise<{ count: number } | { error: string }> {
+): Promise<GenerateSlideImagesResult> {
   const writable = await isMountWritable()
   if (!writable) {
-    return { error: "Storage path is not writable. Set RAILWAY_VOLUME_MOUNT_PATH." }
+    return { error: "Storage path is not writable. Set RAILWAY_VOLUME_MOUNT_PATH.", code: "STORAGE_NOT_WRITABLE" }
+  }
+
+  if (buffer.length > MAX_CONVERSION_BYTES) {
+    const maxMB = (MAX_CONVERSION_BYTES / (1024 * 1024)).toFixed(1)
+    return {
+      error: `File is too large for server conversion (max ${maxMB} MB). Use "Open original file" or upload a smaller deck.`,
+      code: "FILE_TOO_LARGE",
+    }
   }
 
   const tmpDir = path.join(os.tmpdir(), `pptx-slides-${fileId}-${Date.now()}`)
@@ -84,18 +110,26 @@ export async function generateSlideImages(
       if (msg.includes("ENOENT")) {
         return {
           error: `LibreOffice not found (${LIBREOFFICE_BIN}). Install LibreOffice or set LIBREOFFICE_PATH.`,
+          code: "LIBREOFFICE_NOT_FOUND",
         }
       }
-      return { error: `LibreOffice failed: ${msg}` }
+      return { error: `LibreOffice failed: ${msg}`, code: "LIBREOFFICE_FAILED" }
     }
     if (lo.status !== 0) {
-      return { error: `LibreOffice exited ${lo.status}. ${lo.stderr?.trim() ?? ""}` }
+      const stderr = lo.stderr?.trim() ?? ""
+      const isOom = lo.status === 137
+      return {
+        error: isOom
+          ? "Server ran out of memory converting this file. Use \"Open original file\" or upload a smaller deck."
+          : `LibreOffice exited ${lo.status}. ${stderr}`,
+        code: isOom ? "CONVERSION_OOM" : "CONVERSION_FAILED",
+      }
     }
 
     try {
       await fs.promises.access(pdfPath, fs.constants.R_OK)
     } catch {
-      return { error: "LibreOffice did not produce a PDF." }
+      return { error: "LibreOffice did not produce a PDF.", code: "PDF_NOT_PRODUCED" }
     }
 
     const pdftoppm = spawnSync(
@@ -108,18 +142,22 @@ export async function generateSlideImages(
       if (msg.includes("ENOENT")) {
         return {
           error: `pdftoppm not found (${PDFTOPPM_BIN}). Install poppler-utils or set PDFTOPPM_PATH.`,
+          code: "PDFTOPPM_FAILED",
         }
       }
-      return { error: `pdftoppm failed: ${msg}` }
+      return { error: `pdftoppm failed: ${msg}`, code: "PDFTOPPM_FAILED" }
     }
     if (pdftoppm.status !== 0) {
-      return { error: `pdftoppm exited ${pdftoppm.status}. ${pdftoppm.stderr?.trim() ?? ""}` }
+      return {
+        error: `pdftoppm exited ${pdftoppm.status}. ${pdftoppm.stderr?.trim() ?? ""}`,
+        code: "PDFTOPPM_FAILED",
+      }
     }
 
     const outFiles = await fs.promises.readdir(tmpDir)
     const pngs = outFiles.filter((n) => n.toLowerCase().endsWith(".png"))
     if (pngs.length === 0) {
-      return { error: "pdftoppm produced no PNG files." }
+      return { error: "pdftoppm produced no PNG files.", code: "NO_PNG_OUTPUT" }
     }
 
     // pdftoppm outputs slide-1.png, slide-2.png, ... Sort by number.
