@@ -1,4 +1,4 @@
-import { PptxPresentationViewer } from "@/components/training/pptx-presentation-viewer"
+import { PptxPresentationViewer } from "@/components/training/pptx-viewer"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
