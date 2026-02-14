@@ -583,7 +583,7 @@ export function PptxPresentationViewer({
         backgroundColor: "#000",
         color: "#fff",
       }
-    : undefined
+    : {}
 
   const viewerContent = (
     <div
