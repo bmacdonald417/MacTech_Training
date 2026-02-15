@@ -29,6 +29,7 @@ const BASE_H = 900
 const LOAD_TIMEOUT_MS = 120000
 const ZERO_SLIDES_DEFER_MS = 1200
 const LARGE_FILE_DEFER_MS = 8000
+const OPEN_EXTERNAL_THRESHOLD_BYTES = 10 * 1024 * 1024 // 10MB: skip in-browser, open file directly
 const NARRATION_PRE_DELAY_MS = 450
 const NARRATION_POST_DELAY_MS = 550
 const NO_NARRATION_DWELL_MS = 900
@@ -200,9 +201,17 @@ export function PptxPresentationViewer({
       setStatus("ready")
     }
 
-    function finishError(msg: string) {
+    const rawFileUrl = deckUrl.includes("raw=1") ? deckUrl : deckUrl + (deckUrl.includes("?") ? "&" : "?") + "raw=1"
+    function finishError(msg: string, openInNewTab = true) {
       if (!mounted) return
       clearLoadTimeout()
+      if (openInNewTab) {
+        try {
+          window.open(rawFileUrl, "_blank", "noopener")
+        } catch {
+          // ignore popup block
+        }
+      }
       setError(msg)
     }
 
@@ -242,10 +251,16 @@ export function PptxPresentationViewer({
       .then((buf) => {
         if (!mounted) return
         if (!buf || buf.byteLength < 100) {
-          finishError("Presentation file is empty or too small.")
+          finishError("Presentation file is empty or too small.", false)
           return
         }
         buffer = buf
+        if (buffer.byteLength > OPEN_EXTERNAL_THRESHOLD_BYTES) {
+          finishError(
+            "This presentation is large. It should open in a new tab. If not, click \"Open original file\" below."
+          )
+          return
+        }
         initTimerId = setTimeout(() => {
           initTimerId = null
           if (!mounted || !buffer) return
@@ -295,7 +310,8 @@ export function PptxPresentationViewer({
             ? "Presentation file is missing on the server. Re-upload from Admin → Presentations."
             : e instanceof Error
               ? e.message
-              : "Failed to load"
+              : "Failed to load",
+          false
         )
       })
 

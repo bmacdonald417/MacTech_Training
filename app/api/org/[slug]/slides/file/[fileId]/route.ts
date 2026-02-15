@@ -64,7 +64,7 @@ export async function GET(
 
     const originalLength = buffer.byteLength
     const rawParam = req.nextUrl.searchParams.get("raw") === "1"
-    const LARGE_FILE_THRESHOLD = 1 * 1024 * 1024 // 1MB: skip normalization (avoids breaking slide discovery in pptx-preview for many decks)
+    const LARGE_FILE_THRESHOLD = 8 * 1024 * 1024 // 8MB: try normalizing so pptx-preview can render; above this serve raw
     const skipNormalize =
       rawParam || (originalLength > LARGE_FILE_THRESHOLD && (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")))
     if (rawParam) {
