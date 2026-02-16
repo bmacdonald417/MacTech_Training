@@ -116,18 +116,18 @@ export function SlideShowViewer({
 
   const requestFullscreen = useCallback(() => {
     const el = containerRef.current ?? document.documentElement
-    const doc = document.documentElement as Document & { webkitRequestFullscreen?: () => Promise<void> }
-    if (el.requestFullscreen) {
-      el.requestFullscreen()
-    } else if (doc.webkitRequestFullscreen) {
-      doc.webkitRequestFullscreen()
+    const elFs = el as unknown as { requestFullscreen?: () => Promise<void>; webkitRequestFullscreen?: () => Promise<void> }
+    if (elFs.requestFullscreen) {
+      elFs.requestFullscreen()
+    } else if (elFs.webkitRequestFullscreen) {
+      elFs.webkitRequestFullscreen()
     }
   }, [])
 
   const exitFullscreen = useCallback(() => {
-    const doc = document as Document & { webkitExitFullscreen?: () => void }
-    if (document.exitFullscreen) {
-      document.exitFullscreen()
+    const doc = document as unknown as { exitFullscreen?: () => Promise<void>; webkitExitFullscreen?: () => void }
+    if (doc.exitFullscreen) {
+      doc.exitFullscreen()
     } else if (doc.webkitExitFullscreen) {
       doc.webkitExitFullscreen()
     }
