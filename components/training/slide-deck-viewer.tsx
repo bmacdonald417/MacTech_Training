@@ -57,7 +57,7 @@ export function SlideDeckViewer({
           slideCount={slides.length}
           title={presentationTitle}
           downloadUrl={downloadUrl}
-          slideIds={slides.map((s) => s.id)}
+          slideIds={slides.map((s: { id: string }) => s.id)}
           onComplete={onComplete}
           isCompleted={isCompleted}
           embedded
