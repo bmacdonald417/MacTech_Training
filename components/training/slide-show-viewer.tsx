@@ -9,6 +9,8 @@ import {
   Expand,
   Minimize2,
   CheckCircle2,
+  Play,
+  Pause,
 } from "lucide-react"
 
 interface SlideShowViewerProps {
@@ -17,6 +19,8 @@ interface SlideShowViewerProps {
   slideCount: number
   title: string
   downloadUrl: string
+  /** Ordered slide entity IDs for narration (TTS). When provided, Play/Pause auto-advance with audio. */
+  slideIds?: string[]
   onComplete?: () => void
   isCompleted?: boolean
   /** When true, viewer fills available space with minimal chrome (embedded in training). When false, assume full-page presentation mode. */
@@ -26,6 +30,10 @@ interface SlideShowViewerProps {
 const SWIPE_THRESHOLD_PX = 50
 const REDUCED_MOTION_MS = 0
 const DEFAULT_TRANSITION_MS = 280
+/** Delay (ms) before narration starts for a slide */
+const PRE_AUDIO_DELAY_MS = 800
+/** Delay (ms) after narration ends before advancing to next slide */
+const POST_AUDIO_DELAY_MS = 600
 
 /**
  * In-browser slide show: one slide per view, keyboard/touch/fullscreen.
@@ -37,6 +45,7 @@ export function SlideShowViewer({
   slideCount,
   title,
   downloadUrl,
+  slideIds,
   onComplete,
   isCompleted = false,
   embedded = true,
@@ -44,8 +53,13 @@ export function SlideShowViewer({
   const [index, setIndex] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef<number | null>(null)
+  const narrationAudioRef = useRef<HTMLAudioElement>(null)
+  const isAutoPlayingRef = useRef(false)
+  const pendingTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const canAutoPlayNarration = Boolean(slideIds?.length)
 
   const imageBase = `/api/org/${orgSlug}/slides/slide-image/${sourceFileId}`
   const transitionMs =
@@ -54,15 +68,140 @@ export function SlideShowViewer({
       ? REDUCED_MOTION_MS
       : DEFAULT_TRANSITION_MS
 
+  const clearPendingTimeouts = useCallback(() => {
+    pendingTimeoutsRef.current.forEach((id) => clearTimeout(id))
+    pendingTimeoutsRef.current = []
+  }, [])
+
   const go = useCallback(
     (delta: number) => {
+      if (isAutoPlayingRef.current) {
+        isAutoPlayingRef.current = false
+        setIsAutoPlaying(false)
+        clearPendingTimeouts()
+        narrationAudioRef.current?.pause()
+      }
       setIndex((i) => Math.max(0, Math.min(slideCount - 1, i + delta)))
       setImageError(false)
     },
-    [slideCount]
+    [slideCount, clearPendingTimeouts]
   )
   const goPrev = useCallback(() => go(-1), [go])
   const goNext = useCallback(() => go(1), [go])
+
+  const runStep = useCallback(
+    (slideIndex: number) => {
+      if (!isAutoPlayingRef.current || slideIndex >= slideCount) {
+        setIsAutoPlaying(false)
+        isAutoPlayingRef.current = false
+        return
+      }
+      const t1 = setTimeout(() => {
+        pendingTimeoutsRef.current = pendingTimeoutsRef.current.filter((id) => id !== t1)
+        if (!isAutoPlayingRef.current) return
+        const entityId = slideIds?.[slideIndex]
+        if (!entityId) {
+          const t2 = setTimeout(() => {
+            pendingTimeoutsRef.current = pendingTimeoutsRef.current.filter((id) => id !== t2)
+            if (!isAutoPlayingRef.current) return
+            setIndex(slideIndex + 1)
+            if (slideIndex + 1 < slideCount) runStep(slideIndex + 1)
+            else {
+              setIsAutoPlaying(false)
+              isAutoPlayingRef.current = false
+            }
+          }, POST_AUDIO_DELAY_MS)
+          pendingTimeoutsRef.current.push(t2)
+          return
+        }
+        fetch(
+          `/api/org/${orgSlug}/narration?entityType=SLIDE&entityId=${encodeURIComponent(entityId)}`
+        )
+          .then((r) => r.json().catch(() => ({})))
+          .then((data: { hasNarration?: boolean; streamUrl?: string }) => {
+            if (!isAutoPlayingRef.current) return
+            const audio = narrationAudioRef.current
+            if (data.hasNarration && data.streamUrl && audio) {
+              audio.src = data.streamUrl
+              audio.load()
+              const onEnded = () => {
+                audio.removeEventListener("ended", onEnded)
+                if (!isAutoPlayingRef.current) return
+                const t2 = setTimeout(() => {
+                  pendingTimeoutsRef.current = pendingTimeoutsRef.current.filter((id) => id !== t2)
+                  if (!isAutoPlayingRef.current) return
+                  setIndex(slideIndex + 1)
+                  if (slideIndex + 1 < slideCount) runStep(slideIndex + 1)
+                  else {
+                    setIsAutoPlaying(false)
+                    isAutoPlayingRef.current = false
+                  }
+                }, POST_AUDIO_DELAY_MS)
+                pendingTimeoutsRef.current.push(t2)
+              }
+              audio.addEventListener("ended", onEnded)
+              audio.play().catch(() => {
+                audio.removeEventListener("ended", onEnded)
+                const t2 = setTimeout(() => {
+                  pendingTimeoutsRef.current = pendingTimeoutsRef.current.filter((id) => id !== t2)
+                  if (!isAutoPlayingRef.current) return
+                  setIndex(slideIndex + 1)
+                  if (slideIndex + 1 < slideCount) runStep(slideIndex + 1)
+                  else {
+                    setIsAutoPlaying(false)
+                    isAutoPlayingRef.current = false
+                  }
+                }, POST_AUDIO_DELAY_MS)
+                pendingTimeoutsRef.current.push(t2)
+              })
+            } else {
+              const t2 = setTimeout(() => {
+                pendingTimeoutsRef.current = pendingTimeoutsRef.current.filter((id) => id !== t2)
+                if (!isAutoPlayingRef.current) return
+                setIndex(slideIndex + 1)
+                if (slideIndex + 1 < slideCount) runStep(slideIndex + 1)
+                else {
+                  setIsAutoPlaying(false)
+                  isAutoPlayingRef.current = false
+                }
+              }, POST_AUDIO_DELAY_MS)
+              pendingTimeoutsRef.current.push(t2)
+            }
+          })
+          .catch(() => {
+            if (!isAutoPlayingRef.current) return
+            const t2 = setTimeout(() => {
+              pendingTimeoutsRef.current = pendingTimeoutsRef.current.filter((id) => id !== t2)
+              if (!isAutoPlayingRef.current) return
+              setIndex(slideIndex + 1)
+              if (slideIndex + 1 < slideCount) runStep(slideIndex + 1)
+              else {
+                setIsAutoPlaying(false)
+                isAutoPlayingRef.current = false
+              }
+            }, POST_AUDIO_DELAY_MS)
+            pendingTimeoutsRef.current.push(t2)
+          })
+      }, PRE_AUDIO_DELAY_MS)
+      pendingTimeoutsRef.current.push(t1)
+    },
+    [orgSlug, slideCount, slideIds]
+  )
+
+  const playAutoPlay = useCallback(() => {
+    clearPendingTimeouts()
+    narrationAudioRef.current?.pause()
+    isAutoPlayingRef.current = true
+    setIsAutoPlaying(true)
+    runStep(index)
+  }, [index, runStep, clearPendingTimeouts])
+
+  const pauseAutoPlay = useCallback(() => {
+    isAutoPlayingRef.current = false
+    setIsAutoPlaying(false)
+    clearPendingTimeouts()
+    narrationAudioRef.current?.pause()
+  }, [clearPendingTimeouts])
 
   // Keyboard: ArrowLeft, ArrowRight, Home, End, Escape (exit fullscreen)
   useEffect(() => {
@@ -205,8 +344,20 @@ export function SlideShowViewer({
         </figure>
 
         {imageError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 text-slate-300">
-            <p>Slide could not be loaded. Try downloading the presentation instead.</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/95 p-6 text-center text-slate-300">
+            <p>
+              Slides couldn’t be loaded in the browser. This can happen if the presentation is large or the server is busy.
+            </p>
+            <a
+              href={downloadUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground hover:opacity-90"
+            >
+              <Download className="h-4 w-4" />
+              Download presentation
+            </a>
           </div>
         )}
 
@@ -230,6 +381,11 @@ export function SlideShowViewer({
           </>
         )}
       </div>
+
+      {/* Narration auto-play: single hidden audio element */}
+      {canAutoPlayNarration && (
+        <audio ref={narrationAudioRef} className="sr-only" preload="none" />
+      )}
 
       {/* Chrome: progress, nav, fullscreen, download, complete */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-slate-950/95 px-3 py-2 text-white">
@@ -263,6 +419,31 @@ export function SlideShowViewer({
         </div>
 
         <div className="flex items-center gap-1">
+          {canAutoPlayNarration && (
+            isAutoPlaying ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-white hover:bg-white/15"
+                onClick={pauseAutoPlay}
+                aria-label="Pause narration"
+              >
+                <Pause className="h-4 w-4" />
+                Pause
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-white hover:bg-white/15"
+                onClick={playAutoPlay}
+                aria-label="Play narration and advance slides"
+              >
+                <Play className="h-4 w-4" />
+                Play
+              </Button>
+            )
+          )}
           {isFullscreen ? (
             <Button
               variant="ghost"

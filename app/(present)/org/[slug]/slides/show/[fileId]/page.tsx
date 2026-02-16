@@ -28,6 +28,7 @@ export default async function Page({
   const title =
     deck?.contentItem?.title ?? deck?.sourceFile?.filename ?? "Presentation"
   const slideCount = deck?.slides?.length ?? null
+  const slideIds = deck?.slides?.map((s) => s.id) ?? null
 
   return (
     <SlideShowPageClient
@@ -35,6 +36,7 @@ export default async function Page({
       sourceFileId={fileId}
       title={title}
       initialSlideCount={slideCount}
+      initialSlideIds={slideIds}
     />
   )
 }
