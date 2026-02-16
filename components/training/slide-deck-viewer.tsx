@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, ChevronLeft, ChevronRight, Download } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, Download, ExternalLink } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
+import { SlideShowViewer } from "./slide-show-viewer"
 
 interface SlideDeckViewerProps {
   slideDeck: any
@@ -14,8 +15,7 @@ interface SlideDeckViewerProps {
 }
 
 /**
- * Slide deck training module: download-only for PPTX (no in-browser viewer).
- * Trainees download/open the .pptx and mark complete when done.
+ * Slide deck training module: in-browser slide show (image-based) + download + mark complete.
  * Fallback: if no source file, show slide content as text with prev/next + complete.
  */
 export function SlideDeckViewer({
@@ -34,6 +34,10 @@ export function SlideDeckViewer({
     sourceFileId != null
       ? `/api/org/${orgSlug}/slides/file/${sourceFileId}`
       : null
+  const showUrl =
+    sourceFileId != null
+      ? `/org/${orgSlug}/slides/show/${sourceFileId}`
+      : null
 
   if (!slideDeck || slides.length === 0) {
     return (
@@ -43,52 +47,35 @@ export function SlideDeckViewer({
     )
   }
 
-  // PPTX-backed deck: show download + mark complete (no embedded viewer)
+  // PPTX-backed deck: in-browser slide show (server-rendered PNGs) + download + complete
   if (sourceFileId && downloadUrl) {
     return (
-      <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-border/40 bg-slate-950">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_20%,hsl(var(--primary)/0.24),transparent_60%)]" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/80" />
-
-          <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-6 py-10 text-center">
-            <div className="text-xs font-medium uppercase tracking-widest text-white/60">
-              PowerPoint deck
-            </div>
-            <div className="text-balance text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              {presentationTitle}
-            </div>
-            <p className="text-sm text-white/65">
-              Download or open the presentation in PowerPoint, Keynote, or another app to view the slides. When you&apos;ve finished reviewing it, mark this module complete below.
-            </p>
-
-            <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
-              <Button asChild className="gap-2">
-                <a href={downloadUrl} download target="_blank" rel="noopener noreferrer">
-                  <Download className="h-4 w-4" />
-                  Download / open presentation
-                </a>
-              </Button>
-              {isCompleted ? (
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">Completed</span>
-                </div>
-              ) : (
-                <Button variant="outline" className="gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20" onClick={onComplete}>
-                  <CheckCircle2 className="h-4 w-4" />
-                  I&apos;ve reviewed this — Mark complete
-                </Button>
-              )}
-            </div>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/40 bg-slate-950">
+        <SlideShowViewer
+          orgSlug={orgSlug}
+          sourceFileId={sourceFileId}
+          slideCount={slides.length}
+          title={presentationTitle}
+          downloadUrl={downloadUrl}
+          onComplete={onComplete}
+          isCompleted={isCompleted}
+          embedded
+        />
+        {showUrl && (
+          <div className="flex shrink-0 justify-end border-t border-white/10 px-2 py-1">
+            <Button variant="ghost" size="sm" asChild>
+              <a
+                href={showUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gap-1.5 text-white/70 hover:text-white"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open in new tab
+              </a>
+            </Button>
           </div>
-        </div>
-
-        <div className="flex shrink-0 items-center justify-between border-t border-border/40 pt-2">
-          <span className="text-sm text-slate-400">
-            {slides.length} slide{slides.length === 1 ? "" : "s"}
-          </span>
-        </div>
+        )}
       </div>
     )
   }

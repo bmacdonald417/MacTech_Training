@@ -2,13 +2,12 @@ import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Download, ArrowLeft } from "lucide-react"
+import { Download, ArrowLeft, Presentation } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
 /**
- * Slide deck file view: download-only (no in-browser PPTX viewer).
- * Links from admin/training that pointed here now get a simple download page.
+ * Slide deck file view: link to in-browser show or download.
  */
 export default async function Page({
   params,
@@ -22,11 +21,8 @@ export default async function Page({
   await requireAuth(slug)
 
   const slideDeck = await prisma.slideDeck.findFirst({
-    where: {
-      sourceFileId: fileId,
-    },
+    where: { sourceFileId: fileId },
     select: {
-      id: true,
       contentItem: { select: { title: true } },
       sourceFile: { select: { filename: true } },
     },
@@ -34,6 +30,7 @@ export default async function Page({
 
   const title = slideDeck?.contentItem?.title ?? slideDeck?.sourceFile?.filename ?? "Presentation"
   const downloadUrl = `/api/org/${slug}/slides/file/${fileId}`
+  const showUrl = `/org/${slug}/slides/show/${fileId}`
   const backHref = from && from.startsWith("/") && !from.startsWith("//") ? from : `/org/${slug}/my-training`
 
   return (
@@ -41,16 +38,22 @@ export default async function Page({
       <div className="max-w-md w-full text-center space-y-6">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="text-slate-400 text-sm">
-          Download the presentation to open in PowerPoint, Keynote, or another app. In-browser slide viewing will be available in a future update.
+          View slides in your browser or download to open in PowerPoint or Keynote.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col gap-3">
           <Button asChild className="gap-2">
+            <Link href={showUrl}>
+              <Presentation className="h-4 w-4" />
+              View in browser
+            </Link>
+          </Button>
+          <Button variant="outline" asChild className="gap-2 border-white/30 text-white hover:bg-white/10">
             <a href={downloadUrl} download target="_blank" rel="noopener noreferrer">
               <Download className="h-4 w-4" />
               Download presentation
             </a>
           </Button>
-          <Button variant="outline" asChild className="gap-2 border-white/30 text-white hover:bg-white/10">
+          <Button variant="ghost" asChild className="gap-2 text-white/70 hover:text-white">
             <Link href={backHref}>
               <ArrowLeft className="h-4 w-4" />
               Back
