@@ -277,8 +277,3 @@
   color: hsl(var(--prose-body-dim));
 }
 
-/* PPTX viewer pseudo-fullscreen: iOS min-height fallback */
-.pptx-pseudo-fullscreen {
-  min-height: 100dvh;
-  min-height: -webkit-fill-available;
-}

@@ -1,39 +1,63 @@
-import { PptxPresentationViewer } from "@/components/training/pptx-viewer"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Download, ArrowLeft } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
+/**
+ * Slide deck file view: download-only (no in-browser PPTX viewer).
+ * Links from admin/training that pointed here now get a simple download page.
+ */
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; fileId: string }>
+  searchParams: Promise<{ from?: string }>
 }) {
   const { slug, fileId } = await params
-  const membership = await requireAuth(slug)
+  const { from } = await searchParams
+  await requireAuth(slug)
 
   const slideDeck = await prisma.slideDeck.findFirst({
     where: {
       sourceFileId: fileId,
-      contentItem: { orgId: membership.orgId },
     },
     select: {
       id: true,
       contentItem: { select: { title: true } },
-      slides: {
-        orderBy: { order: "asc" },
-        select: { id: true },
-      },
+      sourceFile: { select: { filename: true } },
     },
   })
 
+  const title = slideDeck?.contentItem?.title ?? slideDeck?.sourceFile?.filename ?? "Presentation"
+  const downloadUrl = `/api/org/${slug}/slides/file/${fileId}`
+  const backHref = from && from.startsWith("/") && !from.startsWith("//") ? from : `/org/${slug}/my-training`
+
   return (
-    <PptxPresentationViewer
-      orgSlug={slug}
-      sourceFileId={fileId}
-      title={slideDeck?.contentItem?.title ?? "Presentation"}
-      slideIds={slideDeck?.slides?.map((s) => s.id) ?? []}
-    />
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6">
+      <div className="max-w-md w-full text-center space-y-6">
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <p className="text-slate-400 text-sm">
+          Download the presentation to open in PowerPoint, Keynote, or another app. In-browser slide viewing will be available in a future update.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button asChild className="gap-2">
+            <a href={downloadUrl} download target="_blank" rel="noopener noreferrer">
+              <Download className="h-4 w-4" />
+              Download presentation
+            </a>
+          </Button>
+          <Button variant="outline" asChild className="gap-2 border-white/30 text-white hover:bg-white/10">
+            <Link href={backHref}>
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
-
