@@ -40,7 +40,13 @@ export function PptxPresentationViewer({
         await previewer.preview(arrayBuffer)
         setStatus("ready")
       } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : "Failed to load presentation")
+        const msg = err instanceof Error ? err.message : "Failed to load presentation"
+        const isBackgroundError = /background|undefined/.test(msg)
+        setErrorMessage(
+          isBackgroundError
+            ? "This presentation could not be rendered (slide background issue). Try re-uploading the .pptx or use a simpler theme."
+            : msg
+        )
         setStatus("error")
       }
     }

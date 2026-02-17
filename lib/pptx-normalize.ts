@@ -21,13 +21,17 @@ const cSldAnyNsRegex = /<[^:>]*:cSld(\s[^>]*)?>/
  * Only a:srgbClr (or a:blipFill) is treated as concrete; schemeClr and other refs are replaced.
  */
 function replaceBgRefWithSolid(xml: string): string {
-  if (!xml.includes("bg>")) return xml
-  // Match p:bg with any namespace prefix (e.g. p:bg, px:bg)
+  if (!xml.includes("bg") && !xml.includes(":bg")) return xml
+  // Match p:bg with any namespace prefix (e.g. p:bg, px:bg), including self-closing or empty
   const bgBlockRegex = /<[^:>]*:bg(\s[^>]*)?>[\s\S]*?<\/[^:>]*:bg>/g
-  return xml.replace(bgBlockRegex, (match) => {
+  let out = xml.replace(bgBlockRegex, (match) => {
     if (match.includes("a:srgbClr") || match.includes("a:blipFill")) return match
     return DEFAULT_BG
   })
+  // Replace self-closing or empty p:bg (e.g. <p:bg /> or <p:bg></p:bg>)
+  const bgSelfCloseRegex = /<[^:>]*:bg\s*\/\s*>/g
+  out = out.replace(bgSelfCloseRegex, DEFAULT_BG)
+  return out
 }
 
 /**
@@ -40,7 +44,8 @@ function injectBackgroundIfMissing(xml: string): string {
   let out = replaceBgRefWithSolid(xml)
   if (out !== xml) return out
 
-  if (out.includes("<p:bg>") || /<[^:>]*:bg[\s>]/.test(out) || out.includes(":bg>")) return out
+  // Skip inject only when we already have a concrete (solid or blip) background
+  if (out.includes("a:srgbClr") || out.includes("a:blipFill")) return out
 
   out = xml.replace(cSldOpenRegex, (match) => match + DEFAULT_BG)
   if (out !== xml) return out
