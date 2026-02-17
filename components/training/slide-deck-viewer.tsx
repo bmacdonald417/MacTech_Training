@@ -34,8 +34,8 @@ export function SlideDeckViewer({
   const isFirst = currentSlide === 0
   const isLast = currentSlide === slides.length - 1
 
-  const renderContent = (content: string) => {
-    let html = content
+  const renderContent = (content: string | null | undefined) => {
+    let html = (content ?? "")
       .replace(/^### (.*$)/gim, "<h3>$1</h3>")
       .replace(/^## (.*$)/gim, "<h2>$1</h2>")
       .replace(/^# (.*$)/gim, "<h1>$1</h1>")
@@ -60,7 +60,7 @@ export function SlideDeckViewer({
       >
         <div className="mx-auto flex min-h-[340px] max-w-3xl flex-col justify-center">
           <h2 className="mb-6 text-2xl font-semibold tracking-tight text-slate-100 sm:text-3xl">
-            {slides[currentSlide].title}
+            {slides[currentSlide].title ?? "Slide"}
           </h2>
           <div
             className="slide-content prose prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-slate-100 prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:leading-relaxed prose-p:text-slate-200 prose-strong:text-slate-100 prose-ul:my-5 prose-ul:list-disc prose-ul:pl-6 prose-li:my-2.5 prose-li:pl-1 prose-li:text-slate-200 prose-li:leading-relaxed prose-li:marker:text-slate-400"

@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation"
+import { PptxPresentationViewer } from "@/components/training/pptx-presentation-viewer"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
@@ -17,13 +17,27 @@ export default async function Page({
       sourceFileId: fileId,
       contentItem: { orgId: membership.orgId },
     },
-    select: { contentItemId: true },
+    select: {
+      contentItemId: true,
+      contentItem: { select: { title: true } },
+    },
   })
 
-  if (slideDeck?.contentItemId) {
-    redirect(`/org/${slug}/trainer/content/${slideDeck.contentItemId}`)
+  if (!slideDeck) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center p-8 text-muted-foreground">
+        Presentation not found.
+      </div>
+    )
   }
 
-  redirect(`/org/${slug}`)
+  return (
+    <div className="flex h-full min-h-[100dvh] flex-col overflow-hidden bg-background p-4">
+      <PptxPresentationViewer
+        orgSlug={slug}
+        sourceFileId={fileId}
+        title={slideDeck.contentItem?.title ?? "Presentation"}
+      />
+    </div>
+  )
 }
-

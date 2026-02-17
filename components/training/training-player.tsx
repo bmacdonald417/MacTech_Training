@@ -123,7 +123,13 @@ export function TrainingPlayer({
           <CardHeader className="shrink-0 py-1">
             <CardTitle className="truncate text-sm font-medium">{currentItem?.title}</CardTitle>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+          <CardContent
+            className={
+              currentItem?.type === "SLIDE_DECK"
+                ? "flex min-h-0 flex-1 flex-col overflow-hidden p-2 min-h-[420px]"
+                : "flex min-h-0 flex-1 flex-col overflow-hidden p-2"
+            }
+          >
             {currentItem && (
               <ContentViewer
                 contentItem={currentItem.contentItem}
