@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react"
 
+/** Same as old working viewer: pptx-preview expects explicit dimensions for render port. */
+const BASE_W = 1600
+const BASE_H = 900
+
 interface PptxPresentationViewerProps {
   orgSlug: string
   sourceFileId: string
@@ -36,7 +40,12 @@ export function PptxPresentationViewer({
         }
 
         const arrayBuffer = await res.arrayBuffer()
-        previewer = init(el, { mode: "slide" }) as { preview: (file: ArrayBuffer) => Promise<unknown>; destroy?: () => void }
+        el.innerHTML = ""
+        previewer = init(el, {
+          width: BASE_W,
+          height: BASE_H,
+          mode: "slide",
+        }) as { preview: (file: ArrayBuffer) => Promise<unknown>; destroy?: () => void }
         await previewer.preview(arrayBuffer)
         setStatus("ready")
       } catch (err) {
