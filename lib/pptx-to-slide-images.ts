@@ -51,8 +51,8 @@ export async function getExistingSlideImageCount(fileId: string): Promise<number
 const LIBREOFFICE_BIN = process.env.LIBREOFFICE_PATH ?? "libreoffice"
 const PDFTOPPM_BIN = process.env.PDFTOPPM_PATH ?? "pdftoppm"
 
-/** Max file size (bytes) for server-side conversion. Larger files can OOM (exit 137) in constrained containers. Default 5 MB; set PPTX_MAX_CONVERSION_BYTES to override (e.g. 10485760 for 10 MB). */
-const MAX_CONVERSION_BYTES = Number(process.env.PPTX_MAX_CONVERSION_BYTES) || 5 * 1024 * 1024
+/** Max file size (bytes) for server-side conversion. Larger files can OOM (exit 137) in constrained containers. Default 15 MB; set PPTX_MAX_CONVERSION_BYTES to override. */
+const MAX_CONVERSION_BYTES = Number(process.env.PPTX_MAX_CONVERSION_BYTES) || 15 * 1024 * 1024
 
 export type SlideImageErrorCode =
   | "STORAGE_NOT_WRITABLE"
