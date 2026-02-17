@@ -1,4 +1,4 @@
-import { PptxPresentationViewer } from "@/components/training/pptx-presentation-viewer"
+import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
@@ -17,31 +17,13 @@ export default async function Page({
       sourceFileId: fileId,
       contentItem: { orgId: membership.orgId },
     },
-    select: {
-      id: true,
-      contentItem: { select: { title: true } },
-      slides: {
-        orderBy: { order: "asc" },
-        select: { id: true, title: true, content: true },
-      },
-    },
+    select: { contentItemId: true },
   })
 
-  const slides = slideDeck?.slides ?? []
-  const slideIds = slides.map((s) => s.id)
-  const fallbackSlides =
-    slides.length > 0
-      ? slides.map((s) => ({ id: s.id, title: s.title ?? "", content: s.content ?? "" }))
-      : undefined
+  if (slideDeck?.contentItemId) {
+    redirect(`/org/${slug}/trainer/content/${slideDeck.contentItemId}`)
+  }
 
-  return (
-    <PptxPresentationViewer
-      orgSlug={slug}
-      sourceFileId={fileId}
-      title={slideDeck?.contentItem?.title ?? "Presentation"}
-      slideIds={slideIds}
-      fallbackSlides={fallbackSlides}
-    />
-  )
+  redirect(`/org/${slug}`)
 }
 

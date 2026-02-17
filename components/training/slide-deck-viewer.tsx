@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
-import { PptxFullViewer } from "./pptx-full-viewer"
 
 interface SlideDeckViewerProps {
   slideDeck: any
@@ -32,21 +31,6 @@ export function SlideDeckViewer({
   }
 
   const slides = slideDeck.slides
-  const sourceFileId = slideDeck.sourceFileId ?? slideDeck.sourceFile?.id
-
-  if (sourceFileId) {
-    return (
-      <PptxFullViewer
-        orgSlug={orgSlug}
-        sourceFileId={sourceFileId}
-        slides={slides.map((s: { id: string; notesRichText?: string | null }) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
-        canGenerateNarration={canGenerateNarration}
-        onComplete={onComplete}
-        isCompleted={isCompleted}
-      />
-    )
-  }
-
   const isFirst = currentSlide === 0
   const isLast = currentSlide === slides.length - 1
 
