@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
-import { resolveStoredFileAbsolutePath } from "@/lib/stored-file-storage"
-import { ensureSlideBackgrounds } from "@/lib/pptx-normalize"
-import fs from "fs"
-
-const PPTX_MIME =
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 /**
  * GET /api/org/[slug]/slides/file/[fileId]
- * Serve the stored PPTX file. Auth: any org member (trainee can view training content).
- * Normalizes the PPTX so slides without a background get a default (fixes pptx-preview "background" error).
+ * Returns 403 Forbidden. PPTX content is company-private; view slides in-browser via slide-image API only.
  */
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   context: { params: Promise<{ slug: string; fileId: string }> }
 ) {
   try {
@@ -23,52 +16,20 @@ export async function GET(
 
     const file = await prisma.storedFile.findFirst({
       where: { id: fileId, orgId: membership.orgId },
-      select: {
-        id: true,
-        mimeType: true,
-        filename: true,
-        storagePath: true,
-        contentBytes: true,
-      },
+      select: { id: true },
     })
     if (!file) {
       return NextResponse.json({ error: "File not found." }, { status: 404 })
     }
 
-    let buffer: Buffer
-    if (file.storagePath === "db" && file.contentBytes && file.contentBytes.length > 0) {
-      buffer = Buffer.from(file.contentBytes)
-    } else {
-      const fullPath = resolveStoredFileAbsolutePath(file.storagePath)
-      try {
-        buffer = await fs.promises.readFile(fullPath)
-      } catch {
-        return NextResponse.json(
-          { error: "File not found on disk.", code: "FILE_MISSING_ON_DISK" },
-          { status: 404 }
-        )
-      }
-    }
-
-    if (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")) {
-      try {
-        buffer = await ensureSlideBackgrounds(buffer)
-      } catch (e) {
-        console.warn("[slides/file] pptx normalize failed, serving original:", e)
-      }
-    }
-
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        "Content-Type": file.mimeType,
-        "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
-        "Content-Length": String(buffer.byteLength),
-      },
-    })
+    return NextResponse.json(
+      { error: "Download of presentation files is not permitted. View slides in your browser." },
+      { status: 403 }
+    )
   } catch (err) {
     console.error("[slides/file]", err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to serve file" },
+      { error: err instanceof Error ? err.message : "Failed" },
       { status: 500 }
     )
   }

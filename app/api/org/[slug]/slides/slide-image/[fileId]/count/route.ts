@@ -4,9 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveStoredFileAbsolutePath } from "@/lib/stored-file-storage"
 import fs from "fs"
 import {
-  getSlideImagePath,
   getExistingSlideImageCount,
-  slideImageExists,
   generateSlideImages,
 } from "@/lib/pptx-to-slide-images"
 
@@ -14,15 +12,15 @@ const PPTX_MIME =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 /**
- * GET /api/org/[slug]/slides/slide-image/[fileId]/[index]
- * Serve the PNG for slide at index (0-based). Generates slide images on first request if missing.
+ * GET /api/org/[slug]/slides/slide-image/[fileId]/count
+ * Returns { count: number }. Triggers slide image generation if none exist.
  */
 export async function GET(
   _req: Request,
-  context: { params: Promise<{ slug: string; fileId: string; index: string }> }
+  context: { params: Promise<{ slug: string; fileId: string }> }
 ) {
   try {
-    const { slug, fileId, index: indexParam } = await context.params
+    const { slug, fileId } = await context.params
     const membership = await requireAuth(slug)
 
     const file = await prisma.storedFile.findFirst({
@@ -31,11 +29,6 @@ export async function GET(
     })
     if (!file) {
       return NextResponse.json({ error: "File not found." }, { status: 404 })
-    }
-
-    const index = parseInt(indexParam, 10)
-    if (Number.isNaN(index) || index < 0) {
-      return NextResponse.json({ error: "Invalid slide index." }, { status: 400 })
     }
 
     let count = await getExistingSlideImageCount(fileId)
@@ -71,28 +64,11 @@ export async function GET(
       count = result.count
     }
 
-    if (index >= count) {
-      return NextResponse.json({ error: "Slide index out of range." }, { status: 404 })
-    }
-
-    const exists = await slideImageExists(fileId, index)
-    if (!exists) {
-      return NextResponse.json({ error: "Slide image not found." }, { status: 404 })
-    }
-
-    const imagePath = getSlideImagePath(fileId, index)
-    const buf = await fs.promises.readFile(imagePath)
-    return new NextResponse(new Uint8Array(buf), {
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control": "private, max-age=86400",
-        "Content-Length": String(buf.byteLength),
-      },
-    })
+    return NextResponse.json({ count })
   } catch (err) {
-    console.error("[slides/slide-image]", err)
+    console.error("[slides/slide-image/count]", err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to serve slide image" },
+      { error: err instanceof Error ? err.message : "Failed to get slide count" },
       { status: 500 }
     )
   }

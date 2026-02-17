@@ -1,0 +1,187 @@
+/**
+ * Server-side PPTX → PNG conversion for in-browser slide viewing.
+ * Uses LibreOffice to convert PPTX → PDF, then pdftoppm (poppler-utils) to get one PNG per page.
+ */
+
+import fs from "fs"
+import path from "path"
+import os from "os"
+import { spawnSync } from "child_process"
+import { getMountPath } from "./narration-storage"
+import { ensureDirForFile, isMountWritable } from "./narration-storage"
+
+const SLIDE_IMAGES_DIR = "slide-images"
+
+/** Absolute path to the directory for a file's slide images: {mount}/slide-images/{fileId}/ */
+export function getSlideImageDir(fileId: string): string {
+  return path.join(getMountPath(), SLIDE_IMAGES_DIR, fileId)
+}
+
+/** Absolute path to the PNG for slide index (0-based). File name is {index + 1}.png */
+export function getSlideImagePath(fileId: string, index: number): string {
+  return path.join(getSlideImageDir(fileId), `${index + 1}.png`)
+}
+
+/** Check if a slide image exists on disk. */
+export async function slideImageExists(fileId: string, index: number): Promise<boolean> {
+  const p = getSlideImagePath(fileId, index)
+  try {
+    await fs.promises.access(p, fs.constants.R_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Get count of existing slide images for a file (by counting 1.png, 2.png, ...). */
+export async function getExistingSlideImageCount(fileId: string): Promise<number> {
+  const dir = getSlideImageDir(fileId)
+  try {
+    const names = await fs.promises.readdir(dir)
+    const nums = names
+      .filter((n) => /^\d+\.png$/i.test(n))
+      .map((n) => parseInt(n.replace(/\D/g, ""), 10))
+    if (nums.length === 0) return 0
+    return Math.max(...nums)
+  } catch {
+    return 0
+  }
+}
+
+const LIBREOFFICE_BIN = process.env.LIBREOFFICE_PATH ?? "libreoffice"
+const PDFTOPPM_BIN = process.env.PDFTOPPM_PATH ?? "pdftoppm"
+
+/** Max file size (bytes) for server-side conversion. Default 15 MB; set PPTX_MAX_CONVERSION_BYTES to override. */
+const MAX_CONVERSION_BYTES = Number(process.env.PPTX_MAX_CONVERSION_BYTES) || 15 * 1024 * 1024
+
+export type SlideImageErrorCode =
+  | "STORAGE_NOT_WRITABLE"
+  | "FILE_TOO_LARGE"
+  | "LIBREOFFICE_NOT_FOUND"
+  | "LIBREOFFICE_FAILED"
+  | "CONVERSION_OOM"
+  | "CONVERSION_FAILED"
+  | "PDF_NOT_PRODUCED"
+  | "PDFTOPPM_FAILED"
+  | "NO_PNG_OUTPUT"
+
+export type GenerateSlideImagesResult =
+  | { count: number }
+  | { error: string; code?: SlideImageErrorCode }
+
+/**
+ * Generate PNG images for each slide: PPTX → PDF (LibreOffice) → PNG per page (pdftoppm).
+ * Writes slide-images/{fileId}/1.png, 2.png, ...
+ */
+export async function generateSlideImages(
+  fileId: string,
+  buffer: Buffer
+): Promise<GenerateSlideImagesResult> {
+  const writable = await isMountWritable()
+  if (!writable) {
+    return { error: "Storage path is not writable. Set RAILWAY_VOLUME_MOUNT_PATH.", code: "STORAGE_NOT_WRITABLE" }
+  }
+
+  if (buffer.length > MAX_CONVERSION_BYTES) {
+    const maxMB = (MAX_CONVERSION_BYTES / (1024 * 1024)).toFixed(1)
+    return {
+      error: `File is too large for server conversion (max ${maxMB} MB). Try a smaller deck.`,
+      code: "FILE_TOO_LARGE",
+    }
+  }
+
+  const tmpDir = path.join(os.tmpdir(), `pptx-slides-${fileId}-${Date.now()}`)
+  const inputPath = path.join(tmpDir, "deck.pptx")
+  const pdfPath = path.join(tmpDir, "deck.pdf")
+  const ppmPrefix = path.join(tmpDir, "slide")
+
+  try {
+    await fs.promises.mkdir(tmpDir, { recursive: true })
+    await fs.promises.writeFile(inputPath, buffer, "binary")
+
+    const lo = spawnSync(
+      LIBREOFFICE_BIN,
+      ["--headless", "--convert-to", "pdf", "--outdir", tmpDir, inputPath],
+      { encoding: "utf8", timeout: 120_000 }
+    )
+    if (lo.error) {
+      const msg = lo.error.message ?? String(lo.error)
+      if (msg.includes("ENOENT")) {
+        return {
+          error: `LibreOffice not found (${LIBREOFFICE_BIN}). Install LibreOffice or set LIBREOFFICE_PATH.`,
+          code: "LIBREOFFICE_NOT_FOUND",
+        }
+      }
+      return { error: `LibreOffice failed: ${msg}`, code: "LIBREOFFICE_FAILED" }
+    }
+    if (lo.status !== 0) {
+      const stderr = lo.stderr?.trim() ?? ""
+      const isOom = lo.status === 137
+      return {
+        error: isOom
+          ? "Server ran out of memory converting this file. Try a smaller deck."
+          : `LibreOffice exited ${lo.status}. ${stderr}`,
+        code: isOom ? "CONVERSION_OOM" : "CONVERSION_FAILED",
+      }
+    }
+
+    try {
+      await fs.promises.access(pdfPath, fs.constants.R_OK)
+    } catch {
+      return { error: "LibreOffice did not produce a PDF.", code: "PDF_NOT_PRODUCED" }
+    }
+
+    const pdftoppm = spawnSync(
+      PDFTOPPM_BIN,
+      ["-png", "-r", "150", pdfPath, ppmPrefix],
+      { encoding: "utf8", timeout: 120_000 }
+    )
+    if (pdftoppm.error) {
+      const msg = pdftoppm.error.message ?? String(pdftoppm.error)
+      if (msg.includes("ENOENT")) {
+        return {
+          error: `pdftoppm not found (${PDFTOPPM_BIN}). Install poppler-utils or set PDFTOPPM_PATH.`,
+          code: "PDFTOPPM_FAILED",
+        }
+      }
+      return { error: `pdftoppm failed: ${msg}`, code: "PDFTOPPM_FAILED" }
+    }
+    if (pdftoppm.status !== 0) {
+      return {
+        error: `pdftoppm exited ${pdftoppm.status}. ${pdftoppm.stderr?.trim() ?? ""}`,
+        code: "PDFTOPPM_FAILED",
+      }
+    }
+
+    const outFiles = await fs.promises.readdir(tmpDir)
+    const pngs = outFiles.filter((n) => n.toLowerCase().endsWith(".png"))
+    if (pngs.length === 0) {
+      return { error: "pdftoppm produced no PNG files.", code: "NO_PNG_OUTPUT" }
+    }
+
+    const byNum = pngs
+      .map((n) => {
+        const m = n.match(/-(\d+)\.png$/i)
+        const v = m ? parseInt(m[1], 10) : NaN
+        return { name: n, index: Number.isNaN(v) ? 0 : v }
+      })
+      .sort((a, b) => a.index - b.index)
+
+    const destDir = getSlideImageDir(fileId)
+    await ensureDirForFile(path.join(destDir, "1.png"))
+
+    for (let i = 0; i < byNum.length; i++) {
+      const src = path.join(tmpDir, byNum[i].name)
+      const dest = path.join(destDir, `${i + 1}.png`)
+      await fs.promises.copyFile(src, dest)
+    }
+
+    return { count: byNum.length }
+  } finally {
+    try {
+      await fs.promises.rm(tmpDir, { recursive: true, force: true })
+    } catch {
+      // ignore
+    }
+  }
+}
