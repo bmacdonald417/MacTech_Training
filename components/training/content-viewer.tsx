@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
 import { ArticleViewer } from "./article-viewer"
 import { SlideDeckViewer } from "./slide-deck-viewer"
+import { TrainingSlideShowViewer } from "./training-slide-show-viewer"
 import { VideoViewer } from "./video-viewer"
 import { QuizViewer } from "./quiz-viewer"
 import { AttestationViewer } from "./attestation-viewer"
@@ -48,16 +49,31 @@ export function ContentViewer({
             isCompleted={isCompleted}
           />
         )
-      case "SLIDE_DECK":
+      case "SLIDE_DECK": {
+        const deck = contentItem.slideDeck
+        const sourceFileId = deck?.sourceFileId ?? deck?.sourceFile?.id
+        if (sourceFileId) {
+          return (
+            <TrainingSlideShowViewer
+              orgSlug={orgSlug}
+              sourceFileId={sourceFileId}
+              title={contentItem.title ?? "Presentation"}
+              slideIds={deck?.slides?.map((s: { id: string }) => s.id)}
+              onComplete={onComplete}
+              isCompleted={isCompleted}
+            />
+          )
+        }
         return (
           <SlideDeckViewer
-            slideDeck={contentItem.slideDeck}
+            slideDeck={deck}
             orgSlug={orgSlug}
             canGenerateNarration={canGenerateNarration}
             onComplete={onComplete}
             isCompleted={isCompleted}
           />
         )
+      }
       case "VIDEO":
         return (
           <VideoViewer
