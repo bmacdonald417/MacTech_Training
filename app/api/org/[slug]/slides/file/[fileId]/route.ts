@@ -32,29 +32,17 @@ export async function GET(
       },
     })
     if (!file) {
-      console.warn("[slides/file] 1. File not found.", { fileId, orgId: membership.orgId })
       return NextResponse.json({ error: "File not found." }, { status: 404 })
     }
-    console.info("[slides/file] 1. File found.", { fileId, storagePath: file.storagePath, filename: file.filename })
 
     let buffer: Buffer
     if (file.storagePath === "db" && file.contentBytes && file.contentBytes.length > 0) {
-      console.info("[slides/file] 2. Using contentBytes from DB.", { byteLength: file.contentBytes.length })
-      buffer = Buffer.isBuffer(file.contentBytes)
-        ? file.contentBytes
-        : Buffer.from(file.contentBytes as ArrayBuffer)
+      buffer = Buffer.from(file.contentBytes)
     } else {
       const fullPath = resolveStoredFileAbsolutePath(file.storagePath)
-      console.info("[slides/file] 2. Reading from disk.", { storagePath: file.storagePath })
       try {
         buffer = await fs.promises.readFile(fullPath)
-        console.info("[slides/file] 2. Read OK.", { byteLength: buffer.byteLength })
-      } catch (e) {
-        console.warn("[slides/file] 2. File missing on disk.", {
-          fileId,
-          storagePath: file.storagePath,
-          err: e instanceof Error ? e.message : String(e),
-        })
+      } catch {
         return NextResponse.json(
           { error: "File not found on disk.", code: "FILE_MISSING_ON_DISK" },
           { status: 404 }
@@ -62,71 +50,23 @@ export async function GET(
       }
     }
 
-    const originalLength = buffer.byteLength
-    const rawParam = req.nextUrl.searchParams.get("raw") === "1"
-    const LARGE_FILE_THRESHOLD = 8 * 1024 * 1024 // 8MB: try normalizing so pptx-preview can render; above this serve raw
-    const skipNormalize =
-      rawParam || (originalLength > LARGE_FILE_THRESHOLD && (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")))
-    if (rawParam) {
-      console.info("[slides/file] Serving raw PPTX (normalization skipped via ?raw=1).", { fileId })
-    } else if (originalLength > LARGE_FILE_THRESHOLD) {
-      console.info("[slides/file] Serving raw PPTX (file large, normalization skipped).", {
-        fileId,
-        bytes: originalLength,
-        threshold: LARGE_FILE_THRESHOLD,
-      })
-    }
-    if (
-      !skipNormalize &&
-      (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx"))
-    ) {
+    if (file.mimeType === PPTX_MIME || file.filename?.toLowerCase().endsWith(".pptx")) {
       try {
-        const normalized = await ensureSlideBackgrounds(buffer)
-        // Only use normalized result if it looks valid (avoid serving corrupted ZIP)
-        if (
-          normalized &&
-          normalized.byteLength >= 100 &&
-          normalized.byteLength >= originalLength * 0.5
-        ) {
-          buffer = normalized
-          console.info("[slides/file] Serving normalized PPTX.", {
-            fileId,
-            originalBytes: originalLength,
-            normalizedBytes: buffer.byteLength,
-          })
-        } else {
-          console.info("[slides/file] Serving original PPTX (normalized skipped: invalid or unchanged).", {
-            fileId,
-            originalBytes: originalLength,
-            normalizedBytes: normalized?.byteLength ?? 0,
-          })
-        }
+        buffer = await ensureSlideBackgrounds(buffer)
       } catch (e) {
         console.warn("[slides/file] pptx normalize failed, serving original:", e)
       }
     }
 
-    if (!buffer || buffer.byteLength < 100) {
-      console.warn("[slides/file] FILE_EMPTY: stored file empty or invalid.", {
-        fileId,
-        byteLength: buffer?.byteLength ?? 0,
-      })
-      return NextResponse.json(
-        { error: "Stored file is empty or invalid.", code: "FILE_EMPTY" },
-        { status: 404 }
-      )
-    }
-
-    console.info("[slides/file] 3. Sending response.", { fileId, byteLength: buffer.byteLength, mimeType: file.mimeType })
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": file.mimeType,
-        "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename ?? "presentation.pptx")}"`,
+        "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
         "Content-Length": String(buffer.byteLength),
       },
     })
   } catch (err) {
-    console.error("[slides/file] ERROR", err)
+    console.error("[slides/file]", err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to serve file" },
       { status: 500 }

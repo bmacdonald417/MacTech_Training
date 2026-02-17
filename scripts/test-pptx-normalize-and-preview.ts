@@ -50,6 +50,8 @@ async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true })
   fs.writeFileSync(NORMALIZED_PPTX, normalized)
   console.log("\nWrote normalized PPTX to:", NORMALIZED_PPTX)
+  console.log("\nNext: open http://localhost:3000/test-pptx-viewer in the browser (with dev server running)")
+  console.log("to run pptx-preview on this file and see the exact error.")
 }
 
 main().catch((e) => {

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triptych Training Player</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app" role="application" aria-label="Triptych presentation player">
+    <main class="stage-wrapper">
+      <div class="stage" id="stage" aria-live="polite">
+        <div class="stage-inner">
+          <div class="image-layer">
+            <img id="slideImage" src="" alt="" class="triptych-image">
+          </div>
+          <div class="overlay-layer">
+            <div class="dim-overlay dim-left" id="dimLeft" aria-hidden="true"></div>
+            <div class="dim-overlay dim-center" id="dimCenter" aria-hidden="true"></div>
+            <div class="dim-overlay dim-right" id="dimRight" aria-hidden="true"></div>
+          </div>
+          <div class="border-layer">
+            <div class="active-border" id="activeBorder" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="controls" role="toolbar" aria-label="Playback controls">
+      <div class="controls-row">
+        <button type="button" id="btnPrev" class="btn" aria-label="Previous slide">Prev</button>
+        <button type="button" id="btnPlayPause" class="btn btn-primary" aria-label="Play">Play</button>
+        <button type="button" id="btnNext" class="btn" aria-label="Next slide">Next</button>
+      </div>
+      <div class="progress-row">
+        <div class="progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progressBar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+      <div class="labels-row">
+        <span class="label label-slide" id="labelSlide">Slide 1 / 5</span>
+        <span class="label label-focus" id="labelFocus">Intro</span>
+        <span class="label label-time" id="labelTime">0:00.0</span>
+      </div>
+      <div class="debug-row">
+        <label class="debug-toggle">
+          <input type="checkbox" id="showTimingMarkers" aria-label="Show timing markers">
+          Show timing markers
+        </label>
+      </div>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

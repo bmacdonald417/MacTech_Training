@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, ChevronLeft, ChevronRight, Download, ExternalLink } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react"
 import { NarrationPlayer } from "./narration-player"
-import { SlideShowViewer } from "./slide-show-viewer"
+import { PptxFullViewer } from "./pptx-full-viewer"
 
 interface SlideDeckViewerProps {
   slideDeck: any
@@ -14,10 +14,6 @@ interface SlideDeckViewerProps {
   isCompleted: boolean
 }
 
-/**
- * Slide deck training module: in-browser slide show (image-based) + download + mark complete.
- * Fallback: if no source file, show slide content as text with prev/next + complete.
- */
 export function SlideDeckViewer({
   slideDeck,
   orgSlug,
@@ -27,19 +23,7 @@ export function SlideDeckViewer({
 }: SlideDeckViewerProps) {
   const [currentSlide, setCurrentSlide] = useState(0)
 
-  const slides = slideDeck?.slides ?? []
-  const sourceFileId = slideDeck?.sourceFileId ?? slideDeck?.sourceFile?.id ?? null
-  const presentationTitle = slideDeck?.sourceFile?.filename ?? "Presentation"
-  const downloadUrl =
-    sourceFileId != null
-      ? `/api/org/${orgSlug}/slides/file/${sourceFileId}`
-      : null
-  const showUrl =
-    sourceFileId != null
-      ? `/org/${orgSlug}/slides/show/${sourceFileId}`
-      : null
-
-  if (!slideDeck || slides.length === 0) {
+  if (!slideDeck || !slideDeck.slides || slideDeck.slides.length === 0) {
     return (
       <div className="rounded-xl bg-slate-900/80 px-6 py-8 text-slate-200">
         Slide deck not found
@@ -47,41 +31,22 @@ export function SlideDeckViewer({
     )
   }
 
-  // PPTX-backed deck: in-browser slide show (server-rendered PNGs) + download + complete
-  if (sourceFileId && downloadUrl) {
+  const slides = slideDeck.slides
+  const sourceFileId = slideDeck.sourceFileId ?? slideDeck.sourceFile?.id
+
+  if (sourceFileId) {
     return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/40 bg-slate-950">
-        <SlideShowViewer
-          orgSlug={orgSlug}
-          sourceFileId={sourceFileId}
-          slideCount={slides.length}
-          title={presentationTitle}
-          downloadUrl={downloadUrl}
-          slideIds={slides.map((s: { id: string }) => s.id)}
-          onComplete={onComplete}
-          isCompleted={isCompleted}
-          embedded
-        />
-        {showUrl && (
-          <div className="flex shrink-0 justify-end border-t border-white/10 px-2 py-1">
-            <Button variant="ghost" size="sm" asChild>
-              <a
-                href={showUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="gap-1.5 text-white/70 hover:text-white"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open in new tab
-              </a>
-            </Button>
-          </div>
-        )}
-      </div>
+      <PptxFullViewer
+        orgSlug={orgSlug}
+        sourceFileId={sourceFileId}
+        slides={slides.map((s: { id: string; notesRichText?: string | null }) => ({ id: s.id, notesRichText: s.notesRichText ?? null }))}
+        canGenerateNarration={canGenerateNarration}
+        onComplete={onComplete}
+        isCompleted={isCompleted}
+      />
     )
   }
 
-  // No source file: show slide content as text (fallback)
   const isFirst = currentSlide === 0
   const isLast = currentSlide === slides.length - 1
 
@@ -93,16 +58,20 @@ export function SlideDeckViewer({
       .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
       .replace(/^\- (.*$)/gim, "<li>$1</li>")
       .replace(/\n/gim, "<br />")
+
     html = html.replace(/(<li>.*<\/li>)/gim, "<ul>$1</ul>")
+
     return html
   }
 
   return (
     <div className="space-y-6">
+      {/* Slide container: dark blue, full-bleed feel, padding only */}
       <div
         className="relative min-h-[420px] overflow-hidden rounded-xl bg-[#0F2438] p-8 sm:p-10 md:p-12"
         style={{
-          background: "linear-gradient(145deg, #122a42 0%, #0F2438 50%, #0B1C2D 100%)",
+          background:
+            "linear-gradient(145deg, #122a42 0%, #0F2438 50%, #0B1C2D 100%)",
         }}
       >
         <div className="mx-auto flex min-h-[340px] max-w-3xl flex-col justify-center">
@@ -125,6 +94,7 @@ export function SlideDeckViewer({
         canGenerate={canGenerateNarration}
       />
 
+      {/* Navigation: subdued, readable */}
       <div className="flex items-center justify-between border-t border-border/40 pt-4">
         <Button
           variant="outline"
@@ -156,7 +126,9 @@ export function SlideDeckViewer({
           <Button
             variant="outline"
             className="border-slate-600/60 text-slate-400 hover:border-slate-500 hover:bg-slate-800/50 hover:text-slate-200"
-            onClick={() => setCurrentSlide(Math.min(slides.length - 1, currentSlide + 1))}
+            onClick={() =>
+              setCurrentSlide(Math.min(slides.length - 1, currentSlide + 1))
+            }
           >
             Next
             <ChevronRight className="ml-2 h-4 w-4" />
