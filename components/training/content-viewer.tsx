@@ -68,6 +68,7 @@ export function ContentViewer({
               sourceFileId={sourceFileId}
               title={contentItem.title ?? "Presentation"}
               slideIds={orderedSlideIds}
+              contentItemId={contentItem.id}
               onComplete={onComplete}
               isCompleted={isCompleted}
             />

@@ -7,27 +7,32 @@ interface TrainingSlideShowViewerProps {
   orgSlug: string
   sourceFileId: string
   title: string
-  /** Ordered slide IDs for narration. */
+  /** Ordered slide IDs for narration (same IDs used when generating TTS in Admin > Presentations). */
   slideIds?: string[]
+  /** When slideIds is missing/empty, fetch from this content item so narration works. */
+  contentItemId?: string
   onComplete: () => void
   isCompleted: boolean
 }
 
 /**
  * Wrapper for My Training: fetches slide-image count then renders SlideShowViewer (embedded).
- * Uses same server-rendered slide images as Admin > Presentations.
+ * Uses same server-rendered slide images and narrator TTS as Admin > Presentations.
  */
 export function TrainingSlideShowViewer({
   orgSlug,
   sourceFileId,
   title,
-  slideIds,
+  slideIds: slideIdsProp,
+  contentItemId,
   onComplete,
   isCompleted,
 }: TrainingSlideShowViewerProps) {
   const [count, setCount] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [fetchedSlideIds, setFetchedSlideIds] = useState<string[] | null>(null)
 
+  // Slide image count
   useEffect(() => {
     const url = `/api/org/${orgSlug}/slides/slide-image/${sourceFileId}/count`
     fetch(url, { credentials: "include" })
@@ -42,6 +47,31 @@ export function TrainingSlideShowViewer({
       })
       .catch(() => setError("Could not load slides. Try again later."))
   }, [orgSlug, sourceFileId])
+
+  // When narration slide IDs weren't passed (e.g. from enrollment payload), fetch them so TTS works
+  const needSlideIds =
+    (slideIdsProp == null || slideIdsProp.length === 0) && !!contentItemId
+  useEffect(() => {
+    if (!needSlideIds) return
+    const url = `/api/org/${orgSlug}/content/${contentItemId}/slide-ids`
+    fetch(url, { credentials: "include" })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}))
+        if (r.ok && Array.isArray(data.slideIds)) {
+          setFetchedSlideIds(data.slideIds)
+        } else {
+          setFetchedSlideIds([])
+        }
+      })
+      .catch(() => setFetchedSlideIds([]))
+  }, [orgSlug, contentItemId, needSlideIds])
+
+  const slideIds =
+    slideIdsProp && slideIdsProp.length > 0
+      ? slideIdsProp
+      : needSlideIds
+        ? (fetchedSlideIds ?? undefined)
+        : undefined
 
   if (error) {
     return (
