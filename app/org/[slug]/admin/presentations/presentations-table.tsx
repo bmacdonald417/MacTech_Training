@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { MonitorPlay, ExternalLink, BookOpenPlus } from "lucide-react"
+import { MonitorPlay, ExternalLink, BookPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   TableShell,
@@ -102,7 +102,7 @@ export function PresentationsTableWithBulkDelete({
                         <Link
                           href={`/org/${orgSlug}/trainer/curricula/new?addContent=${encodeURIComponent(d.contentItem.id)}`}
                         >
-                          <BookOpenPlus className="h-4 w-4" />
+                          <BookPlus className="h-4 w-4" />
                           Add to curriculum
                         </Link>
                       </Button>
