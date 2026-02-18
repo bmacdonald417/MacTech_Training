@@ -4,10 +4,11 @@ import { CurriculumForm } from "../curriculum-form"
 
 interface NewCurriculumPageProps {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ addContent?: string }>
 }
 
-export default async function NewCurriculumPage({ params }: NewCurriculumPageProps) {
-  const { slug } = await params
+export default async function NewCurriculumPage({ params, searchParams }: NewCurriculumPageProps) {
+  const [{ slug }, { addContent }] = await Promise.all([params, searchParams])
   const membership = await requireTrainerOrAdmin(slug)
 
   const contentItems = await prisma.contentItem.findMany({
@@ -22,6 +23,16 @@ export default async function NewCurriculumPage({ params }: NewCurriculumPagePro
     type: c.type,
   }))
 
+  const prefillContentId =
+    addContent?.trim() && contentOptions.some((c) => c.id === addContent.trim())
+      ? addContent.trim()
+      : undefined
+
+  const initialSections =
+    prefillContentId !== undefined
+      ? [{ title: "", description: "", contentItemIds: [prefillContentId] }]
+      : [{ title: "", description: "", contentItemIds: [] }]
+
   return (
     <div className="space-y-10">
       <CurriculumForm
@@ -30,7 +41,7 @@ export default async function NewCurriculumPage({ params }: NewCurriculumPagePro
         mode="create"
         initialTitle=""
         initialDescription=""
-        initialSections={[{ title: "", description: "", contentItemIds: [] }]}
+        initialSections={initialSections}
       />
     </div>
   )

@@ -19,7 +19,7 @@ export default async function PresentationsAdminPage({ params }: PageProps) {
     },
     select: {
       id: true,
-      contentItem: { select: { title: true } },
+      contentItem: { select: { id: true, title: true } },
       sourceFile: { select: { id: true, filename: true } },
       slides: { select: { id: true } },
       updatedAt: true,
@@ -31,7 +31,7 @@ export default async function PresentationsAdminPage({ params }: PageProps) {
     <div className="space-y-10">
       <PageHeader
         title="Presentations"
-        description="Backdoor settings for PPTX decks (speaker notes + narration/TTS). Upload a .pptx below to add a deck to the table; use Manage to edit narrator notes and generate audio."
+        description="Upload .pptx decks for speaker notes and narration. These appear as Slide deck content in Trainer → Curricula and can be added to any curriculum section. Use Manage to edit narrator notes and generate audio."
       />
 
       <PresentationsUpload orgSlug={slug} />

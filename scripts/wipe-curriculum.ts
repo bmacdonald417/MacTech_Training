@@ -3,10 +3,20 @@
  * Usage: npx tsx scripts/wipe-curriculum.ts [--org=slug]
  * Default org: demo
  *
+ * Local run needs DATABASE_URL in .env. For Railway: use the *public* Postgres URL
+ * (Postgres service → Connect / Variables → RAILWAY_TCP_PROXY_DOMAIN + RAILWAY_TCP_PROXY_PORT),
+ * e.g. DATABASE_URL="postgresql://postgres:PASSWORD@PROXY_HOST:PROXY_PORT/railway?schema=public"
+ *
  * After running, create new curricula in Trainer > Curricula and assign to your "intro" group via Trainer > Assignments > New assignment.
  */
 
 import "dotenv/config"
+
+// Use public DB URL when running locally against Railway (private URL only works inside Railway)
+if (process.env.DATABASE_PUBLIC_URL) {
+  process.env.DATABASE_URL = process.env.DATABASE_PUBLIC_URL
+}
+
 import { PrismaClient } from "@prisma/client"
 
 const prisma = new PrismaClient()

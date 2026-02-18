@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { MonitorPlay, ExternalLink } from "lucide-react"
+import { MonitorPlay, ExternalLink, BookOpenPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   TableShell,
@@ -20,7 +20,7 @@ import { PresentationDeleteButton } from "./presentation-delete-button"
 
 type DeckRow = {
   id: string
-  contentItem: { title: string | null } | null
+  contentItem: { id: string; title: string | null } | null
   sourceFile: { id: string; filename: string | null } | null
   slides: { id: string }[]
   updatedAt: Date
@@ -97,6 +97,16 @@ export function PresentationsTableWithBulkDelete({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {d.contentItem?.id && (
+                      <Button variant="outline" size="sm" asChild className="gap-1">
+                        <Link
+                          href={`/org/${orgSlug}/trainer/curricula/new?addContent=${encodeURIComponent(d.contentItem.id)}`}
+                        >
+                          <BookOpenPlus className="h-4 w-4" />
+                          Add to curriculum
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/org/${orgSlug}/admin/presentations/${d.id}`}>Manage</Link>
                     </Button>
