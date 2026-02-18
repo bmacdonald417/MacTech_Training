@@ -51,14 +51,23 @@ export function ContentViewer({
         )
       case "SLIDE_DECK": {
         const deck = contentItem.slideDeck
-        const sourceFileId = deck?.sourceFileId ?? deck?.sourceFile?.id
+        // Prefer deck-level source file; fall back to first slide's sourceFileId (from Admin import)
+        const sourceFileId =
+          deck?.sourceFileId ??
+          deck?.sourceFile?.id ??
+          (Array.isArray(deck?.slides) && deck.slides.length > 0
+            ? (deck.slides[0] as { sourceFileId?: string | null })?.sourceFileId
+            : null)
+        const orderedSlideIds = Array.isArray(deck?.slides)
+          ? deck.slides.map((s: { id: string }) => s.id)
+          : undefined
         if (sourceFileId) {
           return (
             <TrainingSlideShowViewer
               orgSlug={orgSlug}
               sourceFileId={sourceFileId}
               title={contentItem.title ?? "Presentation"}
-              slideIds={deck?.slides?.map((s: { id: string }) => s.id)}
+              slideIds={orderedSlideIds}
               onComplete={onComplete}
               isCompleted={isCompleted}
             />
