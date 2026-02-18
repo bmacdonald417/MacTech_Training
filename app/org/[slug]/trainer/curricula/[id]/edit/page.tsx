@@ -27,8 +27,13 @@ export default async function EditCurriculumPage({ params, searchParams }: EditC
     }),
     prisma.contentItem.findMany({
       where: { orgId: membership.orgId },
-      select: { id: true, title: true, type: true },
-      orderBy: { title: "asc" },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        slideDeck: { select: { sourceFileId: true } },
+      },
+      orderBy: [{ type: "asc" }, { title: "asc" }],
     }),
   ])
 
@@ -60,6 +65,7 @@ export default async function EditCurriculumPage({ params, searchParams }: EditC
     id: c.id,
     title: c.title,
     type: c.type,
+    isPresentation: c.type === "SLIDE_DECK" && !!c.slideDeck?.sourceFileId,
   }))
 
   return (

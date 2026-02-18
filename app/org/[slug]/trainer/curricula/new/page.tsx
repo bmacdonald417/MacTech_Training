@@ -13,14 +13,20 @@ export default async function NewCurriculumPage({ params, searchParams }: NewCur
 
   const contentItems = await prisma.contentItem.findMany({
     where: { orgId: membership.orgId },
-    select: { id: true, title: true, type: true },
-    orderBy: { title: "asc" },
+    select: {
+      id: true,
+      title: true,
+      type: true,
+      slideDeck: { select: { sourceFileId: true } },
+    },
+    orderBy: [{ type: "asc" }, { title: "asc" }],
   })
 
   const contentOptions = contentItems.map((c) => ({
     id: c.id,
     title: c.title,
     type: c.type,
+    isPresentation: c.type === "SLIDE_DECK" && !!c.slideDeck?.sourceFileId,
   }))
 
   const prefillContentId =

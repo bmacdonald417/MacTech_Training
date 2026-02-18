@@ -10,7 +10,12 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft, Plus, Trash2, GripVertical } from "lucide-react"
 import { createCurriculum, updateCurriculum, type SectionInput } from "./actions"
 
-export type ContentItemOption = { id: string; title: string; type: string }
+export type ContentItemOption = {
+  id: string
+  title: string
+  type: string
+  isPresentation?: boolean
+}
 
 type CurriculumFormProps = {
   orgSlug: string
@@ -259,7 +264,11 @@ export function CurriculumForm({
                     .filter((c) => !section.contentItemIds.includes(c.id))
                     .map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.title} ({c.type.replace("_", " ")})
+                        {c.title} (
+                        {c.type === "SLIDE_DECK" && c.isPresentation
+                          ? "Slide deck · Presentation"
+                          : c.type.replace("_", " ")}
+                        )
                       </option>
                     ))}
                   {contentItems.filter((c) => !section.contentItemIds.includes(c.id)).length === 0 && (
@@ -268,6 +277,9 @@ export function CurriculumForm({
                     </option>
                   )}
                 </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Includes slide decks from Admin → Presentations, plus all Content library items.
+                </p>
               </div>
             </CardContent>
           </Card>
