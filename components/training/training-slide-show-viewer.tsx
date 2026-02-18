@@ -48,11 +48,10 @@ export function TrainingSlideShowViewer({
       .catch(() => setError("Could not load slides. Try again later."))
   }, [orgSlug, sourceFileId])
 
-  // When narration slide IDs weren't passed (e.g. from enrollment payload), fetch them so TTS works
-  const needSlideIds =
-    (slideIdsProp == null || slideIdsProp.length === 0) && !!contentItemId
+  // Always fetch slide IDs from server when we have contentItemId so narrator TTS (Admin-generated)
+  // is available — enrollment payload may omit or serialize slides incorrectly.
   useEffect(() => {
-    if (!needSlideIds) return
+    if (!contentItemId) return
     const url = `/api/org/${orgSlug}/content/${contentItemId}/slide-ids`
     fetch(url, { credentials: "include" })
       .then(async (r) => {
@@ -64,13 +63,14 @@ export function TrainingSlideShowViewer({
         }
       })
       .catch(() => setFetchedSlideIds([]))
-  }, [orgSlug, contentItemId, needSlideIds])
+  }, [orgSlug, contentItemId])
 
+  // Prefer server-fetched slide IDs (same IDs as Admin > Presentations TTS); fall back to payload
   const slideIds =
-    slideIdsProp && slideIdsProp.length > 0
-      ? slideIdsProp
-      : needSlideIds
-        ? (fetchedSlideIds ?? undefined)
+    fetchedSlideIds != null && fetchedSlideIds.length > 0
+      ? fetchedSlideIds
+      : slideIdsProp && slideIdsProp.length > 0
+        ? slideIdsProp
         : undefined
 
   if (error) {
