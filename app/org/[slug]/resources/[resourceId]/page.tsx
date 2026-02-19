@@ -3,9 +3,11 @@ import { notFound } from "next/navigation"
 import { requireAuth } from "@/lib/rbac"
 import { getResourceById, getResourceContent } from "@/lib/resources"
 import { markdownToHtml } from "@/lib/markdown"
+import { parseC3PAOMarkdown } from "@/lib/c3pao-guide"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, BookOpen } from "lucide-react"
+import { C3PAOGuideView } from "@/components/resources/c3pao-guide-view"
 
 interface ResourcePageProps {
   params: Promise<{ slug: string; resourceId: string }>
@@ -21,7 +23,10 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
   const rawContent = await getResourceContent(resourceId)
   if (rawContent == null) notFound()
 
-  const html = markdownToHtml(rawContent)
+  const isC3PAO = resourceId === "c3pao-interrogation-guide"
+  const parsed = isC3PAO ? parseC3PAOMarkdown(rawContent) : null
+  const overviewIntroHtml = parsed ? markdownToHtml(parsed.overviewIntro) : ""
+  const conclusionHtml = parsed ? markdownToHtml(parsed.conclusion) : ""
 
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -48,12 +53,22 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/60 bg-card/40 px-6 py-8 sm:px-8 sm:py-10">
-        <article
-          className="resource-prose min-w-0 max-w-[65ch]"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      </div>
+      {isC3PAO && parsed ? (
+        <div className="rounded-2xl border border-border/60 bg-card/40 px-6 py-8 sm:px-8 sm:py-10">
+          <C3PAOGuideView
+            data={parsed}
+            overviewIntroHtml={overviewIntroHtml}
+            conclusionHtml={conclusionHtml}
+          />
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-border/60 bg-card/40 px-6 py-8 sm:px-8 sm:py-10">
+          <article
+            className="resource-prose min-w-0 max-w-[65ch]"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(rawContent) }}
+          />
+        </div>
+      )}
     </div>
   )
 }
