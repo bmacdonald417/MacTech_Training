@@ -709,9 +709,23 @@ function buildQuizData() {
   }
 }
 
+/** Quiz data shape used by seed (accepts both buildQuizData and parsed markdown; explanation may be null). */
+type CmmcQuizData = {
+  passingScore: number
+  allowRetry: boolean
+  showAnswersAfter: boolean
+  questions: Array<{
+    text: string
+    type: string
+    explanation: string | null
+    order: number
+    choices: Array<{ text: string; isCorrect: boolean; order: number }>
+  }>
+}
+
 export async function seedCmmcAt(prisma: PrismaClient, orgId: string) {
   const slidesData = buildSlides()
-  let quizData: ReturnType<typeof buildQuizData>
+  let quizData: CmmcQuizData
   try {
     quizData = loadCmmcQuizFromMarkdown()
   } catch {
