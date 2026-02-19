@@ -77,6 +77,115 @@ export async function ensureGroupJoinCode(orgSlug: string, groupId: string) {
   }
 }
 
+/** Wipe all curricula for the org (and their assignments/enrollments). Admin only. */
+export async function wipeCurriculaForOrg(
+  orgSlug: string
+): Promise<{ error?: string; wiped?: number }> {
+  try {
+    const membership = await requireAdmin(orgSlug)
+    const curricula = await prisma.curriculum.findMany({
+      where: { orgId: membership.orgId },
+      select: { id: true },
+    })
+    if (curricula.length === 0) {
+      revalidatePath(`/org/${orgSlug}/admin/groups`)
+      revalidatePath(`/org/${orgSlug}/admin/groups/[groupId]/assign-curriculum`)
+      return { wiped: 0 }
+    }
+    const curriculumIds = curricula.map((c) => c.id)
+    const assignments = await prisma.assignment.findMany({
+      where: { curriculumId: { in: curriculumIds } },
+      select: { id: true },
+    })
+    const assignmentIds = assignments.map((a) => a.id)
+    if (assignmentIds.length > 0) {
+      await prisma.enrollmentItemProgress.deleteMany({
+        where: { enrollment: { assignmentId: { in: assignmentIds } } },
+      })
+      await prisma.enrollment.deleteMany({
+        where: { assignmentId: { in: assignmentIds } },
+      })
+      await prisma.assignment.deleteMany({
+        where: { id: { in: assignmentIds } },
+      })
+    }
+    await prisma.curriculum.deleteMany({
+      where: { orgId: membership.orgId },
+    })
+    revalidatePath(`/org/${orgSlug}/admin/groups`)
+    revalidatePath(`/org/${orgSlug}/admin/groups/[groupId]/assign-curriculum`)
+    revalidatePath(`/org/${orgSlug}/trainer/curricula`)
+    revalidatePath(`/org/${orgSlug}/trainer/assignments`)
+    return { wiped: curricula.length }
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
+      return { error: "You don't have permission." }
+    }
+    console.error("wipeCurriculaForOrg:", err)
+    return { error: "Failed to wipe curricula." }
+  }
+}
+
+/** Assign a single content item (e.g. slide deck) to a group. Creates one Assignment and enrollments. */
+export async function assignContentItemToGroup(
+  orgSlug: string,
+  groupId: string,
+  contentItemId: string,
+  title: string,
+  dueDate?: string | null
+): Promise<{ error?: string; enrolledCount?: number }> {
+  try {
+    const membership = await requireAdmin(orgSlug)
+    const [group, contentItem] = await Promise.all([
+      prisma.group.findFirst({
+        where: { id: groupId, orgId: membership.orgId },
+        include: { members: { select: { userId: true } } },
+      }),
+      prisma.contentItem.findFirst({
+        where: { id: contentItemId, orgId: membership.orgId },
+        select: { id: true, title: true },
+      }),
+    ])
+    if (!group) return { error: "Group not found." }
+    if (!contentItem) return { error: "Content not found." }
+    const assignmentTitle = title?.trim() || contentItem.title
+
+    const userIds = group.members.map((m) => m.userId)
+
+    const assignment = await prisma.assignment.create({
+      data: {
+        orgId: membership.orgId,
+        type: "CONTENT_ITEM",
+        contentItemId: contentItem.id,
+        groupId: group.id,
+        title: assignmentTitle,
+        dueDate: dueDate ? new Date(dueDate) : null,
+      },
+    })
+
+    if (userIds.length > 0) {
+      await prisma.enrollment.createMany({
+        data: userIds.map((userId) => ({
+          assignmentId: assignment.id,
+          userId,
+        })),
+      })
+    }
+
+    revalidatePath(`/org/${orgSlug}/admin/groups`)
+    revalidatePath(`/org/${orgSlug}/admin/groups/${groupId}/assign-curriculum`)
+    revalidatePath(`/org/${orgSlug}/trainer/assignments`)
+    revalidatePath(`/org/${orgSlug}/my-training`)
+    return { enrolledCount: userIds.length }
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
+      return { error: "You don't have permission to assign training." }
+    }
+    console.error("assignContentItemToGroup:", err)
+    return { error: "Failed to assign to group." }
+  }
+}
+
 /** Assign a curriculum to a group: creates one Assignment and one Enrollment per user in the group. */
 export async function assignCurriculumToGroup(
   orgSlug: string,
