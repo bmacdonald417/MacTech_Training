@@ -62,9 +62,14 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
           />
         </div>
       ) : (
-        <div className="rounded-2xl border border-border/60 bg-card/40 px-6 py-8 sm:px-8 sm:py-10">
+        <div className="rounded-2xl border border-border/50 bg-card/50 shadow-card overflow-hidden">
+          <div className="border-b border-border/40 bg-muted/20 px-6 py-4 sm:px-8">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Reference
+            </p>
+          </div>
           <article
-            className="resource-prose min-w-0 max-w-[65ch]"
+            className="resource-prose min-w-0 max-w-[65ch] px-6 py-8 sm:px-8 sm:py-10 prose prose-invert prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground prose-p:leading-relaxed prose-p:text-muted-foreground prose-strong:text-foreground prose-ul:text-muted-foreground prose-li:my-1 prose-a:text-primary prose-a:underline prose-a:underline-offset-2 hover:prose-a:no-underline"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(rawContent) }}
           />
         </div>

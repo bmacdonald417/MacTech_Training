@@ -17,6 +17,14 @@ export const RESOURCES: ResourceMeta[] = [
       "CMMC 2.0 Level 2 assessment guide: what C3PAOs look for (Interview, Examine, Test) across NIST SP 800-171 domains.",
     filePath: "components/resources/C3PAO_Interrogation_Guide_by_MacTech.md",
   },
+  {
+    id: "cmmc-awareness-training-guide",
+    title: "Satisfying CMMC Awareness and Training Requirements with MacTech's CUI Enclave User Training",
+    description:
+      "How MacTech's CUI Enclave Required User Training addresses AT.L2-3.2.1, AT.L2-3.2.2, and AT.L2-3.2.3 for CMMC compliance.",
+    filePath:
+      "components/resources/Satisfying CMMC Awareness and Training Requirements with MacTech's CUI Enclave User Training.md",
+  },
 ]
 
 export function getResourceById(id: string): ResourceMeta | undefined {
