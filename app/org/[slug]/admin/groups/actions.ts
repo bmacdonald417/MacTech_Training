@@ -133,7 +133,7 @@ export async function assignContentItemToGroup(
   contentItemId: string,
   title: string,
   dueDate?: string | null
-): Promise<{ error?: string; enrolledCount?: number }> {
+): Promise<{ error?: string; enrolledCount?: number; message?: string }> {
   try {
     const membership = await requireAdmin(orgSlug)
     const [group, contentItem] = await Promise.all([
@@ -199,7 +199,7 @@ export async function assignCurriculumToGroup(
   curriculumId: string,
   title: string,
   dueDate?: string | null
-): Promise<{ error?: string; enrolledCount?: number }> {
+): Promise<{ error?: string; enrolledCount?: number; message?: string }> {
   try {
     const membership = await requireAdmin(orgSlug)
     const [group, curriculum] = await Promise.all([
