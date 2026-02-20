@@ -79,7 +79,7 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
           />
         </div>
       ) : isCmmcAwarenessGuide ? (
-        <MarkdownDocView html={markdownHtml} showToc />
+        <MarkdownDocView html={markdownHtml} />
       ) : (
         <div className="rounded-2xl border border-border/50 bg-card/50 shadow-card overflow-hidden">
           <div className="border-b border-border/40 bg-muted/20 px-6 py-4 sm:px-8">
