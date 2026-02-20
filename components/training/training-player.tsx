@@ -130,6 +130,16 @@ export function TrainingPlayer({
                 : "flex min-h-0 flex-1 flex-col overflow-hidden p-2"
             }
           >
+            {currentItem?.type === "QUIZ" && (
+              <div className="mb-4 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
+                <p className="font-medium text-foreground">
+                  Assessment: 20-question knowledge check
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  Complete the quiz below. You must pass at 80% to complete this training and receive your certificate.
+                </p>
+              </div>
+            )}
             {currentItem && (
               <ContentViewer
                 contentItem={currentItem.contentItem}
