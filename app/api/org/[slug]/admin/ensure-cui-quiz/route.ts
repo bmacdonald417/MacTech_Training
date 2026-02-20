@@ -92,7 +92,7 @@ export async function POST(
       },
     })
 
-    await prisma.curriculumSectionItem.create({
+    await prisma.curriculumItem.create({
       data: {
         sectionId: newSection.id,
         contentItemId: quizContent.id,
