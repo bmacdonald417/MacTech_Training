@@ -227,10 +227,10 @@ export function QuizViewer({
                   return (
                     <div key={q.id} className="rounded-lg border p-4 space-y-2">
                       <p className="font-medium">{q.text}</p>
-                      <p className="text-sm text-red-600">
+                      <p className="text-sm text-red-400">
                         Your answer: {userChoice?.text ?? "—"}
                       </p>
-                      <p className="text-sm text-green-600">
+                      <p className="text-sm text-green-400">
                         Correct answer: {correctChoice?.text ?? "—"}
                       </p>
                       {q.explanation && (
@@ -299,21 +299,21 @@ export function QuizViewer({
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
       {/* Progress and Score Header */}
       <div className="flex items-center justify-between mb-4">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           Question {currentQuestionIndex + 1} of {questions.length}
         </div>
         {submitted && score !== null && (
-          <div className={`text-lg font-semibold ${passed ? "text-green-600" : "text-red-600"}`}>
+          <div className={`text-lg font-semibold ${passed ? "text-green-400" : "text-red-400"}`}>
             Score: {score}% {passed ? "✓ Passed" : "✗ Failed"}
           </div>
         )}
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+      <div className="w-full bg-muted rounded-full h-2 mb-6">
         <div
           className={`h-2 rounded-full transition-all ${
-            submitted && passed ? "bg-green-600" : submitted ? "bg-red-600" : "bg-primary"
+            submitted && passed ? "bg-green-500" : submitted ? "bg-red-500" : "bg-primary"
           }`}
           style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
         />
@@ -326,8 +326,8 @@ export function QuizViewer({
             {currentQuestion.text}
           </CardTitle>
           {submitted && showExplanations && currentQuestion.explanation && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-900">
+            <div className="mt-4 p-4 bg-primary/10 border border-primary/30 rounded-lg">
+              <p className="text-sm text-foreground">
                 <strong>Explanation:</strong> {currentQuestion.explanation}
               </p>
             </div>
@@ -347,13 +347,13 @@ export function QuizViewer({
                   key={choice.id}
                   className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
                     isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border hover:border-muted-foreground/40 text-foreground"
                   } ${
                     showCorrect
-                      ? "border-green-500 bg-green-50"
+                      ? "!border-green-500 !bg-green-900/60 text-green-50"
                       : showIncorrect
-                      ? "border-red-500 bg-red-50"
+                      ? "!border-red-500 !bg-red-900/60 text-red-50"
                       : ""
                   } ${submitted && !canRetry ? "cursor-not-allowed opacity-75" : ""}`}
                 >
@@ -364,14 +364,14 @@ export function QuizViewer({
                     checked={isSelected}
                     onChange={() => handleAnswerChange(currentQuestion.id, choice.id)}
                     disabled={submitted && !canRetry}
-                    className="w-4 h-4"
+                    className="w-4 h-4 accent-primary"
                   />
                   <span className="flex-1">{choice.text}</span>
                   {showCorrect && (
-                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <CheckCircle2 className="h-5 w-5 text-green-300 flex-shrink-0" />
                   )}
                   {showIncorrect && (
-                    <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                    <XCircle className="h-5 w-5 text-red-300 flex-shrink-0" />
                   )}
                 </label>
               )
@@ -420,12 +420,12 @@ export function QuizViewer({
               {isLast ? (
                 <div className="flex items-center gap-2">
                   {passed ? (
-                    <div className="flex items-center gap-2 text-green-600">
+                    <div className="flex items-center gap-2 text-green-400">
                       <CheckCircle2 className="h-5 w-5" />
                       <span className="font-medium">Quiz Passed</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-red-600">
+                    <div className="flex items-center gap-2 text-red-400">
                       <XCircle className="h-5 w-5" />
                       <span className="font-medium">
                         Quiz Failed {quiz.allowRetry ? "- You can retry" : ""}
@@ -456,17 +456,17 @@ export function QuizViewer({
               <button
                 key={q.id}
                 onClick={() => setCurrentQuestionIndex(index)}
-                className={`w-3 h-3 rounded-full transition-colors ${
+                className={`w-3 h-3 rounded-full transition-colors ring-offset-background ${
                   isCurrent
                     ? "bg-primary ring-2 ring-primary ring-offset-2"
                     : hasAnswer
-                    ? "bg-gray-400"
-                    : "bg-gray-200"
+                    ? "bg-muted-foreground/50"
+                    : "bg-muted"
                 } ${
                   status === "correct"
-                    ? "bg-green-500"
+                    ? "!bg-green-500"
                     : status === "incorrect"
-                    ? "bg-red-500"
+                    ? "!bg-red-500"
                     : ""
                 }`}
                 title={`Question ${index + 1}`}
