@@ -129,6 +129,32 @@ export function markdownToHtml(content: string): string {
       continue
     }
 
+    // Horizontal rule: --- or ***
+    if (/^[-*_]{3,}\s*$/.test(trimmed)) {
+      closeAllLists()
+      out.push("<hr class='resource-prose__hr my-10 border-0 border-t border-border/60' />")
+      i++
+      continue
+    }
+
+    // Blockquote: > line (collect consecutive lines)
+    if (trimmed.startsWith(">")) {
+      closeAllLists()
+      const quoteLines: string[] = []
+      while (i < lines.length && lines[i].trimStart().startsWith(">")) {
+        const q = lines[i].trimStart().replace(/^>\s?/, "")
+        quoteLines.push(q)
+        i++
+      }
+      const blockquoteBody = quoteLines
+        .map((q) => (q === "" ? "<br/>" : `<p class='resource-prose__blockquote-p mb-2 last:mb-0'>${processInlines(q)}</p>`))
+        .join("")
+      out.push(
+        `<blockquote class='resource-prose__blockquote border-l-4 border-primary/50 bg-primary/5 rounded-r-lg pl-5 pr-4 py-4 my-6 not-italic'>${blockquoteBody}</blockquote>`
+      )
+      continue
+    }
+
     if (listMatch) {
       startListItem(isIndent4, listBody)
       i++

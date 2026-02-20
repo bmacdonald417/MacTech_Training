@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, BookOpen } from "lucide-react"
 import { C3PAOGuideView } from "@/components/resources/c3pao-guide-view"
+import { MarkdownDocView } from "@/components/resources/markdown-doc-view"
 
 interface ResourcePageProps {
   params: Promise<{ slug: string; resourceId: string }>
@@ -24,9 +25,11 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
   if (rawContent == null) notFound()
 
   const isC3PAO = resourceId === "c3pao-interrogation-guide"
+  const isCmmcAwarenessGuide = resourceId === "cmmc-awareness-training-guide"
   const parsed = isC3PAO ? parseC3PAOMarkdown(rawContent) : null
   const overviewIntroHtml = parsed ? markdownToHtml(parsed.overviewIntro) : ""
   const conclusionHtml = parsed ? markdownToHtml(parsed.conclusion) : ""
+  const markdownHtml = isCmmcAwarenessGuide ? markdownToHtml(rawContent) : ""
 
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -75,6 +78,8 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
             conclusionHtml={conclusionHtml}
           />
         </div>
+      ) : isCmmcAwarenessGuide ? (
+        <MarkdownDocView html={markdownHtml} showToc />
       ) : (
         <div className="rounded-2xl border border-border/50 bg-card/50 shadow-card overflow-hidden">
           <div className="border-b border-border/40 bg-muted/20 px-6 py-4 sm:px-8">
