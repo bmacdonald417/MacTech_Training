@@ -1124,7 +1124,26 @@ Use this checklist alongside the slide deck's 30/60/90 roadmap. Adjust to your s
   await seedQms(prisma, org.id, admin.id, trainer.id)
 
   // CMMC Level 2 AT course (AT.L2-3.2.1, 3.2.2, 3.2.3): 40 slides, quiz, attestation, curriculum
-  await seedCmmcAt(prisma, org.id)
+  const { curriculumId: cmmcCurriculumId } = await seedCmmcAt(prisma, org.id)
+
+  // Assign CMMC curriculum as "CUI Enclave Required User Training" (includes quiz) to intro group
+  const cmmcAssignment = await prisma.assignment.create({
+    data: {
+      orgId: org.id,
+      type: "CURRICULUM",
+      curriculumId: cmmcCurriculumId,
+      groupId: introGroup.id,
+      title: "CUI Enclave Required User Training",
+      description: "CMMC Level 2 awareness, role-based training, and insider threat. Includes slides, knowledge check quiz, and attestation.",
+    },
+  })
+  await prisma.enrollment.createMany({
+    data: [admin, trainer, trainee].map((u) => ({
+      assignmentId: cmmcAssignment.id,
+      userId: u.id,
+    })),
+  })
+  console.log("Created CUI Enclave Required User Training assignment (CMMC curriculum with quiz); assigned to intro group")
 
   console.log("Seeding completed!")
   console.log("\n=== Login Credentials ===")

@@ -87,20 +87,29 @@ export default async function MyTrainingPage({ params }: MyTrainingPageProps) {
 
   const calculateProgress = (enrollment: any) => {
     if (enrollment.assignment.type === "CONTENT_ITEM") {
-      return enrollment.status === "COMPLETED" ? 100 : 0
+      const contentItemId = enrollment.assignment.contentItemId
+      if (!contentItemId) return enrollment.status === "COMPLETED" ? 100 : 0
+      const completed = enrollment.itemProgress?.some(
+        (p: any) => p.contentItemId === contentItemId && p.completed
+      )
+      return completed || enrollment.status === "COMPLETED" ? 100 : 0
     }
 
-    // For curriculum
-    const totalItems = enrollment.assignment.curriculum?.sections.reduce(
-      (acc: number, section: any) => acc + section.items.length,
-      0
-    ) || 0
+    // For curriculum: count only required items so progress matches completion
+    const requiredItemIds: string[] = []
+    enrollment.assignment.curriculum?.sections?.forEach((section: any) => {
+      section.items?.forEach((item: any) => {
+        if (item.required !== false) requiredItemIds.push(item.contentItemId)
+      })
+    })
+    const totalRequired = requiredItemIds.length || 0
+    const completedRequired = enrollment.itemProgress?.filter(
+      (p: any) => p.completed && requiredItemIds.includes(p.contentItemId)
+    ).length || 0
 
-    const completedItems = enrollment.itemProgress.filter(
-      (p: any) => p.completed
-    ).length
-
-    return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+    return totalRequired > 0
+      ? Math.round((completedRequired / totalRequired) * 100)
+      : 0
   }
 
   return (
