@@ -3,8 +3,9 @@ import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
 /**
- * Ensures the CUI Enclave Required User Training curriculum includes the 20-question quiz.
- * If the curriculum has no quiz step, adds a "Knowledge check" section with the org's CMMC quiz.
+ * Ensures the CUI Enclave Required User Training includes the 20-question quiz.
+ * - If it's a curriculum: adds a "Knowledge check" section with the quiz.
+ * - If it's a single slide deck (CONTENT_ITEM): creates a curriculum (slides + quiz) and switches the assignment to it.
  */
 export async function POST(
   _req: Request,
@@ -15,14 +16,31 @@ export async function POST(
     const membership = await requireAdmin(slug)
     const orgId = membership.orgId
 
+    const quizContent = await prisma.contentItem.findFirst({
+      where: {
+        orgId,
+        type: "QUIZ",
+        title: { contains: "CMMC Level 2 Security Awareness" },
+      },
+    })
+    if (!quizContent) {
+      return NextResponse.json({
+        ok: false,
+        message: "Quiz content not found. Run Install CMMC from Settings first.",
+      })
+    }
+
     const assignment = await prisma.assignment.findFirst({
       where: {
         orgId,
-        type: "CURRICULUM",
-        curriculumId: { not: null },
-        title: { contains: "CUI Enclave Required User Training" },
+        OR: [
+          { title: { contains: "CUI Enclave Required User Training", mode: "insensitive" } },
+          { title: { contains: "CUI Enclave User Training", mode: "insensitive" } },
+          { title: { contains: "CUI Enclave", mode: "insensitive" } },
+        ],
       },
       include: {
+        contentItem: { select: { id: true, type: true, title: true } },
         curriculum: {
           include: {
             sections: {
@@ -40,15 +58,96 @@ export async function POST(
       },
     })
 
-    if (!assignment?.curriculum) {
+    if (!assignment) {
       return NextResponse.json({
         ok: true,
         updated: false,
-        message: "No CUI Enclave Required User Training curriculum found.",
+        message:
+          "No assignment named \"CUI Enclave Required User Training\" (or similar) found. Create one: Admin → Groups → intro → Assign curriculum or Assign slide deck, and use that title.",
       })
     }
 
-    const hasQuiz = assignment.curriculum.sections.some((s) =>
+    let curriculum = assignment.curriculum ?? null
+
+    if (assignment.type === "CONTENT_ITEM" && assignment.contentItemId) {
+      const slideDeckContentId = assignment.contentItemId
+      const newCurriculum = await prisma.curriculum.create({
+        data: {
+          orgId,
+          title: "CUI Enclave Required User Training",
+          description: "CUI Enclave training with slide deck and 20-question knowledge check.",
+          sections: {
+            create: [
+              {
+                title: "Training",
+                description: "Slide deck",
+                order: 0,
+                items: {
+                  create: [{ contentItemId: slideDeckContentId, required: true, order: 0 }],
+                },
+              },
+              {
+                title: "Knowledge check",
+                description: "20 questions; 80% pass required.",
+                order: 1,
+                items: {
+                  create: [{ contentItemId: quizContent.id, required: true, order: 0 }],
+                },
+              },
+            ],
+          },
+        },
+      })
+      await prisma.assignment.update({
+        where: { id: assignment.id },
+        data: {
+          type: "CURRICULUM",
+          curriculumId: newCurriculum.id,
+          contentItemId: null,
+        },
+      })
+      return NextResponse.json({
+        ok: true,
+        updated: true,
+        message:
+          "CUI Enclave Required User Training now includes the slide deck and the 20-question quiz. Users will see both steps when they take the training.",
+      })
+    }
+
+    if (!curriculum) {
+      const curriculumWithSections = await prisma.curriculum.findFirst({
+        where: {
+          orgId,
+          OR: [
+            { title: { contains: "CMMC Level 2", mode: "insensitive" } },
+            { title: { contains: "CUI Enclave", mode: "insensitive" } },
+          ],
+        },
+        include: {
+          sections: {
+            include: {
+              items: {
+                include: {
+                  contentItem: { select: { type: true } },
+                },
+              },
+            },
+            orderBy: { order: "asc" },
+          },
+        },
+      })
+      if (!curriculumWithSections) {
+        return NextResponse.json({
+          ok: true,
+          updated: false,
+          message:
+            "No CUI Enclave or CMMC curriculum found. Run Install CMMC from Settings first, then assign that curriculum to a group and name it \"CUI Enclave Required User Training\".",
+        })
+      }
+      curriculum = curriculumWithSections
+    }
+
+    const hasQuiz = curriculum.sections.some((s) =>
       s.items.some((i) => i.contentItem.type === "QUIZ")
     )
     if (hasQuiz) {
@@ -59,25 +158,11 @@ export async function POST(
       })
     }
 
-    const quizContent = await prisma.contentItem.findFirst({
-      where: {
-        orgId,
-        type: "QUIZ",
-        title: { contains: "CMMC Level 2 Security Awareness" },
-      },
-    })
-    if (!quizContent) {
-      return NextResponse.json({
-        ok: false,
-        message: "Quiz content not found. Run Install CMMC from Settings first.",
-      })
-    }
-
     // Insert quiz section as order 1 (between slides and attestation)
     const quizSectionOrder = 1
     await prisma.curriculumSection.updateMany({
       where: {
-        curriculumId: assignment.curriculum.id,
+        curriculumId: curriculum.id,
         order: { gte: quizSectionOrder },
       },
       data: { order: { increment: 1 } },
@@ -85,7 +170,7 @@ export async function POST(
 
     const newSection = await prisma.curriculumSection.create({
       data: {
-        curriculumId: assignment.curriculum.id,
+        curriculumId: curriculum.id,
         title: "Knowledge check",
         description: "20 questions; 80% pass required.",
         order: quizSectionOrder,
