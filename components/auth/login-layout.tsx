@@ -29,7 +29,7 @@ export function LoginLayout({ leftPanel, rightPanel }: LoginLayoutProps) {
               alt="MacTech Solutions"
               width={220}
               height={72}
-              className="h-12 w-auto object-contain object-left"
+              className="h-12 w-auto object-contain object-left invert"
               priority
             />
             <p className="text-sm text-slate-400 mt-3">Professional training platform</p>

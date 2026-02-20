@@ -8,7 +8,7 @@ export function BrandMark() {
         alt="MacTech Solutions"
         width={280}
         height={92}
-        className="h-14 xl:h-16 w-auto object-contain object-left mb-6"
+        className="h-14 xl:h-16 w-auto object-contain object-left mb-6 invert"
         priority
       />
       <p className="text-lg xl:text-xl text-slate-400 leading-relaxed max-w-md">
