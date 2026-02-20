@@ -78,11 +78,11 @@ export function AssignCurriculumForm({
     }
 
     const count = result.enrolledCount ?? 0
-    const message =
+    const defaultMessage =
       count > 0
         ? `Assigned to ${count} member${count === 1 ? "" : "s"}. They will see it in My Training (refresh the page if already open).`
         : "Assignment created, but this group has no members yet. Add users to the group under Users; they will see the curriculum in My Training after you assign again or you can assign this same curriculum again after adding members."
-    setSuccess(message)
+    setSuccess((result as { message?: string }).message ?? defaultMessage)
     setTimeout(() => {
       router.push(groupsUrl)
       router.refresh()
@@ -121,11 +121,11 @@ export function AssignCurriculumForm({
     }
 
     const count = result.enrolledCount ?? 0
-    const message =
+    const defaultMessage =
       count > 0
         ? `Slide deck assigned to ${count} member${count === 1 ? "" : "s"}. They will see it in My Training.`
         : "Assignment created; add users to the group to see it in My Training."
-    setSuccess(message)
+    setSuccess((result as { message?: string }).message ?? defaultMessage)
     setTimeout(() => {
       router.push(groupsUrl)
       router.refresh()

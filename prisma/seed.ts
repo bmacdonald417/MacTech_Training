@@ -282,13 +282,8 @@ We may update these Terms from time to time. Continued use of the Platform after
       title: "APEX Pilot",
     },
   })
-  await prisma.enrollment.createMany({
-    data: [admin, trainer, trainee].map((u) => ({
-      assignmentId: apexPilotAssignment.id,
-      userId: u.id,
-    })),
-  })
-  console.log("Created APEX Pilot curriculum (Government Fundamentals slides); assigned to intro group")
+  // Intro group: no enrollments — users self-assign from dashboard
+  console.log("Created APEX Pilot curriculum (intro group; available for self-assign)")
 
   // Create article content
   const articleContent = await prisma.contentItem.create({
@@ -1137,13 +1132,8 @@ Use this checklist alongside the slide deck's 30/60/90 roadmap. Adjust to your s
       description: "CMMC Level 2 awareness, role-based training, and insider threat. Includes slides, knowledge check quiz, and attestation.",
     },
   })
-  await prisma.enrollment.createMany({
-    data: [admin, trainer, trainee].map((u) => ({
-      assignmentId: cmmcAssignment.id,
-      userId: u.id,
-    })),
-  })
-  console.log("Created CUI Enclave Required User Training assignment (CMMC curriculum with quiz); assigned to intro group")
+  // Intro group: no enrollments — users self-assign from dashboard
+  console.log("Created CUI Enclave Required User Training assignment (intro group; available for self-assign)")
 
   console.log("Seeding completed!")
   console.log("\n=== Login Credentials ===")

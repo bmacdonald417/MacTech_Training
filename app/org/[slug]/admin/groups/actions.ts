@@ -151,6 +151,7 @@ export async function assignContentItemToGroup(
     const assignmentTitle = title?.trim() || contentItem.title
 
     const userIds = group.members.map((m) => m.userId)
+    const isIntroGroup = group.name === "intro"
 
     const assignment = await prisma.assignment.create({
       data: {
@@ -163,7 +164,7 @@ export async function assignContentItemToGroup(
       },
     })
 
-    if (userIds.length > 0) {
+    if (!isIntroGroup && userIds.length > 0) {
       await prisma.enrollment.createMany({
         data: userIds.map((userId) => ({
           assignmentId: assignment.id,
@@ -176,7 +177,12 @@ export async function assignContentItemToGroup(
     revalidatePath(`/org/${orgSlug}/admin/groups/${groupId}/assign-curriculum`)
     revalidatePath(`/org/${orgSlug}/trainer/assignments`)
     revalidatePath(`/org/${orgSlug}/my-training`)
-    return { enrolledCount: userIds.length }
+    return {
+      enrolledCount: isIntroGroup ? 0 : userIds.length,
+      message: isIntroGroup
+        ? "Assignment added to intro group. Members will see it on the dashboard as available and can self-assign."
+        : undefined,
+    }
   } catch (err) {
     if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
       return { error: "You don't have permission to assign training." }
@@ -210,6 +216,7 @@ export async function assignCurriculumToGroup(
     const assignmentTitle = title?.trim() || curriculum.title
 
     const userIds = group.members.map((m) => m.userId)
+    const isIntroGroup = group.name === "intro"
 
     const assignment = await prisma.assignment.create({
       data: {
@@ -222,7 +229,7 @@ export async function assignCurriculumToGroup(
       },
     })
 
-    if (userIds.length > 0) {
+    if (!isIntroGroup && userIds.length > 0) {
       await prisma.enrollment.createMany({
         data: userIds.map((userId) => ({
           assignmentId: assignment.id,
@@ -235,7 +242,12 @@ export async function assignCurriculumToGroup(
     revalidatePath(`/org/${orgSlug}/admin/groups/${groupId}/assign-curriculum`)
     revalidatePath(`/org/${orgSlug}/trainer/assignments`)
     revalidatePath(`/org/${orgSlug}/my-training`)
-    return { enrolledCount: userIds.length }
+    return {
+      enrolledCount: isIntroGroup ? 0 : userIds.length,
+      message: isIntroGroup
+        ? "Assignment added to intro group. Members will see it on the dashboard as available and can self-assign."
+        : undefined,
+    }
   } catch (err) {
     if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
       return { error: "You don't have permission to assign curricula." }
