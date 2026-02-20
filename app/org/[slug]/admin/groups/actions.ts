@@ -286,3 +286,39 @@ export async function removeAssignmentFromGroup(
     return { error: "Failed to remove training from group." }
   }
 }
+
+/** Clear all enrollments for intro group assignments. Intro members will then see those courses as "Available" on the dashboard and can self-assign. */
+export async function clearIntroGroupEnrollments(
+  orgSlug: string
+): Promise<{ error?: string; clearedCount?: number }> {
+  try {
+    const membership = await requireAdmin(orgSlug)
+    const introGroup = await prisma.group.findFirst({
+      where: { orgId: membership.orgId, name: "intro" },
+      select: { id: true },
+    })
+    if (!introGroup) return { error: "Intro group not found." }
+
+    const assignments = await prisma.assignment.findMany({
+      where: { groupId: introGroup.id },
+      select: { id: true },
+    })
+    const assignmentIds = assignments.map((a) => a.id)
+    if (assignmentIds.length === 0) return { clearedCount: 0 }
+
+    const result = await prisma.enrollment.deleteMany({
+      where: { assignmentId: { in: assignmentIds } },
+    })
+
+    revalidatePath(`/org/${orgSlug}/admin/groups`)
+    revalidatePath(`/org/${orgSlug}/dashboard`)
+    revalidatePath(`/org/${orgSlug}/my-training`)
+    return { clearedCount: result.count }
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Unauthorized" || err.message === "Forbidden")) {
+      return { error: "You don't have permission." }
+    }
+    console.error("clearIntroGroupEnrollments:", err)
+    return { error: "Failed to clear intro enrollments." }
+  }
+}

@@ -10,6 +10,7 @@ import { GroupJoinQR } from "@/components/group-join-qr"
 import { GroupJoinCodeGenerateButton } from "./group-join-code-button"
 import { ViewGroupMembersButton } from "./view-group-members"
 import { RemoveGroupAssignmentButton } from "./remove-group-assignment-button"
+import { ClearIntroEnrollmentsButton } from "./clear-intro-enrollments-button"
 import { Users, Plus, BookOpen, GraduationCap } from "lucide-react"
 
 interface GroupsPageProps {
@@ -134,13 +135,16 @@ export default async function GroupsPage({ params }: GroupsPageProps) {
                     </ul>
                   </div>
                 )}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-end gap-2">
                   <Button variant="default" size="sm" asChild>
                     <Link href={`/org/${slug}/admin/groups/${group.id}/assign-curriculum`} className="gap-2">
                       <BookOpen className="h-4 w-4" />
                       Assign curriculum
                     </Link>
                   </Button>
+                  {group.name === "intro" && (
+                    <ClearIntroEnrollmentsButton orgSlug={slug} />
+                  )}
                 </div>
               </CardContent>
             </Card>
