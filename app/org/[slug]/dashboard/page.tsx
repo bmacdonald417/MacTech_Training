@@ -8,6 +8,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { SectionCard } from "@/components/ui/section-card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
+import { AvailableTrainingCard } from "@/components/dashboard/available-training-card"
 import {
   BookOpen,
   Award,
@@ -39,6 +40,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     certificates: 0,
   }
 
+  let availableAssignments: Array<{
+    id: string
+    title: string
+    description: string | null
+    type: "CURRICULUM" | "CONTENT_ITEM"
+    curriculumTitle?: string | null
+  }> = []
+
   if (membership.role === "USER") {
     const enrollments = await prisma.enrollment.findMany({
       where: {
@@ -56,6 +65,38 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       },
     })
     stats.certificates = certs.length
+
+    // Assignments for user's groups that they are not yet enrolled in (self-assign)
+    const userGroupIds = (
+      await prisma.groupMember.findMany({
+        where: { userId: membership.userId, group: { orgId: membership.orgId } },
+        select: { groupId: true },
+      })
+    ).map((m) => m.groupId)
+    if (userGroupIds.length > 0) {
+      const groupAssignments = await prisma.assignment.findMany({
+        where: {
+          orgId: membership.orgId,
+          groupId: { in: userGroupIds },
+        },
+        include: {
+          curriculum: { select: { title: true } },
+          contentItem: { select: { title: true } },
+        },
+      })
+      const enrolledAssignmentIds = new Set(
+        enrollments.map((e) => e.assignmentId)
+      )
+      availableAssignments = groupAssignments
+        .filter((a) => !enrolledAssignmentIds.has(a.id))
+        .map((a) => ({
+          id: a.id,
+          title: a.title,
+          description: a.description ?? null,
+          type: a.type,
+          curriculumTitle: a.curriculum?.title ?? a.contentItem?.title ?? null,
+        }))
+    }
   } else if (membership.role === "ADMIN") {
     const assignments = await prisma.assignment.findMany({
       where: { orgId: membership.orgId },
@@ -124,6 +165,16 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           href={`/org/${slug}/certificates`}
         />
       </section>
+
+      {!isAdmin && availableAssignments.length > 0 && (
+        <section>
+          <AvailableTrainingCard
+            orgSlug={slug}
+            assignments={availableAssignments}
+            isWelcome
+          />
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
