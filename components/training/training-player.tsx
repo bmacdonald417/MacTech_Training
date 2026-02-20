@@ -80,15 +80,19 @@ export function TrainingPlayer({
       )
 
       if (response.ok) {
+        const data = await response.json().catch(() => ({}))
         setCompletedItems((prev) => new Set(Array.from(prev).concat(itemId)))
         
-        // If all items completed, mark enrollment as completed
+        // If training just completed and we have a certificate, show it
         const allCompleted = navigationItems.every((item) =>
           itemId === item.id ? true : completedItems.has(item.id)
         )
-        
         if (allCompleted && isLast) {
-          router.push(`/org/${orgSlug}/my-training`)
+          if (data.certificateId) {
+            router.push(`/org/${orgSlug}/certificates/${data.certificateId}`)
+          } else {
+            router.push(`/org/${orgSlug}/my-training`)
+          }
           router.refresh()
         }
       }

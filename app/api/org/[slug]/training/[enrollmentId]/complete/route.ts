@@ -61,6 +61,7 @@ export async function POST(
     // Check if enrollment is fully complete
     const completionCheck = await checkEnrollmentCompletion(enrollmentId)
 
+    let certificateId: string | null = null
     if (completionCheck.isComplete) {
       const completedAt = new Date()
       await prisma.enrollment.update({
@@ -72,7 +73,7 @@ export async function POST(
       })
 
       // Issue certificate
-      const certificateId = await issueCertificate(enrollmentId, membership.orgId, membership.userId)
+      certificateId = await issueCertificate(enrollmentId, membership.orgId, membership.userId)
       const cert = certificateId
         ? await prisma.certificateIssued.findUnique({
             where: { id: certificateId },
@@ -103,7 +104,7 @@ export async function POST(
       },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, certificateId: certificateId ?? undefined })
   } catch (error) {
     console.error("Error completing item:", error)
     return NextResponse.json(
