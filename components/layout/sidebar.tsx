@@ -17,6 +17,7 @@ import {
   X,
   LayoutPanelLeft,
   Library,
+  ShieldCheck,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -33,6 +34,7 @@ const traineeLinks = [
   { href: (s: string) => `/org/${s}/resources`, label: "Resources", icon: Library },
   { href: (s: string) => `/org/${s}/triptych`, label: "CUI Enclave User Training", icon: LayoutPanelLeft },
   { href: (s: string) => `/org/${s}/certificates`, label: "Certificates", icon: Award },
+  { href: (s: string) => `/org/${s}/records`, label: "Verification records", icon: ShieldCheck },
 ]
 
 const trainerLinks = [
@@ -46,6 +48,7 @@ const adminLinks = [
   { href: (s: string) => `/org/${s}/admin/groups`, label: "Groups", icon: Users },
   { href: (s: string) => `/org/${s}/admin/presentations`, label: "Presentations", icon: MonitorPlay },
   { href: (s: string) => `/org/${s}/admin/reports`, label: "Reports", icon: BarChart3 },
+  { href: (s: string) => `/org/${s}/admin/vault`, label: "Completion vault", icon: ShieldCheck },
   { href: (s: string) => `/org/${s}/admin/archive`, label: "Archive", icon: Archive },
   { href: (s: string) => `/org/${s}/admin/settings`, label: "Settings", icon: Settings },
 ]

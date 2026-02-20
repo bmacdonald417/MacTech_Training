@@ -136,8 +136,14 @@ export async function POST(req: Request) {
           userId: user.id,
         },
       })
-      const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
-      await enrollUserInGroupAssignments(user.id, groupId)
+      const group = await prisma.group.findUnique({
+        where: { id: groupId },
+        select: { name: true },
+      })
+      if (group?.name !== "intro") {
+        const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
+        await enrollUserInGroupAssignments(user.id, groupId)
+      }
     }
     // If no group yet (e.g. org has no "intro" group), ensure intro exists and add user
     if (!groupId) {
@@ -154,8 +160,7 @@ export async function POST(req: Request) {
       await prisma.groupMember.create({
         data: { groupId: introGroup.id, userId: user.id },
       })
-      const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
-      await enrollUserInGroupAssignments(user.id, introGroup.id)
+      // Do not auto-enroll intro group; they see "Get started" on dashboard and self-assign
     }
 
     return NextResponse.json({ success: true, userId: user.id })

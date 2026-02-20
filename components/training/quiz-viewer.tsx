@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, XCircle, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react"
+import { CheckCircle2, XCircle, ChevronLeft, ChevronRight, RotateCcw, Award, Copy } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface QuizViewerProps {
@@ -33,7 +34,53 @@ export function QuizViewer({
   const [showExplanations, setShowExplanations] = useState(false)
   const [canRetry, setCanRetry] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [viewMode, setViewMode] = useState<"questions" | "summary">("questions")
+  const [hashCopied, setHashCopied] = useState(false)
+  const [hashHex, setHashHex] = useState<string | null>(null)
   const submitting = isSubmitting || isSubmittingProp
+
+  const wrongQuestions = useMemo(() => {
+    if (!submitted || !quiz?.questions) return []
+    return quiz.questions.filter((q: any) => {
+      const userChoiceId = answers[q.id]
+      const correct = q.choices.find((c: any) => c.isCorrect)
+      return userChoiceId !== correct?.id
+    })
+  }, [submitted, quiz?.questions, answers])
+
+  const verificationHash = useMemo(() => {
+    if (!attemptId || !userId || score === null || passed === null) return null
+    const payload = `${attemptId}:${userId}:${score}:${passed}:${quiz?.id ?? ""}`
+    return payload
+  }, [attemptId, userId, score, passed, quiz?.id])
+
+  async function computeHashHex(payload: string): Promise<string> {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(payload)
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+  }
+
+  useEffect(() => {
+    if (!verificationHash) return
+    computeHashHex(verificationHash).then(setHashHex)
+  }, [verificationHash])
+
+  async function copyHash() {
+    if (!verificationHash) return
+    try {
+      const hex = hashHex ?? (await computeHashHex(verificationHash))
+      if (!hashHex && hex) setHashHex(hex)
+      await navigator.clipboard.writeText(hex)
+      setHashCopied(true)
+      setTimeout(() => setHashCopied(false), 2000)
+    } catch {
+      await navigator.clipboard.writeText(verificationHash)
+      setHashCopied(true)
+      setTimeout(() => setHashCopied(false), 2000)
+    }
+  }
 
   // Load previous attempts to check retry eligibility
   useEffect(() => {
@@ -95,6 +142,7 @@ export function QuizViewer({
       setSubmitted(true)
       setShowExplanations(quiz.showAnswersAfter)
       setCanRetry(quiz.allowRetry && !data.passed)
+      setViewMode("summary")
 
       if (data.passed) {
         onComplete()
@@ -138,8 +186,117 @@ export function QuizViewer({
 
   const currentStatus = getQuestionStatus(currentQuestion)
 
+  // Results summary view (after submit)
+  if (submitted && viewMode === "summary") {
+    const total = quiz?.questions?.length ?? 0
+    const correctCount = total - wrongQuestions.length
+    return (
+      <div className="flex min-h-0 flex-col gap-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Quiz Results</h2>
+            <Button variant="outline" size="sm" onClick={() => setViewMode("questions")}>
+              Review answers
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-6 w-6" />
+                Score: {score ?? 0}% — {passed ? "Passed" : "Did not pass"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                You got {correctCount} of {total} questions correct.
+              </p>
+            </CardContent>
+          </Card>
+
+          {wrongQuestions.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Questions you missed</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {wrongQuestions.map((q: any) => {
+                  const userChoiceId = answers[q.id]
+                  const userChoice = q.choices.find((c: any) => c.id === userChoiceId)
+                  const correctChoice = q.choices.find((c: any) => c.isCorrect)
+                  return (
+                    <div key={q.id} className="rounded-lg border p-4 space-y-2">
+                      <p className="font-medium">{q.text}</p>
+                      <p className="text-sm text-red-600">
+                        Your answer: {userChoice?.text ?? "—"}
+                      </p>
+                      <p className="text-sm text-green-600">
+                        Correct answer: {correctChoice?.text ?? "—"}
+                      </p>
+                      {q.explanation && (
+                        <p className="text-sm text-muted-foreground pt-2 border-t">
+                          <strong>Explanation:</strong> {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Certificate verification</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Use the hashed certificate below to verify this attempt. Copy and submit it where required.
+              </p>
+              {verificationHash && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="flex-1 min-w-0 text-xs bg-muted px-2 py-2 rounded break-all font-mono">
+                    {hashHex ?? "Computing hash…"}
+                  </code>
+                  <Button variant="outline" size="sm" onClick={copyHash}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    {hashCopied ? "Copied!" : "Copy hash"}
+                  </Button>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Your certificate will be available after you complete all required steps.{" "}
+                <Link
+                  href={`/org/${orgSlug}/certificates`}
+                  className="text-primary underline"
+                >
+                  View certificates
+                </Link>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="sticky bottom-0 z-10 flex shrink-0 items-center justify-between border-t border-border bg-background/95 py-3">
+          {canRetry && (
+            <Button variant="outline" onClick={handleRetry}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Retry Quiz
+            </Button>
+          )}
+          <div className="flex-1" />
+          <Button variant="outline" onClick={() => setViewMode("questions")}>
+            Review answers
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-col gap-4">
+      {/* Scrollable content */}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
       {/* Progress and Score Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm text-gray-600">
@@ -222,9 +379,10 @@ export function QuizViewer({
           </div>
         </CardContent>
       </Card>
+      </div>
 
-      {/* Navigation and Actions */}
-      <div className="flex items-center justify-between">
+      {/* Navigation and Actions - sticky so visible at 100% zoom on small viewports */}
+      <div className="sticky bottom-0 z-10 flex shrink-0 items-center justify-between border-t border-border bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <Button
           variant="outline"
           onClick={handlePrevious}
@@ -288,7 +446,7 @@ export function QuizViewer({
 
       {/* Question Navigation Dots */}
       {questions.length > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
+        <div className="flex shrink-0 justify-center gap-2 pt-2">
           {questions.map((q: any, index: number) => {
             const hasAnswer = !!answers[q.id]
             const isCurrent = index === currentQuestionIndex

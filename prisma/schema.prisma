@@ -31,6 +31,7 @@ model Organization {
   narrationAssets NarrationAsset[]
   controlledDocuments ControlledDocument[]
   storedFiles  StoredFile[]
+  completionVaultRecords CompletionVaultRecord[]
 
   @@index([slug])
 }
@@ -54,6 +55,7 @@ model User {
   eventLogs EventLog[]
   documentAcknowledgments DocumentAcknowledgment[]
   termsAcceptances UserTermsAcceptance[]
+  completionVaultRecords CompletionVaultRecord[]
 
   @@index([email])
 }
@@ -755,4 +757,32 @@ model EventLog {
   @@index([orgId, createdAt])
   @@index([userId, createdAt])
   @@index([type, createdAt])
+}
+
+// ============================================
+// COMPLETION VAULT (auditor-visible, tamper-evident records)
+// ============================================
+// When a user completes training, a hashed record is stored for audit.
+// Auditors can view and verify completion hashes from the admin panel.
+
+model CompletionVaultRecord {
+  id                String   @id @default(cuid())
+  orgId             String
+  enrollmentId      String
+  userId            String
+  certificateId     String?  // CertificateIssued.id when issued
+  certificateNumber String?  // human-readable cert number
+  assignmentTitle   String   // denormalized for display
+  completedAt       DateTime
+  verificationHash  String   // SHA-256 hex of canonical payload
+  createdAt         DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([orgId, completedAt])
+  @@index([enrollmentId])
+  @@index([userId])
+  @@index([verificationHash])
 }
