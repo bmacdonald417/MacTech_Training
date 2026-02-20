@@ -46,10 +46,24 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
             </span>
             <span className="text-xs text-muted-foreground">MacTech</span>
           </div>
-          <PageHeader
-            title={resource.title}
-            description={resource.description}
-          />
+          {isC3PAO ? (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tighter text-foreground sm:text-3xl lg:text-[2rem]">
+                {resource.title}
+              </h1>
+              <p className="mt-3 text-base text-foreground/90 max-w-[50ch]">
+                This resource is a structured reference for what Certified Third-Party Assessment Organizations (C3PAOs) look for during a CMMC Level 2 assessment. Use it to prepare documentation and evidence and to anticipate interview, examine, and test activities.
+              </p>
+              <p className="mt-2 text-lg font-medium text-foreground sm:text-xl">
+                {resource.description}
+              </p>
+            </>
+          ) : (
+            <PageHeader
+              title={resource.title}
+              description={resource.description}
+            />
+          )}
         </div>
       </div>
 
