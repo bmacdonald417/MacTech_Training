@@ -869,9 +869,10 @@ export async function seedCmmcAt(prisma: PrismaClient, orgId: string) {
         <div style="text-align: center; padding: 60px; border: 8px solid #0F2438; max-width: 800px; margin: 0 auto; font-family: 'Times New Roman', serif;">
           <h1 style="font-size: 48px; margin-bottom: 20px; color: #0F2438;">Certificate of Completion</h1>
           <p style="font-size: 24px; margin-bottom: 40px; color: #475569;">This is to certify that</p>
-          <h2 style="font-size: 36px; margin-bottom: 40px; color: #1e293b; font-weight: bold;">{{userName}}</h2>
+          <h2 style="font-size: 36px; margin-bottom: 20px; color: #1e293b; font-weight: bold;">{{userName}}</h2>
+          {{userDisplayIdBlock}}
           <p style="font-size: 20px; margin-bottom: 40px; color: #475569;">has successfully completed</p>
-          <h3 style="font-size: 28px; margin-bottom: 20px; color: #0F2438;">CMMC Level 2 Security Awareness, Role-Based Cyber Duties, and Insider Threat Training</h3>
+          <h3 style="font-size: 28px; margin-bottom: 20px; color: #0F2438;">{{courseName}}</h3>
           <p style="font-size: 16px; margin-bottom: 20px; color: #64748b;">AT.L2-3.2.1 / AT.L2-3.2.2 / AT.L2-3.2.3</p>
           <p style="font-size: 18px; margin-top: 60px; color: #64748b;">Issued on {{issuedDate}}</p>
           <p style="font-size: 14px; margin-top: 40px; color: #94a3b8;">Certificate Number: {{certificateNumber}}</p>

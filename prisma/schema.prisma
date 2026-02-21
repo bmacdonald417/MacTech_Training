@@ -40,7 +40,10 @@ model User {
   id              String   @id @default(cuid())
   email           String   @unique
   password        String   // hashed
-  name            String?
+  name            String?  // legacy / display; new users get firstName + lastName
+  firstName       String?  // required at signup for new users
+  lastName        String?  // required at signup for new users
+  displayId       String?  @unique // computer-generated user ID (e.g. USR-XXXXXXXX) for certificates / collisions
   referralSource  String?  // how they heard about us (signup question)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

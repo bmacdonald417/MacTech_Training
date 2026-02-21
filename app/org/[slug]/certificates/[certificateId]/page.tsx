@@ -1,6 +1,7 @@
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import { renderCertificateTemplate } from "@/lib/certificates"
+import { getFullName, getDisplayId } from "@/lib/user-display"
 import { format } from "date-fns"
 import { notFound } from "next/navigation"
 import { CertificateActions } from "@/components/certificates/certificate-actions"
@@ -18,6 +19,11 @@ export default async function CertificatePage({ params }: CertificatePageProps) 
     include: {
       template: true,
       user: true,
+      enrollment: {
+        include: {
+          assignment: true,
+        },
+      },
     },
   })
 
@@ -35,7 +41,9 @@ export default async function CertificatePage({ params }: CertificatePageProps) 
   })
 
   const issuedDate = format(new Date(certificate.issuedAt), "MMMM d, yyyy")
-  const userName = certificate.user.name || certificate.user.email
+  const userName = getFullName(certificate.user)
+  const userDisplayId = getDisplayId(certificate.user)
+  const courseName = certificate.enrollment?.assignment?.title ?? undefined
   const curriculumTitle = undefined
   const contentItemTitle = undefined
 
@@ -45,13 +53,15 @@ export default async function CertificatePage({ params }: CertificatePageProps) 
     issuedDate,
     curriculumTitle,
     contentItemTitle,
+    courseName,
+    userDisplayId,
   })
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-4 flex justify-between items-center print:hidden">
         <h1 className="text-2xl font-bold">Certificate</h1>
-        <CertificateActions />
+        <CertificateActions certificateId={certificateId} orgSlug={slug} />
       </div>
       <div
         className="bg-white p-8 shadow-lg print:shadow-none print:p-12"

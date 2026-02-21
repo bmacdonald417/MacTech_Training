@@ -3,12 +3,14 @@ import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { nanoid } from "nanoid"
 import { getActiveTermsVersion, hashIp, recordTermsAcceptance } from "@/lib/terms"
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(1, "Name is required").max(200),
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
   referralSource: z.string().min(1, "Please select how you heard about us"),
   joinCode: z.string().optional(),
   termsAccepted: z.literal(true, {
@@ -35,7 +37,8 @@ export async function POST(req: Request) {
         ?? (parsed.error.flatten().fieldErrors ? Object.values(parsed.error.flatten().fieldErrors).flat().join(", ") : "Invalid input")
       return NextResponse.json({ error: msg }, { status: 400 })
     }
-    const { email, password, name, referralSource, joinCode } = parsed.data
+    const { email, password, firstName, lastName, referralSource, joinCode } = parsed.data
+    const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ")
 
     let activeTerms: Awaited<ReturnType<typeof getActiveTermsVersion>>
     try {
@@ -62,6 +65,11 @@ export async function POST(req: Request) {
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 400 })
+    }
+
+    let displayId = `USR-${nanoid(8)}`
+    while (await prisma.user.findUnique({ where: { displayId } })) {
+      displayId = `USR-${nanoid(8)}`
     }
 
     let orgId: string
@@ -102,7 +110,10 @@ export async function POST(req: Request) {
       data: {
         email,
         password: hashedPassword,
-        name: name.trim(),
+        name: fullName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        displayId,
         referralSource: referralSource.trim() || null,
       },
     })
