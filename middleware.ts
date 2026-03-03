@@ -19,17 +19,18 @@ export default withAuth(
     }
 
     // If user has memberships, allow access (token.m = minimal payload from auth)
-    const memberships = (token as any).m ?? (token as any).memberships ?? []
+    const memberships = token.m ?? token.memberships ?? []
     if (memberships.length === 0) {
       const loginUrl = new URL("/login", req.url)
       loginUrl.search = ""
       return NextResponse.redirect(loginUrl)
     }
 
+    const getSlug = (m: (typeof memberships)[number]) => ("s" in m ? m.s : m.orgSlug)
+
     // If accessing root, redirect to first org
     if (path === "/") {
-      const first = memberships[0]
-      const slug = first?.s ?? first?.orgSlug
+      const slug = memberships[0] && getSlug(memberships[0])
       if (slug) {
         return NextResponse.redirect(new URL(`/org/${slug}/dashboard`, req.url))
       }
@@ -39,7 +40,7 @@ export default withAuth(
     const orgMatch = path.match(/^\/org\/([^/]+)/)
     if (orgMatch) {
       const orgSlug = orgMatch[1]
-      const hasAccess = memberships.some((m: any) => (m.s ?? m.orgSlug) === orgSlug)
+      const hasAccess = memberships.some((m) => getSlug(m) === orgSlug)
       if (!hasAccess) {
         const loginUrl = new URL("/login", req.url)
         loginUrl.search = ""

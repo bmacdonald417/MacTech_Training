@@ -54,25 +54,28 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
+      if (user?.id) {
         token.id = user.id
         // Store minimal payload to avoid 431 Request Header Fields Too Large (cookie size)
-        token.m = (user as any).memberships?.map((m: { orgId: string; orgSlug: string; role: string }) => ({
+        const memberships = user.memberships ?? []
+        token.m = memberships.map((m) => ({
           i: m.orgId,
           s: m.orgSlug,
           r: m.role,
-        })) ?? []
+        }))
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string
-        session.user.memberships = (token.m as { i: string; s: string; r: string }[]).map((m) => ({
-          orgId: m.i,
-          orgSlug: m.s,
-          role: m.r,
+        session.user.id = token.id
+        const m = token.m ?? []
+        session.user.memberships = m.map((x) => ({
+          orgId: x.i,
+          orgSlug: x.s,
+          role: x.r,
         }))
+        session.user.role = m[0]?.r
       }
       return session
     },
