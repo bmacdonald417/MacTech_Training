@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { enrollUserInGroupAssignments } from "@/lib/enroll-group-member"
 import type { Role } from "@/lib/rbac"
 
-const VALID_ROLES: Role[] = ["ADMIN", "TRAINER", "TRAINEE"]
+const VALID_ROLES: Role[] = ["ADMIN", "USER"]
 
 export async function POST(
   req: NextRequest,
@@ -20,7 +20,7 @@ export async function POST(
     const email = typeof body.email === "string" ? body.email.trim() : ""
     const name = typeof body.name === "string" ? body.name.trim() || null : null
     const password = typeof body.password === "string" ? body.password : ""
-    const role = VALID_ROLES.includes(body.role) ? body.role : "TRAINEE"
+    const role = VALID_ROLES.includes(body.role) ? body.role : "USER"
     const groupId = typeof body.groupId === "string" ? body.groupId.trim() || null : null
 
     if (!email) {

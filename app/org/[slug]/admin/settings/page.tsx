@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { OrganizationProfileForm } from "./organization-profile-form"
 import { InstallCmmcCard } from "./install-cmmc-card"
+import { EnsureCuiQuizCard } from "./ensure-cui-quiz-card"
 import { seedCmmcAt } from "@/prisma/seed-cmmc-at"
 
 interface SettingsPageProps {
@@ -49,6 +50,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
         />
 
         <InstallCmmcCard orgSlug={slug} />
+
+        <EnsureCuiQuizCard orgSlug={slug} />
 
         <Card>
           <CardHeader>

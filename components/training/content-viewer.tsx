@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
 import { ArticleViewer } from "./article-viewer"
 import { SlideDeckViewer } from "./slide-deck-viewer"
+import { TrainingSlideShowViewer } from "./training-slide-show-viewer"
 import { VideoViewer } from "./video-viewer"
 import { QuizViewer } from "./quiz-viewer"
 import { AttestationViewer } from "./attestation-viewer"
@@ -48,16 +49,41 @@ export function ContentViewer({
             isCompleted={isCompleted}
           />
         )
-      case "SLIDE_DECK":
+      case "SLIDE_DECK": {
+        const deck = contentItem.slideDeck
+        // Prefer deck-level source file; fall back to first slide's sourceFileId (from Admin import)
+        const sourceFileId =
+          deck?.sourceFileId ??
+          deck?.sourceFile?.id ??
+          (Array.isArray(deck?.slides) && deck.slides.length > 0
+            ? (deck.slides[0] as { sourceFileId?: string | null })?.sourceFileId
+            : null)
+        const orderedSlideIds = Array.isArray(deck?.slides)
+          ? deck.slides.map((s: { id: string }) => s.id)
+          : undefined
+        if (sourceFileId) {
+          return (
+            <TrainingSlideShowViewer
+              orgSlug={orgSlug}
+              sourceFileId={sourceFileId}
+              title={contentItem.title ?? "Presentation"}
+              slideIds={orderedSlideIds}
+              contentItemId={contentItem.id}
+              onComplete={onComplete}
+              isCompleted={isCompleted}
+            />
+          )
+        }
         return (
           <SlideDeckViewer
-            slideDeck={contentItem.slideDeck}
+            slideDeck={deck}
             orgSlug={orgSlug}
             canGenerateNarration={canGenerateNarration}
             onComplete={onComplete}
             isCompleted={isCompleted}
           />
         )
+      }
       case "VIDEO":
         return (
           <VideoViewer
@@ -110,7 +136,7 @@ export function ContentViewer({
   // Slide deck fills available height so the slide fits without scrolling; other content uses normal flow
   if (contentItem.type === "SLIDE_DECK") {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
         {renderContent()}
       </div>
     )

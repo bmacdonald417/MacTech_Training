@@ -2,10 +2,11 @@
  * CMMC Level 2 Security Awareness, Role-Based Cyber Duties, and Insider Threat Training
  * AT.L2-3.2.1 / AT.L2-3.2.2 / AT.L2-3.2.3
  *
- * Production-ready seed: 40 slides (fleshed out with verbatim instructor notes), 20-question quiz (80% pass), attestation, curriculum, certificate.
+ * Production-ready seed: 40 slides (fleshed out with verbatim instructor notes), 20-question quiz (80% pass) from markdown, attestation, curriculum, certificate.
  */
 
 import { PrismaClient, ContentType } from "@prisma/client"
+import { loadCmmcQuizFromMarkdown } from "../lib/quiz-parse-md"
 
 const CMMC_COURSE_TITLE =
   "CMMC Level 2 Security Awareness, Role-Based Cyber Duties, and Insider Threat Training (AT.L2-3.2.1/3.2.2/3.2.3)"
@@ -708,9 +709,28 @@ function buildQuizData() {
   }
 }
 
+/** Quiz data shape used by seed (accepts both buildQuizData and parsed markdown; explanation may be null). */
+type CmmcQuizData = {
+  passingScore: number
+  allowRetry: boolean
+  showAnswersAfter: boolean
+  questions: Array<{
+    text: string
+    type: string
+    explanation: string | null
+    order: number
+    choices: Array<{ text: string; isCorrect: boolean; order: number }>
+  }>
+}
+
 export async function seedCmmcAt(prisma: PrismaClient, orgId: string) {
   const slidesData = buildSlides()
-  const quizData = buildQuizData()
+  let quizData: CmmcQuizData
+  try {
+    quizData = loadCmmcQuizFromMarkdown()
+  } catch {
+    quizData = buildQuizData()
+  }
 
   // 1) Slide deck (40 slides) — appears in Trainer → Content → Public → Slide decks with other modules
   const slideDeckContent = await prisma.contentItem.create({
@@ -738,13 +758,13 @@ export async function seedCmmcAt(prisma: PrismaClient, orgId: string) {
 
   console.log("Created CMMC AT slide deck (40 slides)")
 
-  // 2) Quiz (20 questions, 80% pass)
+  // 2) Quiz (20 questions, 80% pass) — content from CMMC Level 2 Security Awareness Training Quiz.md when present
   const quizContent = await prisma.contentItem.create({
     data: {
       orgId,
       type: ContentType.QUIZ,
-      title: "CMMC Level 2 AT — Knowledge Check",
-      description: "20 questions. 80% required to pass. Covers awareness, role-based duties, and insider threat.",
+      title: "CMMC Level 2 Security Awareness Training Quiz",
+      description: "20 questions. 80% required to pass. Covers AT.L2-3.2.1, AT.L2-3.2.2, and AT.L2-3.2.3 (awareness, role-based duties, insider threat).",
     },
   })
 
@@ -849,9 +869,10 @@ export async function seedCmmcAt(prisma: PrismaClient, orgId: string) {
         <div style="text-align: center; padding: 60px; border: 8px solid #0F2438; max-width: 800px; margin: 0 auto; font-family: 'Times New Roman', serif;">
           <h1 style="font-size: 48px; margin-bottom: 20px; color: #0F2438;">Certificate of Completion</h1>
           <p style="font-size: 24px; margin-bottom: 40px; color: #475569;">This is to certify that</p>
-          <h2 style="font-size: 36px; margin-bottom: 40px; color: #1e293b; font-weight: bold;">{{userName}}</h2>
+          <h2 style="font-size: 36px; margin-bottom: 20px; color: #1e293b; font-weight: bold;">{{userName}}</h2>
+          {{userDisplayIdBlock}}
           <p style="font-size: 20px; margin-bottom: 40px; color: #475569;">has successfully completed</p>
-          <h3 style="font-size: 28px; margin-bottom: 20px; color: #0F2438;">CMMC Level 2 Security Awareness, Role-Based Cyber Duties, and Insider Threat Training</h3>
+          <h3 style="font-size: 28px; margin-bottom: 20px; color: #0F2438;">{{courseName}}</h3>
           <p style="font-size: 16px; margin-bottom: 20px; color: #64748b;">AT.L2-3.2.1 / AT.L2-3.2.2 / AT.L2-3.2.3</p>
           <p style="font-size: 18px; margin-top: 60px; color: #64748b;">Issued on {{issuedDate}}</p>
           <p style="font-size: 14px; margin-top: 40px; color: #94a3b8;">Certificate Number: {{certificateNumber}}</p>

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
 import { ContentPreview } from "./content-preview"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, FileUp } from "lucide-react"
 
 interface ContentViewPageProps {
   params: Promise<{ slug: string; id: string }>
@@ -65,11 +65,21 @@ export default async function ContentViewPage({ params }: ContentViewPageProps) 
         title={contentItem.title}
         description={contentItem.description ?? undefined}
         action={
-          <Button variant="outline" asChild>
-            <Link href={`/org/${slug}/trainer/content/${id}/edit`}>
-              Edit
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {contentItem.type === "SLIDE_DECK" && (
+              <Button asChild>
+                <Link href={`/org/${slug}/trainer/content/${id}/edit`}>
+                  <FileUp className="h-4 w-4" />
+                  Upload / replace PPTX
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" asChild>
+              <Link href={`/org/${slug}/trainer/content/${id}/edit`}>
+                Edit
+              </Link>
+            </Button>
+          </div>
         }
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

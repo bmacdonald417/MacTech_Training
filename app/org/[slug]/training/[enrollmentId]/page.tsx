@@ -102,8 +102,7 @@ export default async function TrainingPlayerPage({
     redirect(`/org/${slug}/my-training`)
   }
 
-  const canGenerateNarration =
-    membership.role === "ADMIN" || membership.role === "TRAINER"
+  const canGenerateNarration = membership.role === "ADMIN"
 
   return (
     <TrainingPlayer

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "prisma generate || exit 0",
+    "postinstall": "prisma generate || exit 0 && patch-package",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -13,7 +13,14 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:deploy": "prisma db push && npm run db:seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:wipe-curriculum": "tsx scripts/wipe-curriculum.ts",
+    "triptych:parse": "node scripts/parse-cmmc-script.js",
+    "triptych:generate": "node scripts/generate-cmmc-triptych-audio.js",
+    "upload-trust-codex": "tsx scripts/upload-trust-codex-deck.ts",
+    "generate-trust-codex-mp3s": "tsx scripts/generate-trust-codex-narration-mp3s.ts",
+    "trust-codex:all": "tsx scripts/upload-trust-codex-deck.ts && tsx scripts/generate-trust-codex-narration-mp3s.ts",
+    "test:pptx": "tsx scripts/test-pptx-normalize-and-preview.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -30,6 +37,7 @@
     "date-fns": "^3.0.0",
     "dotenv": "^16.3.1",
     "fast-xml-parser": "^5.3.5",
+    "jspdf": "^4.2.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.303.0",
     "nanoid": "^5.1.6",
@@ -53,6 +61,9 @@
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.0.4",
+    "ffmpeg-static": "^5.3.0",
+    "get-mp3-duration": "^1.0.0",
+    "patch-package": "^8.0.1",
     "postcss": "^8",
     "prisma": "5.22.0",
     "tailwindcss": "^3.3.0",

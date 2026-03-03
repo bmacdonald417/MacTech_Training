@@ -19,7 +19,9 @@ interface UsersPageProps {
 
 const roleIcons = {
   ADMIN: Shield,
-  TRAINER: GraduationCap,
+  USER: User,
+  // Legacy roles map to USER for display
+  TRAINER: User,
   TRAINEE: User,
 }
 
@@ -102,7 +104,9 @@ export default async function UsersPage({ params }: UsersPageProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                  <Badge className="bg-muted text-muted-foreground">{m.role}</Badge>
+                  <Badge className="bg-muted text-muted-foreground">
+                {m.role === "ADMIN" ? "Site Admin" : "User"}
+              </Badge>
                   <UserGroupSelect
                     orgSlug={slug}
                     userId={m.userId}

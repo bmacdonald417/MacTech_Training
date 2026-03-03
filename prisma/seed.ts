@@ -118,7 +118,7 @@ We may update these Terms from time to time. Continued use of the Platform after
     create: {
       userId: trainer.id,
       orgId: org.id,
-      role: "TRAINER",
+      role: "USER",
     },
   })
 
@@ -133,31 +133,41 @@ We may update these Terms from time to time. Continued use of the Platform after
     create: {
       userId: trainee.id,
       orgId: org.id,
-      role: "TRAINEE",
+      role: "USER",
     },
   })
 
   console.log("Created memberships")
 
-  // Create Demo group and assign demo users to it
-  let demoGroup = await prisma.group.findFirst({
-    where: { orgId: org.id, name: "Demo" },
+  // Create standard groups: intro, student, collab
+  for (const name of ["intro", "student", "collab"] as const) {
+    const existing = await prisma.group.findFirst({
+      where: { orgId: org.id, name },
+    })
+    if (!existing) {
+      await prisma.group.create({
+        data: { orgId: org.id, name },
+      })
+    }
+  }
+  let introGroup = await prisma.group.findFirst({
+    where: { orgId: org.id, name: "intro" },
   })
-  if (!demoGroup) {
-    demoGroup = await prisma.group.create({
-      data: { orgId: org.id, name: "Demo" },
+  if (!introGroup) {
+    introGroup = await prisma.group.create({
+      data: { orgId: org.id, name: "intro" },
     })
   }
   for (const user of [admin, trainer, trainee]) {
     await prisma.groupMember.upsert({
       where: {
-        groupId_userId: { groupId: demoGroup.id, userId: user.id },
+        groupId_userId: { groupId: introGroup.id, userId: user.id },
       },
       update: {},
-      create: { groupId: demoGroup.id, userId: user.id },
+      create: { groupId: introGroup.id, userId: user.id },
     })
   }
-  console.log("Created Demo group and assigned demo users")
+  console.log("Created intro, student, collab groups and assigned demo users to intro")
 
   // Create slide deck content
   const slideDeckContent = await prisma.contentItem.create({
@@ -240,6 +250,40 @@ We may update these Terms from time to time. Continued use of the Platform after
   })
 
   console.log("Created slide deck")
+
+  // APEX Pilot curriculum: uses Government Contracting Fundamentals slide deck; assigned to intro group (new users get this)
+  const apexPilotCurriculum = await prisma.curriculum.create({
+    data: {
+      orgId: org.id,
+      title: "APEX Pilot",
+      description: "Introductory curriculum for new users; uses the Government Contracting Compliance Fundamentals slide deck.",
+      sections: {
+        create: [
+          {
+            title: "Introduction",
+            description: "Government contracting compliance fundamentals",
+            order: 1,
+            items: {
+              create: [
+                { contentItemId: slideDeckContent.id, required: true, order: 1 },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  })
+  const apexPilotAssignment = await prisma.assignment.create({
+    data: {
+      orgId: org.id,
+      type: "CURRICULUM",
+      curriculumId: apexPilotCurriculum.id,
+      groupId: introGroup.id,
+      title: "APEX Pilot",
+    },
+  })
+  // Intro group: no enrollments — users self-assign from dashboard
+  console.log("Created APEX Pilot curriculum (intro group; available for self-assign)")
 
   // Create article content
   const articleContent = await prisma.contentItem.create({
@@ -1075,7 +1119,21 @@ Use this checklist alongside the slide deck's 30/60/90 roadmap. Adjust to your s
   await seedQms(prisma, org.id, admin.id, trainer.id)
 
   // CMMC Level 2 AT course (AT.L2-3.2.1, 3.2.2, 3.2.3): 40 slides, quiz, attestation, curriculum
-  await seedCmmcAt(prisma, org.id)
+  const { curriculumId: cmmcCurriculumId } = await seedCmmcAt(prisma, org.id)
+
+  // Assign CMMC curriculum as "CUI Enclave Required User Training" (includes quiz) to intro group
+  const cmmcAssignment = await prisma.assignment.create({
+    data: {
+      orgId: org.id,
+      type: "CURRICULUM",
+      curriculumId: cmmcCurriculumId,
+      groupId: introGroup.id,
+      title: "CUI Enclave Required User Training",
+      description: "CMMC Level 2 awareness, role-based training, and insider threat. Includes slides, knowledge check quiz, and attestation.",
+    },
+  })
+  // Intro group: no enrollments — users self-assign from dashboard
+  console.log("Created CUI Enclave Required User Training assignment (intro group; available for self-assign)")
 
   console.log("Seeding completed!")
   console.log("\n=== Login Credentials ===")

@@ -1,5 +1,6 @@
 import { prisma } from "./prisma"
 import { generateCertificateNumber, renderCertificateTemplate } from "./certificates"
+import { getFullName, getDisplayId } from "./user-display"
 import { format } from "date-fns"
 
 export async function checkEnrollmentCompletion(enrollmentId: string): Promise<{
@@ -203,7 +204,9 @@ export async function issueCertificate(
 
   // Prepare certificate data
   const issuedDate = format(new Date(), "MMMM d, yyyy")
-  const userName = enrollment.user?.name ?? enrollment.user?.email ?? "User"
+  const userName = getFullName(enrollment.user)
+  const userDisplayId = getDisplayId(enrollment.user)
+  const courseName = enrollment.assignment.title
   const curriculumTitle =
     enrollment.assignment.type === "CURRICULUM"
       ? enrollment.assignment.curriculum?.title
@@ -220,6 +223,8 @@ export async function issueCertificate(
     issuedDate,
     curriculumTitle,
     contentItemTitle,
+    courseName,
+    userDisplayId,
   })
 
   // Create certificate

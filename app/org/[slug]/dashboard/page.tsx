@@ -8,6 +8,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { SectionCard } from "@/components/ui/section-card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
+import { AvailableTrainingCard } from "@/components/dashboard/available-training-card"
 import {
   BookOpen,
   Award,
@@ -39,7 +40,15 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     certificates: 0,
   }
 
-  if (membership.role === "TRAINEE") {
+  let availableAssignments: Array<{
+    id: string
+    title: string
+    description: string | null
+    type: "CURRICULUM" | "CONTENT_ITEM"
+    curriculumTitle?: string | null
+  }> = []
+
+  if (membership.role === "USER") {
     const enrollments = await prisma.enrollment.findMany({
       where: {
         userId: membership.userId,
@@ -56,7 +65,39 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       },
     })
     stats.certificates = certs.length
-  } else if (membership.role === "TRAINER" || membership.role === "ADMIN") {
+
+    // Assignments for user's groups that they are not yet enrolled in (self-assign)
+    const userGroupIds = (
+      await prisma.groupMember.findMany({
+        where: { userId: membership.userId, group: { orgId: membership.orgId } },
+        select: { groupId: true },
+      })
+    ).map((m) => m.groupId)
+    if (userGroupIds.length > 0) {
+      const groupAssignments = await prisma.assignment.findMany({
+        where: {
+          orgId: membership.orgId,
+          groupId: { in: userGroupIds },
+        },
+        include: {
+          curriculum: { select: { title: true } },
+          contentItem: { select: { title: true } },
+        },
+      })
+      const enrolledAssignmentIds = new Set(
+        enrollments.map((e) => e.assignmentId)
+      )
+      availableAssignments = groupAssignments
+        .filter((a) => !enrolledAssignmentIds.has(a.id))
+        .map((a) => ({
+          id: a.id,
+          title: a.title,
+          description: a.description ?? null,
+          type: a.type,
+          curriculumTitle: a.curriculum?.title ?? a.contentItem?.title ?? null,
+        }))
+    }
+  } else if (membership.role === "ADMIN") {
     const assignments = await prisma.assignment.findMany({
       where: { orgId: membership.orgId },
     })
@@ -72,7 +113,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     stats.certificates = certs.length
   }
 
-  const isTrainerOrAdmin = membership.role === "TRAINER" || membership.role === "ADMIN"
   const isAdmin = membership.role === "ADMIN"
 
   return (
@@ -81,14 +121,21 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         title="Dashboard"
         description="Training activity at a glance"
         action={
-          isTrainerOrAdmin ? (
+          isAdmin ? (
             <Button asChild>
               <Link href={`/org/${slug}/trainer/assignments/new`}>
                 <PlusCircle className="h-4 w-4" />
                 Create Assignment
               </Link>
             </Button>
-          ) : undefined
+          ) : (
+            <Button asChild>
+              <Link href={`/org/${slug}/my-training`}>
+                <BookOpen className="h-4 w-4" />
+                My Training
+              </Link>
+            </Button>
+          )
         }
       />
 
@@ -97,23 +144,37 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           label="Total Assignments"
           value={stats.totalAssignments}
           icon={BookOpen}
+          href={isAdmin ? `/org/${slug}/trainer/assignments` : `/org/${slug}/my-training`}
         />
         <StatCard
           label="In Progress"
           value={stats.inProgress}
           icon={FileText}
+          href={isAdmin ? `/org/${slug}/trainer/assignments` : `/org/${slug}/my-training`}
         />
         <StatCard
           label="Completed"
           value={stats.completed}
           icon={Award}
+          href={isAdmin ? `/org/${slug}/trainer/assignments` : `/org/${slug}/my-training`}
         />
         <StatCard
           label="Certificates Issued"
           value={stats.certificates}
           icon={Award}
+          href={`/org/${slug}/certificates`}
         />
       </section>
+
+      {!isAdmin && availableAssignments.length > 0 && (
+        <section>
+          <AvailableTrainingCard
+            orgSlug={slug}
+            assignments={availableAssignments}
+            isWelcome
+          />
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
@@ -136,7 +197,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               hint="Assignments with due dates will show here."
             />
           </SectionCard>
-          {isTrainerOrAdmin && (
+          {isAdmin && (
             <SectionCard title="Quick Actions" description="Shortcuts">
               <div className="space-y-2">
                 <Button variant="outline" className="h-auto w-full justify-start gap-3 py-2.5" asChild>

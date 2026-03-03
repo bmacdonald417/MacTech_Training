@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { updateContent, type FormFieldInput, type QuizQuestionInput } from "../../actions"
+import { updateContent, updateSlideNarratorNotes, type FormFieldInput, type QuizQuestionInput } from "../../actions"
 import { cn } from "@/lib/utils"
-import { Plus, Trash2, FileDown, FileUp } from "lucide-react"
+import { Plus, Trash2, FileDown, FileUp, Volume2, Save } from "lucide-react"
 type SlideDeckWithSlides = {
   id: string
   sourceFile?: { id: string; filename: string } | null
@@ -81,6 +81,28 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
   const [exporting, setExporting] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
+
+  const slides = contentItem.slideDeck?.slides ?? []
+  const initialNarratorNotes: Record<string, string> = {}
+  slides.forEach((s, i) => {
+    const fallback = `Slide ${i + 1}: ${(s.title || "").trim()}. ${(s.content || "").trim()}`.trim()
+    initialNarratorNotes[s.id] = (s.notesRichText || fallback).trim() || fallback
+  })
+  const [narratorNotes, setNarratorNotes] = useState<Record<string, string>>(initialNarratorNotes)
+  const [generatingSlideId, setGeneratingSlideId] = useState<string | null>(null)
+  const [savingSlideId, setSavingSlideId] = useState<string | null>(null)
+  const [ttsError, setTtsError] = useState<string | null>(null)
+  const [ttsSuccess, setTtsSuccess] = useState<string | null>(null)
+
+  const slidesKey = slides.map((s) => s.id).join(",")
+  useEffect(() => {
+    const next: Record<string, string> = {}
+    slides.forEach((s, i) => {
+      const fallback = `Slide ${i + 1}: ${(s.title || "").trim()}. ${(s.content || "").trim()}`.trim()
+      next[s.id] = (s.notesRichText || fallback).trim() || fallback
+    })
+    setNarratorNotes(next)
+  }, [slidesKey])
 
   let parsedForm: FormFieldInput[] = []
   try {
@@ -288,6 +310,179 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
 
   return (
     <form onSubmit={handleSubmit}>
+      {contentItem.type === "SLIDE_DECK" && (
+        <Card className="mb-6 border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileUp className="h-5 w-5" />
+              Upload PowerPoint (.pptx)
+            </CardTitle>
+            <CardDescription>
+              Drag and drop a .pptx file or click the button below. This replaces the current deck and imports slide text and speaker notes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {importSuccess && (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+                {importSuccess}
+              </p>
+            )}
+            <input
+              type="file"
+              accept=".pptx"
+              className="hidden"
+              id="import-pptx"
+              onChange={handleImportPptx}
+              disabled={importing}
+            />
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={cn(
+                "rounded-xl border-2 border-dashed p-8 text-center transition-colors",
+                "border-primary/40 bg-background/80 hover:border-primary/60 hover:bg-primary/5",
+                dragActive && "border-primary bg-primary/10",
+                importing && "pointer-events-none opacity-70"
+              )}
+            >
+              <p className="text-sm font-medium text-foreground mb-1">Drop your .pptx here or click to browse</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {contentItem.slideDeck?.sourceFile && contentItem.slideDeck.slides?.length != null
+                  ? `Current: ${contentItem.slideDeck.sourceFile.filename} (${contentItem.slideDeck.slides.length} slides)`
+                  : "No file uploaded yet."}
+              </p>
+              <Button
+                type="button"
+                size="lg"
+                onClick={() => document.getElementById("import-pptx")?.click()}
+                disabled={importing}
+              >
+                <FileUp className="h-4 w-4 mr-2" />
+                {importing ? "Importing…" : "Upload or replace PPTX"}
+              </Button>
+            </div>
+            {contentItem.slideDeck?.id && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPptx}
+                  disabled={exporting}
+                >
+                  <FileDown className="h-4 w-4 mr-1" />
+                  {exporting ? "Exporting…" : "Download as PowerPoint"}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      {contentItem.type === "SLIDE_DECK" && slides.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Volume2 className="h-5 w-5" />
+              Narrator notes &amp; audio
+            </CardTitle>
+            <CardDescription>
+              Edit the narrator text for each slide, then click &quot;Generate audio&quot; to send it to the TTS API and create the MP3. Notes are taken from your uploaded PPTX or generated from the slide title and content.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {ttsError && (
+              <p className="text-sm text-destructive" role="alert">
+                {ttsError}
+              </p>
+            )}
+            {ttsSuccess && (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+                {ttsSuccess}
+              </p>
+            )}
+            {slides.map((slide, i) => (
+              <div key={slide.id} className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Slide {i + 1}: {slide.title || "Untitled"}
+                </Label>
+                <textarea
+                  className="flex min-h-[100px] w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm font-mono"
+                  value={narratorNotes[slide.id] ?? ""}
+                  onChange={(e) =>
+                    setNarratorNotes((prev) => ({ ...prev, [slide.id]: e.target.value }))
+                  }
+                  placeholder={`Narrator text for slide ${i + 1}…`}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={savingSlideId === slide.id}
+                    onClick={async () => {
+                      setTtsError(null)
+                      setSavingSlideId(slide.id)
+                      const result = await updateSlideNarratorNotes(
+                        orgSlug,
+                        contentItem.id,
+                        slide.id,
+                        narratorNotes[slide.id] ?? null
+                      )
+                      setSavingSlideId(null)
+                      if (result?.error) {
+                        setTtsError(result.error)
+                      } else {
+                        setTtsSuccess("Notes saved.")
+                        setTimeout(() => setTtsSuccess(null), 3000)
+                        router.refresh()
+                      }
+                    }}
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    {savingSlideId === slide.id ? "Saving…" : "Save notes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={generatingSlideId === slide.id || !(narratorNotes[slide.id]?.trim())}
+                    onClick={async () => {
+                      setTtsError(null)
+                      setTtsSuccess(null)
+                      setGeneratingSlideId(slide.id)
+                      try {
+                        const res = await fetch(`/api/org/${orgSlug}/tts/generate`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            entityType: "SLIDE",
+                            entityId: slide.id,
+                            inputText: (narratorNotes[slide.id] ?? "").trim(),
+                          }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) {
+                          setTtsError(data.error || "TTS failed.")
+                        } else {
+                          setTtsSuccess(`Slide ${i + 1} audio generated.`)
+                          setTimeout(() => setTtsSuccess(null), 3000)
+                        }
+                      } catch {
+                        setTtsError("Request failed.")
+                      } finally {
+                        setGeneratingSlideId(null)
+                      }
+                    }}
+                  >
+                    <Volume2 className="h-4 w-4 mr-1" />
+                    {generatingSlideId === slide.id ? "Generating…" : "Generate audio"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>Edit</CardTitle>
@@ -299,7 +494,7 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
               {error}
             </p>
           )}
-          {importSuccess && (
+          {contentItem.type !== "SLIDE_DECK" && importSuccess && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
               {importSuccess}
             </p>
@@ -370,66 +565,6 @@ export function ContentEditForm({ orgSlug, contentItem }: ContentEditFormProps) 
                 value={attestationText}
                 onChange={(e) => setAttestationText(e.target.value)}
               />
-            </div>
-          )}
-
-          {contentItem.type === "SLIDE_DECK" && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label>Slide deck (PowerPoint)</Label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept=".pptx"
-                    className="hidden"
-                    id="import-pptx"
-                    onChange={handleImportPptx}
-                    disabled={importing}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportPptx}
-                    disabled={exporting || !contentItem.slideDeck?.id}
-                  >
-                    <FileDown className="h-4 w-4 mr-1" />
-                    {exporting ? "Exporting…" : "Download as PowerPoint"}
-                  </Button>
-                </div>
-              </div>
-
-              {contentItem.slideDeck?.sourceFile && contentItem.slideDeck.slides?.length != null && (
-                <p className="text-sm text-muted-foreground">
-                  Current: {contentItem.slideDeck.sourceFile.filename},{" "}
-                  {contentItem.slideDeck.slides.length} slide{contentItem.slideDeck.slides.length === 1 ? "" : "s"}.
-                </p>
-              )}
-
-              <div
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                className={cn(
-                  "rounded-xl border-2 border-dashed border-border/60 bg-muted/30 p-8 text-center transition-colors",
-                  dragActive && "border-primary/50 bg-muted/50",
-                  importing && "pointer-events-none opacity-70"
-                )}
-              >
-                <p className="text-sm text-muted-foreground mb-3">
-                  Build your deck in PowerPoint, then upload it here. Drag and drop a .pptx file or click to browse.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById("import-pptx")?.click()}
-                  disabled={importing}
-                >
-                  <FileUp className="h-4 w-4 mr-1" />
-                  {importing ? "Importing…" : "Upload or replace PPTX"}
-                </Button>
-              </div>
             </div>
           )}
 

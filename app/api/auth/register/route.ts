@@ -3,12 +3,14 @@ import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { nanoid } from "nanoid"
 import { getActiveTermsVersion, hashIp, recordTermsAcceptance } from "@/lib/terms"
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(1, "Name is required").max(200),
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
   referralSource: z.string().min(1, "Please select how you heard about us"),
   joinCode: z.string().optional(),
   termsAccepted: z.literal(true, {
@@ -35,7 +37,8 @@ export async function POST(req: Request) {
         ?? (parsed.error.flatten().fieldErrors ? Object.values(parsed.error.flatten().fieldErrors).flat().join(", ") : "Invalid input")
       return NextResponse.json({ error: msg }, { status: 400 })
     }
-    const { email, password, name, referralSource, joinCode } = parsed.data
+    const { email, password, firstName, lastName, referralSource, joinCode } = parsed.data
+    const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ")
 
     let activeTerms: Awaited<ReturnType<typeof getActiveTermsVersion>>
     try {
@@ -64,6 +67,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 400 })
     }
 
+    let displayId = `USR-${nanoid(8)}`
+    while (await prisma.user.findUnique({ where: { displayId } })) {
+      displayId = `USR-${nanoid(8)}`
+    }
+
     let orgId: string
     let groupId: string | null = null
 
@@ -89,6 +97,12 @@ export async function POST(req: Request) {
         }
         orgId = first.id
       }
+      // New users without a join link go into the "intro" group
+      const introGroup = await prisma.group.findFirst({
+        where: { orgId, name: "intro" },
+        select: { id: true },
+      })
+      if (introGroup) groupId = introGroup.id
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -96,7 +110,10 @@ export async function POST(req: Request) {
       data: {
         email,
         password: hashedPassword,
-        name: name.trim(),
+        name: fullName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        displayId,
         referralSource: referralSource.trim() || null,
       },
     })
@@ -105,7 +122,7 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         orgId,
-        role: "TRAINEE",
+        role: "USER",
       },
     })
 
@@ -130,8 +147,31 @@ export async function POST(req: Request) {
           userId: user.id,
         },
       })
-      const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
-      await enrollUserInGroupAssignments(user.id, groupId)
+      const group = await prisma.group.findUnique({
+        where: { id: groupId },
+        select: { name: true },
+      })
+      if (group?.name !== "intro") {
+        const { enrollUserInGroupAssignments } = await import("@/lib/enroll-group-member")
+        await enrollUserInGroupAssignments(user.id, groupId)
+      }
+    }
+    // If no group yet (e.g. org has no "intro" group), ensure intro exists and add user
+    if (!groupId) {
+      let introGroup = await prisma.group.findFirst({
+        where: { orgId, name: "intro" },
+        select: { id: true },
+      })
+      if (!introGroup) {
+        introGroup = await prisma.group.create({
+          data: { orgId, name: "intro" },
+          select: { id: true },
+        })
+      }
+      await prisma.groupMember.create({
+        data: { groupId: introGroup.id, userId: user.id },
+      })
+      // Do not auto-enroll intro group; they see "Get started" on dashboard and self-assign
     }
 
     return NextResponse.json({ success: true, userId: user.id })

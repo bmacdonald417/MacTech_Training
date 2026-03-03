@@ -9,11 +9,15 @@ import {
   Award,
   FileText,
   GraduationCap,
+  MonitorPlay,
   Users,
   Settings,
   BarChart3,
   Archive,
   X,
+  LayoutPanelLeft,
+  Library,
+  ShieldCheck,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -27,7 +31,10 @@ interface SidebarProps {
 const traineeLinks = [
   { href: (s: string) => `/org/${s}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
   { href: (s: string) => `/org/${s}/my-training`, label: "My Training", icon: BookOpen },
+  { href: (s: string) => `/org/${s}/resources`, label: "Resources", icon: Library },
+  { href: (s: string) => `/org/${s}/triptych`, label: "CUI Enclave User Training", icon: LayoutPanelLeft },
   { href: (s: string) => `/org/${s}/certificates`, label: "Certificates", icon: Award },
+  { href: (s: string) => `/org/${s}/records`, label: "Verification records", icon: ShieldCheck },
 ]
 
 const trainerLinks = [
@@ -39,7 +46,9 @@ const trainerLinks = [
 const adminLinks = [
   { href: (s: string) => `/org/${s}/admin/users`, label: "Users", icon: Users },
   { href: (s: string) => `/org/${s}/admin/groups`, label: "Groups", icon: Users },
+  { href: (s: string) => `/org/${s}/admin/presentations`, label: "Presentations", icon: MonitorPlay },
   { href: (s: string) => `/org/${s}/admin/reports`, label: "Reports", icon: BarChart3 },
+  { href: (s: string) => `/org/${s}/admin/vault`, label: "Completion vault", icon: ShieldCheck },
   { href: (s: string) => `/org/${s}/admin/archive`, label: "Archive", icon: Archive },
   { href: (s: string) => `/org/${s}/admin/settings`, label: "Settings", icon: Settings },
 ]
@@ -49,11 +58,13 @@ function NavSection({
   links,
   orgSlug,
   pathname,
+  onNavigate,
 }: {
   title: string
   links: { href: (s: string) => string; label: string; icon: typeof FileText }[]
   orgSlug: string
   pathname: string
+  onNavigate?: () => void
 }) {
   return (
     <div className="space-y-0.5">
@@ -63,11 +74,14 @@ function NavSection({
       {links.map((link) => {
         const href = link.href(orgSlug)
         const Icon = link.icon
-        const isActive = pathname === href
+        const isActive =
+          pathname === href ||
+          (href.endsWith("/resources") && pathname.startsWith(href + "/"))
         return (
           <Link
             key={href}
             href={href}
+            onClick={onNavigate}
             className={cn(
               "relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors duration-150",
               isActive
@@ -139,13 +153,15 @@ export function Sidebar({ orgSlug, role, userGroupNames = [], mobileOpen = false
             links={traineeLinks}
             orgSlug={orgSlug}
             pathname={pathname}
+            onNavigate={onClose}
           />
-          {(role === "TRAINER" || role === "ADMIN") && (
+          {role === "ADMIN" && (
             <NavSection
               title="Training"
               links={trainerLinks}
               orgSlug={orgSlug}
               pathname={pathname}
+              onNavigate={onClose}
             />
           )}
           {role === "ADMIN" && (
@@ -154,6 +170,7 @@ export function Sidebar({ orgSlug, role, userGroupNames = [], mobileOpen = false
               links={adminLinks}
               orgSlug={orgSlug}
               pathname={pathname}
+              onNavigate={onClose}
             />
           )}
         </nav>

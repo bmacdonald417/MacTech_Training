@@ -1,0 +1,73 @@
+{
+  "global": {
+    "dimOpacity": 0.624,
+    "transitionMs": 450
+  },
+  "slides": [
+    {
+      "image": "assets/triptych_01.png",
+      "title": "Welcome to CMMC Level 2 Training",
+      "segments": {
+        "introStart": 0.0,
+        "leftStart": 1.5,
+        "centerStart": 22.0,
+        "rightStart": 43.0,
+        "recapStart": 64.0,
+        "end": 72.0
+      },
+      "panels": null
+    },
+    {
+      "image": "assets/triptych_02.png",
+      "title": "CMMC Level 2: Protecting CUI",
+      "segments": {
+        "introStart": 0.0,
+        "leftStart": 1.5,
+        "centerStart": 18.0,
+        "rightStart": 35.0,
+        "recapStart": 52.0,
+        "end": 58.0
+      },
+      "panels": null
+    },
+    {
+      "image": "assets/triptych_03.png",
+      "title": "Threat Landscape and FCI vs CUI",
+      "segments": {
+        "introStart": 0.0,
+        "leftStart": 1.5,
+        "centerStart": 20.0,
+        "rightStart": 40.0,
+        "recapStart": 58.0,
+        "end": 65.0
+      },
+      "panels": null
+    },
+    {
+      "image": "assets/triptych_04.png",
+      "title": "Acceptable Use and Identity",
+      "segments": {
+        "introStart": 0.0,
+        "leftStart": 1.5,
+        "centerStart": 19.0,
+        "rightStart": 38.0,
+        "recapStart": 55.0,
+        "end": 62.0
+      },
+      "panels": null
+    },
+    {
+      "image": "assets/triptych_05.png",
+      "title": "Role-Based Training and Manager Module",
+      "segments": {
+        "introStart": 0.0,
+        "leftStart": 1.5,
+        "centerStart": 21.0,
+        "rightStart": 42.0,
+        "recapStart": 62.0,
+        "end": 70.0
+      },
+      "panels": null
+    }
+  ]
+}

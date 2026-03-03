@@ -1,3 +1,7 @@
+/**
+ * NextAuth config. Required env: NEXTAUTH_SECRET (use `openssl rand -base64 32`).
+ * For local dev also set NEXTAUTH_URL=http://localhost:3000 (or your dev port).
+ */
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "./prisma"
@@ -39,10 +43,12 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        const fullName =
+          [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.name
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: fullName || user.name,
           memberships: user.memberships.map((m) => ({
             orgId: m.orgId,
             orgSlug: m.org.slug,
@@ -73,7 +79,7 @@ export const authOptions: NextAuthOptions = {
         session.user.memberships = m.map((x) => ({
           orgId: x.i,
           orgSlug: x.s,
-          role: x.r,
+          role: x.r === "ADMIN" ? "ADMIN" : "USER",
         }))
         session.user.role = m[0]?.r
       }
@@ -82,6 +88,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   session: {
     strategy: "jwt",

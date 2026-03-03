@@ -10,7 +10,12 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft, Plus, Trash2, GripVertical } from "lucide-react"
 import { createCurriculum, updateCurriculum, type SectionInput } from "./actions"
 
-export type ContentItemOption = { id: string; title: string; type: string }
+export type ContentItemOption = {
+  id: string
+  title: string
+  type: string
+  isPresentation?: boolean
+}
 
 type CurriculumFormProps = {
   orgSlug: string
@@ -79,24 +84,40 @@ export function CurriculumForm({
     setMessage(null)
     setPending(true)
 
-    const result =
-      mode === "create"
-        ? await createCurriculum(orgSlug, { title, description, sections })
-        : await updateCurriculum(orgSlug, curriculumId!, { title, description, sections })
+    try {
+      const result =
+        mode === "create"
+          ? await createCurriculum(orgSlug, { title, description, sections })
+          : await updateCurriculum(orgSlug, curriculumId!, { title, description, sections })
 
-    setPending(false)
-    if (result.error) {
-      setMessage({ type: "error", text: result.error })
-      return
-    }
-    if (mode === "create" && "curriculumId" in result && result.curriculumId) {
-      router.push(`/org/${orgSlug}/trainer/curricula/${result.curriculumId}`)
-      router.refresh()
-      return
-    }
-    if (mode === "edit") {
-      setMessage({ type: "success", text: "Curriculum saved." })
-      router.refresh()
+      setPending(false)
+      if (result.error) {
+        setMessage({ type: "error", text: result.error })
+        return
+      }
+      if (mode === "create" && "curriculumId" in result && result.curriculumId) {
+        router.push(`/org/${orgSlug}/trainer/curricula/${result.curriculumId}`)
+        router.refresh()
+        return
+      }
+      if (mode === "edit") {
+        setMessage({ type: "success", text: "Curriculum saved." })
+        router.refresh()
+      }
+    } catch (err) {
+      setPending(false)
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/UnrecognizedActionError|was not found on the server/i.test(msg)) {
+        setMessage({
+          type: "error",
+          text: "The page is out of date (e.g. after a deploy). Please refresh the page and try saving again.",
+        })
+      } else {
+        setMessage({
+          type: "error",
+          text: "Something went wrong. Please refresh the page and try again.",
+        })
+      }
     }
   }
 
@@ -259,7 +280,11 @@ export function CurriculumForm({
                     .filter((c) => !section.contentItemIds.includes(c.id))
                     .map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.title} ({c.type.replace("_", " ")})
+                        {c.title} (
+                        {c.type === "SLIDE_DECK" && c.isPresentation
+                          ? "Slide deck · Presentation"
+                          : c.type.replace("_", " ")}
+                        )
                       </option>
                     ))}
                   {contentItems.filter((c) => !section.contentItemIds.includes(c.id)).length === 0 && (
@@ -268,6 +293,9 @@ export function CurriculumForm({
                     </option>
                   )}
                 </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Includes slide decks from Admin → Presentations, plus all Content library items.
+                </p>
               </div>
             </CardContent>
           </Card>

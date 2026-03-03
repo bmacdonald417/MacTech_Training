@@ -2,10 +2,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "./auth"
 import { prisma } from "./prisma"
 
-export type Role = "ADMIN" | "TRAINER" | "TRAINEE"
+export type Role = "ADMIN" | "USER"
 
-// Admin has access to all features: everything a trainer can do (Content, Curricula, Assignments,
-// Documents, Competency, etc.) plus admin-only (Users, Groups, Reports, Settings, Archive).
+// Admin (site admin) has access to all features: Content, Curricula, Assignments,
+// Documents, Competency, Users, Groups, Reports, Settings, Archive. USER is a regular member.
 
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions)
@@ -52,7 +52,7 @@ export async function requireAdmin(orgSlug: string) {
   return requireRole(orgSlug, ["ADMIN"])
 }
 
-/** Trainer or Admin. Admin has full access to all trainer features. */
+/** Site admin only (content, curricula, assignments, documents, etc.). */
 export async function requireTrainerOrAdmin(orgSlug: string) {
-  return requireRole(orgSlug, ["ADMIN", "TRAINER"])
+  return requireRole(orgSlug, ["ADMIN"])
 }

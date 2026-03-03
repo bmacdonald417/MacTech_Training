@@ -1,8 +1,6 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
-import { Button } from "@/components/ui/button"
 import { AssignCurriculumForm } from "./assign-curriculum-form"
 
 interface AssignCurriculumPageProps {
@@ -19,11 +17,22 @@ export default async function AssignCurriculumPage({ params }: AssignCurriculumP
   })
   if (!group) notFound()
 
-  const curricula = await prisma.curriculum.findMany({
-    where: { orgId: membership.orgId },
-    select: { id: true, title: true },
-    orderBy: { title: "asc" },
-  })
+  const [curricula, slideDecks] = await Promise.all([
+    prisma.curriculum.findMany({
+      where: { orgId: membership.orgId },
+      select: { id: true, title: true },
+      orderBy: { title: "asc" },
+    }),
+    prisma.contentItem.findMany({
+      where: {
+        orgId: membership.orgId,
+        type: "SLIDE_DECK",
+        slideDeck: { sourceFileId: { not: null } },
+      },
+      select: { id: true, title: true },
+      orderBy: { title: "asc" },
+    }),
+  ])
 
   return (
     <AssignCurriculumForm
@@ -31,6 +40,7 @@ export default async function AssignCurriculumPage({ params }: AssignCurriculumP
       groupId={group.id}
       groupName={group.name}
       curricula={curricula.map((c) => ({ id: c.id, title: c.title }))}
+      slideDecks={slideDecks.map((d) => ({ id: d.id, title: d.title }))}
     />
   )
 }

@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { LucideIcon } from "lucide-react"
 
@@ -6,17 +7,16 @@ interface StatCardProps {
   value: string | number
   icon?: LucideIcon
   trend?: { value: string; positive?: boolean }
+  href?: string
   className?: string
 }
 
-export function StatCard({ label, value, icon: Icon, trend, className }: StatCardProps) {
-  return (
-    <div
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border border-border/40 bg-card/80 p-6 text-card-foreground shadow-card backdrop-blur-sm transition-shadow duration-150 hover:shadow-card-hover sm:p-7",
-        className
-      )}
-    >
+const cardClassName =
+  "group relative overflow-hidden rounded-2xl border border-border/40 bg-card/80 p-6 text-card-foreground shadow-card backdrop-blur-sm transition-shadow duration-150 hover:shadow-card-hover sm:p-7"
+
+export function StatCard({ label, value, icon: Icon, trend, href, className }: StatCardProps) {
+  const content = (
+    <>
       {Icon && (
         <div className="absolute right-5 top-5 opacity-[0.07] transition-opacity duration-150 group-hover:opacity-[0.1]">
           <Icon className="h-11 w-11 text-foreground sm:h-12 sm:w-12" strokeWidth={1.25} />
@@ -38,6 +38,23 @@ export function StatCard({ label, value, icon: Icon, trend, className }: StatCar
           </span>
         )}
       </div>
-    </div>
+    </>
   )
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={cn(
+          cardClassName,
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary cursor-pointer",
+          className
+        )}
+      >
+        {content}
+      </Link>
+    )
+  }
+
+  return <div className={cn(cardClassName, className)}>{content}</div>
 }

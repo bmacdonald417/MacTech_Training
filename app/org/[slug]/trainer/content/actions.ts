@@ -328,3 +328,43 @@ export async function updateContent(
   revalidatePath(`/org/${orgSlug}/trainer/content`)
   redirect(`/org/${orgSlug}/trainer/content/${contentItemId}`)
 }
+
+/** Update a single slide's narrator notes (trainer/admin). Used after editing notes in the UI. */
+export async function updateSlideNarratorNotes(
+  orgSlug: string,
+  contentItemId: string,
+  slideId: string,
+  notesRichText: string | null
+) {
+  const membership = await requireTrainerOrAdmin(orgSlug)
+
+  const slide = await prisma.slide.findUnique({
+    where: { id: slideId },
+    select: {
+      id: true,
+      slideDeck: {
+        select: {
+          id: true,
+          contentItem: { select: { id: true, orgId: true } },
+        },
+      },
+    },
+  })
+
+  if (
+    !slide?.slideDeck?.contentItem ||
+    slide.slideDeck.contentItem.id !== contentItemId ||
+    slide.slideDeck.contentItem.orgId !== membership.orgId
+  ) {
+    return { error: "Slide not found" }
+  }
+
+  await prisma.slide.update({
+    where: { id: slideId },
+    data: { notesRichText: notesRichText?.trim() ? notesRichText : null },
+  })
+
+  revalidatePath(`/org/${orgSlug}/trainer/content/${contentItemId}/edit`)
+  revalidatePath(`/org/${orgSlug}/trainer/content/${contentItemId}`)
+  return { ok: true }
+}

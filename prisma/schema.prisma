@@ -31,6 +31,7 @@ model Organization {
   narrationAssets NarrationAsset[]
   controlledDocuments ControlledDocument[]
   storedFiles  StoredFile[]
+  completionVaultRecords CompletionVaultRecord[]
 
   @@index([slug])
 }
@@ -39,7 +40,10 @@ model User {
   id              String   @id @default(cuid())
   email           String   @unique
   password        String   // hashed
-  name            String?
+  name            String?  // legacy / display; new users get firstName + lastName
+  firstName       String?  // required at signup for new users
+  lastName        String?  // required at signup for new users
+  displayId       String?  @unique // computer-generated user ID (e.g. USR-XXXXXXXX) for certificates / collisions
   referralSource  String?  // how they heard about us (signup question)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -54,6 +58,7 @@ model User {
   eventLogs EventLog[]
   documentAcknowledgments DocumentAcknowledgment[]
   termsAcceptances UserTermsAcceptance[]
+  completionVaultRecords CompletionVaultRecord[]
 
   @@index([email])
 }
@@ -95,7 +100,7 @@ model Membership {
   id     String   @id @default(cuid())
   userId String
   orgId  String
-  role   String // "ADMIN" | "TRAINER" | "TRAINEE"
+  role   String // "ADMIN" (site admin) | "USER"
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -229,7 +234,8 @@ model StoredFile {
   filename              String
   mimeType              String
   sizeBytes             Int
-  storagePath           String   // path on volume or bucket
+  storagePath           String   // path on volume/bucket, or "db" when contentBytes is set
+  contentBytes          Bytes?   // optional: store file in DB when disk is not writable
   createdAt             DateTime @default(now())
   createdByMembershipId String?
 
@@ -386,6 +392,7 @@ model NarrationAsset {
   voice       String   @default("alloy")
   format      String   @default("mp3")
   storagePath String   // path relative to volume mount or absolute
+  inputText   String?  @db.Text // exact TTS input used for generation (admin-editable)
   updatedAt   DateTime @updatedAt
   updatedByMembershipId String?
 
@@ -753,4 +760,32 @@ model EventLog {
   @@index([orgId, createdAt])
   @@index([userId, createdAt])
   @@index([type, createdAt])
+}
+
+// ============================================
+// COMPLETION VAULT (auditor-visible, tamper-evident records)
+// ============================================
+// When a user completes training, a hashed record is stored for audit.
+// Auditors can view and verify completion hashes from the admin panel.
+
+model CompletionVaultRecord {
+  id                String   @id @default(cuid())
+  orgId             String
+  enrollmentId      String
+  userId            String
+  certificateId     String?  // CertificateIssued.id when issued
+  certificateNumber String?  // human-readable cert number
+  assignmentTitle   String   // denormalized for display
+  completedAt       DateTime
+  verificationHash  String   // SHA-256 hex of canonical payload
+  createdAt         DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([orgId, completedAt])
+  @@index([enrollmentId])
+  @@index([userId])
+  @@index([verificationHash])
 }

@@ -6,10 +6,11 @@ import type { SectionInput } from "../../actions"
 
 interface EditCurriculumPageProps {
   params: Promise<{ slug: string; id: string }>
+  searchParams: Promise<{ addContent?: string }>
 }
 
-export default async function EditCurriculumPage({ params }: EditCurriculumPageProps) {
-  const { slug, id } = await params
+export default async function EditCurriculumPage({ params, searchParams }: EditCurriculumPageProps) {
+  const [{ slug, id }, { addContent }] = await Promise.all([params, searchParams])
   const membership = await requireTrainerOrAdmin(slug)
 
   const [curriculum, contentItems] = await Promise.all([
@@ -26,8 +27,13 @@ export default async function EditCurriculumPage({ params }: EditCurriculumPageP
     }),
     prisma.contentItem.findMany({
       where: { orgId: membership.orgId },
-      select: { id: true, title: true, type: true },
-      orderBy: { title: "asc" },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        slideDeck: { select: { sourceFileId: true } },
+      },
+      orderBy: [{ type: "asc" }, { title: "asc" }],
     }),
   ])
 
@@ -35,16 +41,31 @@ export default async function EditCurriculumPage({ params }: EditCurriculumPageP
     notFound()
   }
 
-  const initialSections: SectionInput[] = curriculum.sections.map((sec) => ({
+  let initialSections: SectionInput[] = curriculum.sections.map((sec) => ({
     title: sec.title,
     description: sec.description ?? "",
     contentItemIds: sec.items.map((i) => i.contentItemId),
   }))
 
+  const prefillContentId =
+    addContent?.trim() && contentItems.some((c) => c.id === addContent.trim())
+      ? addContent.trim()
+      : undefined
+  if (prefillContentId && initialSections.length > 0) {
+    const first = initialSections[0]
+    if (!first.contentItemIds.includes(prefillContentId)) {
+      initialSections = [
+        { ...first, contentItemIds: [...first.contentItemIds, prefillContentId] },
+        ...initialSections.slice(1),
+      ]
+    }
+  }
+
   const contentOptions = contentItems.map((c) => ({
     id: c.id,
     title: c.title,
     type: c.type,
+    isPresentation: c.type === "SLIDE_DECK" && !!c.slideDeck?.sourceFileId,
   }))
 
   return (

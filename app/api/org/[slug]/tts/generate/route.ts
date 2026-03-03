@@ -3,12 +3,17 @@ import { requireTrainerOrAdmin } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import { writeNarrationFile } from "@/lib/narration-storage"
 import { getSlideNarrationText, getArticleNarrationText } from "@/lib/tts-text"
+import { generateTtsMp3, MAX_TTS_INPUT_LENGTH } from "@/lib/tts-openai"
 
-const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech"
-const TTS_MODEL_PREFERRED = "gpt-4o-mini-tts"
-const TTS_MODEL_FALLBACK = "tts-1"
-const VOICE = "alloy"
-const MAX_INPUT_LENGTH = 4096
+const DEFAULT_VOICE = "alloy"
+const ALLOWED_VOICES = new Set([
+  "alloy",
+  "nova",
+  "shimmer",
+  "echo",
+  "onyx",
+  "fable",
+])
 
 export async function POST(
   req: NextRequest,
@@ -18,7 +23,12 @@ export async function POST(
     const { slug } = await context.params
     const membership = await requireTrainerOrAdmin(slug)
     const body = await req.json()
-    const { entityType, entityId } = body as { entityType?: string; entityId?: string }
+    const { entityType, entityId, voice } = body as {
+      entityType?: string
+      entityId?: string
+      voice?: string
+      inputText?: string
+    }
 
     if (!entityType || !entityId) {
       return NextResponse.json(
@@ -32,8 +42,10 @@ export async function POST(
       return NextResponse.json({ error: "Invalid entityType" }, { status: 400 })
     }
 
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
+    const voiceToUse =
+      typeof voice === "string" && ALLOWED_VOICES.has(voice) ? voice : DEFAULT_VOICE
+
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "TTS is not configured. OPENAI_API_KEY is missing." },
         { status: 503 }
@@ -41,6 +53,8 @@ export async function POST(
     }
 
     let textToSpeak: string
+    const inputOverride =
+      typeof (body as any)?.inputText === "string" ? ((body as any).inputText as string) : null
 
     if (entityType === "SLIDE") {
       const slide = await prisma.slide.findUnique({
@@ -54,22 +68,26 @@ export async function POST(
       if (!slide?.slideDeck?.contentItem || slide.slideDeck.contentItem.orgId !== membership.orgId) {
         return NextResponse.json({ error: "Slide not found" }, { status: 404 })
       }
-      const order = slide.slideDeck
-        ? await prisma.slide
-            .findMany({
-              where: { slideDeckId: slide.slideDeckId },
-              orderBy: { order: "asc" },
-              select: { id: true },
-            })
-            .then((slides) => slides.findIndex((s) => s.id === slide.id))
-        : 0
-      const slideIndex = order >= 0 ? order : 0
-      textToSpeak = getSlideNarrationText(
-        slideIndex,
-        slide.title,
-        slide.content,
-        slide.notesRichText
-      )
+      if (inputOverride && inputOverride.trim()) {
+        textToSpeak = inputOverride.trim()
+      } else {
+        const order = slide.slideDeck
+          ? await prisma.slide
+              .findMany({
+                where: { slideDeckId: slide.slideDeckId },
+                orderBy: { order: "asc" },
+                select: { id: true },
+              })
+              .then((slides) => slides.findIndex((s) => s.id === slide.id))
+          : 0
+        const slideIndex = order >= 0 ? order : 0
+        textToSpeak = getSlideNarrationText(
+          slideIndex,
+          slide.title,
+          slide.content,
+          slide.notesRichText
+        )
+      }
     } else if (entityType === "ARTICLE") {
       const contentItem = await prisma.contentItem.findFirst({
         where: {
@@ -82,10 +100,14 @@ export async function POST(
       if (!contentItem?.article) {
         return NextResponse.json({ error: "Article not found" }, { status: 404 })
       }
-      textToSpeak = getArticleNarrationText(
-        contentItem.title,
-        contentItem.article.content
-      )
+      if (inputOverride && inputOverride.trim()) {
+        textToSpeak = inputOverride.trim()
+      } else {
+        textToSpeak = getArticleNarrationText(
+          contentItem.title,
+          contentItem.article.content
+        )
+      }
     } else {
       return NextResponse.json(
         { error: "SLIDE_DECK narration not implemented; use SLIDE per slide" },
@@ -93,7 +115,7 @@ export async function POST(
       )
     }
 
-    const trimmed = textToSpeak.slice(0, MAX_INPUT_LENGTH)
+    const trimmed = textToSpeak.slice(0, MAX_TTS_INPUT_LENGTH)
     if (trimmed.length === 0) {
       return NextResponse.json(
         { error: "No text content to convert to speech" },
@@ -101,67 +123,22 @@ export async function POST(
       )
     }
 
-    let buffer: Buffer
-    let modelUsed = TTS_MODEL_PREFERRED
-
-    try {
-      const res = await fetch(OPENAI_TTS_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: TTS_MODEL_PREFERRED,
-          input: trimmed,
-          voice: VOICE,
-          response_format: "mp3",
-        }),
-      })
-
-      if (!res.ok) {
-        const errText = await res.text()
-        if (res.status === 404 || errText.includes("model") || errText.includes("gpt-4o-mini-tts")) {
-          const fallback = await fetch(OPENAI_TTS_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: TTS_MODEL_FALLBACK,
-              input: trimmed,
-              voice: VOICE,
-              response_format: "mp3",
-            }),
-          })
-          if (!fallback.ok) {
-            const fallbackText = await fallback.text()
-            console.error("[tts/generate] OpenAI fallback failed:", fallback.status, fallbackText)
-            return NextResponse.json(
-              { error: "Text-to-speech failed. Please try again later." },
-              { status: 502 }
-            )
-          }
-          modelUsed = TTS_MODEL_FALLBACK
-          buffer = Buffer.from(await fallback.arrayBuffer())
-        } else {
-          console.error("[tts/generate] OpenAI error:", res.status, errText)
-          return NextResponse.json(
-            { error: "Text-to-speech failed. Please try again later." },
-            { status: 502 }
-          )
-        }
-      } else {
-        buffer = Buffer.from(await res.arrayBuffer())
+    const ttsResult = await generateTtsMp3(trimmed, voiceToUse)
+    if (!ttsResult.ok) {
+      if (ttsResult.error.includes("OPENAI_API_KEY")) {
+        return NextResponse.json(
+          { error: "TTS is not configured. OPENAI_API_KEY is missing." },
+          { status: 503 }
+        )
       }
-    } catch (e) {
-      console.error("[tts/generate] OpenAI request error:", e)
+      console.error("[tts/generate]", ttsResult.error)
       return NextResponse.json(
-        { error: "Text-to-speech service unavailable. Please try again later." },
+        { error: "Text-to-speech failed. Please try again later." },
         { status: 502 }
       )
     }
+    const buffer = ttsResult.buffer
+    const modelUsed = ttsResult.modelUsed
 
     let storagePath: string
     try {
@@ -193,15 +170,17 @@ export async function POST(
         storagePath,
         updatedAt: now,
         updatedByMembershipId: undefined,
-        voice: VOICE,
+        voice: voiceToUse,
+        inputText: trimmed,
       },
       create: {
         orgId: membership.orgId,
         entityType: entityType as "SLIDE" | "SLIDE_DECK" | "ARTICLE",
         entityId,
-        voice: VOICE,
+        voice: voiceToUse,
         format: "mp3",
         storagePath,
+        inputText: trimmed,
         updatedByMembershipId: undefined,
       },
     })
@@ -214,7 +193,8 @@ export async function POST(
         metadata: JSON.stringify({
           entityType,
           entityId,
-          voice: VOICE,
+          voice: voiceToUse,
+          model: modelUsed,
           storagePath,
         }),
       },

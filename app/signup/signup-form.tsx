@@ -30,7 +30,8 @@ const REFERRAL_OPTIONS = [
 const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(1, "Name is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   referralSource: z.string().min(1, "Please select how you heard about us"),
   termsAccepted: z.literal(true, {
     errorMap: () => ({ message: "You must accept the acknowledgment to create an account." }),
@@ -74,7 +75,8 @@ export function SignupForm() {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          name: data.name,
+          firstName: data.firstName,
+          lastName: data.lastName,
           referralSource: data.referralSource,
           joinCode: joinCode || undefined,
           termsAccepted: data.termsAccepted,
@@ -124,22 +126,41 @@ export function SignupForm() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-slate-700 font-medium">Name</Label>
-              <Input
-                id="name"
-                type="text"
-                autoComplete="name"
-                placeholder="Your name"
-                className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm"
-                {...register("name")}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-600 flex items-center gap-1.5" role="alert">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.name.message}
-                </p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName" className="text-slate-700 font-medium">First name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  placeholder="First name"
+                  className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm"
+                  {...register("firstName")}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-red-600 flex items-center gap-1.5" role="alert">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.firstName.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName" className="text-slate-700 font-medium">Last name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  placeholder="Last name"
+                  className="h-12 text-base rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 shadow-sm"
+                  {...register("lastName")}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-red-600 flex items-center gap-1.5" role="alert">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.lastName.message}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email" className="text-slate-700 font-medium">Email</Label>

@@ -18,7 +18,9 @@ import {
   Globe,
   FolderLock,
   ClipboardList,
+  FileUp,
 } from "lucide-react"
+import { ContentGridWithBulkDelete } from "./content-grid-with-bulk-delete"
 
 interface ContentPageProps {
   params: Promise<{ slug: string }>
@@ -155,12 +157,22 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
         description={contentDescription}
         action={
           category === "public" ? (
-            <Button asChild>
-              <Link href={tab !== "all" ? `${basePath}/new?type=${tab}` : `${basePath}/new`}>
-                <Plus className="h-4 w-4" />
-                Create Content
-              </Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {tab === "SLIDE_DECK" && (
+                <Button asChild>
+                  <Link href={`${basePath}/new?type=SLIDE_DECK`}>
+                    <FileUp className="h-4 w-4" />
+                    Upload PowerPoint
+                  </Link>
+                </Button>
+              )}
+              <Button variant={tab === "SLIDE_DECK" ? "outline" : "default"} asChild>
+                <Link href={tab !== "all" ? `${basePath}/new?type=${tab}` : `${basePath}/new`}>
+                  <Plus className="h-4 w-4" />
+                  Create Content
+                </Link>
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -231,62 +243,63 @@ export default async function ContentPage({ params, searchParams }: ContentPageP
             basePath={`${basePath}?category=public`}
           />
 
+          {tab === "SLIDE_DECK" && contentItems.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Upload a .pptx file to add or replace slides. Open any deck and use Edit → Upload or replace PPTX.
+            </p>
+          )}
           {contentItems.length === 0 ? (
             <EmptyState
-              icon={FileText}
+              icon={tab === "SLIDE_DECK" ? BookOpen : FileText}
               title={
                 tab === "all"
                   ? "No content yet"
-                  : `No ${PUBLIC_TAB_ITEMS.find((t) => t.value === tab)?.label?.toLowerCase() ?? tab} yet`
+                  : tab === "SLIDE_DECK"
+                    ? "No slide decks yet"
+                    : `No ${PUBLIC_TAB_ITEMS.find((t) => t.value === tab)?.label?.toLowerCase() ?? tab} yet`
               }
-              description="Create your first content item to get started."
+              description={
+                tab === "SLIDE_DECK"
+                  ? "Upload a PowerPoint (.pptx) file to create your first slide deck. Narrator notes are extracted or generated automatically."
+                  : "Create your first content item to get started."
+              }
               action={
                 <Button asChild>
                   <Link
                     href={
-                      tab !== "all"
-                        ? `${basePath}/new?type=${tab}`
-                        : `${basePath}/new`
+                      tab === "SLIDE_DECK"
+                        ? `${basePath}/new?type=SLIDE_DECK`
+                        : tab !== "all"
+                          ? `${basePath}/new?type=${tab}`
+                          : `${basePath}/new`
                     }
                   >
-                    <Plus className="h-4 w-4" />
-                    Create content
+                    {tab === "SLIDE_DECK" ? (
+                      <>
+                        <FileUp className="h-4 w-4" />
+                        Upload PowerPoint
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Create content
+                      </>
+                    )}
                   </Link>
                 </Button>
               }
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {contentItems.map((item) => {
-                const Icon = contentTypeIcons[item.type] || FileText
-                return (
-                  <Card key={item.id}>
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">{item.title}</CardTitle>
-                      </div>
-                      <CardDescription>{item.type.replace("_", " ")}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {item.description && (
-                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                          {item.description}
-                        </p>
-                      )}
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`${basePath}/${item.id}`}>View</Link>
-                        </Button>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`${basePath}/${item.id}/edit`}>Edit</Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
+            <ContentGridWithBulkDelete
+              orgSlug={slug}
+              basePath={basePath}
+              contentItems={contentItems.map((item) => ({
+                id: item.id,
+                title: item.title,
+                type: item.type,
+                description: item.description ?? null,
+              }))}
+            />
           )}
         </>
       )}

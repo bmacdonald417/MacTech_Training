@@ -80,15 +80,19 @@ export function TrainingPlayer({
       )
 
       if (response.ok) {
+        const data = await response.json().catch(() => ({}))
         setCompletedItems((prev) => new Set(Array.from(prev).concat(itemId)))
         
-        // If all items completed, mark enrollment as completed
+        // If training just completed and we have a certificate, show it
         const allCompleted = navigationItems.every((item) =>
           itemId === item.id ? true : completedItems.has(item.id)
         )
-        
         if (allCompleted && isLast) {
-          router.push(`/org/${orgSlug}/my-training`)
+          if (data.certificateId) {
+            router.push(`/org/${orgSlug}/certificates/${data.certificateId}`)
+          } else {
+            router.push(`/org/${orgSlug}/my-training`)
+          }
           router.refresh()
         }
       }
@@ -123,7 +127,23 @@ export function TrainingPlayer({
           <CardHeader className="shrink-0 py-1">
             <CardTitle className="truncate text-sm font-medium">{currentItem?.title}</CardTitle>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+          <CardContent
+            className={
+              currentItem?.type === "SLIDE_DECK"
+                ? "flex min-h-0 flex-1 flex-col overflow-hidden p-2 min-h-[420px]"
+                : "flex min-h-0 flex-1 flex-col overflow-hidden p-2"
+            }
+          >
+            {currentItem?.type === "QUIZ" && (
+              <div className="mb-4 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
+                <p className="font-medium text-foreground">
+                  Assessment: 20-question knowledge check
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  Complete the quiz below. You must pass at 80% to complete this training and receive your certificate.
+                </p>
+              </div>
+            )}
             {currentItem && (
               <ContentViewer
                 contentItem={currentItem.contentItem}

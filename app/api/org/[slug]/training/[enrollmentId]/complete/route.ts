@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import { checkEnrollmentCompletion, issueCertificate } from "@/lib/completion"
+import { recordCompletionInVault } from "@/lib/completion-vault"
 
 export async function POST(
   req: NextRequest,
@@ -60,17 +61,34 @@ export async function POST(
     // Check if enrollment is fully complete
     const completionCheck = await checkEnrollmentCompletion(enrollmentId)
 
+    let certificateId: string | null = null
     if (completionCheck.isComplete) {
+      const completedAt = new Date()
       await prisma.enrollment.update({
         where: { id: enrollmentId },
         data: {
           status: "COMPLETED",
-          completedAt: new Date(),
+          completedAt,
         },
       })
 
       // Issue certificate
-      await issueCertificate(enrollmentId, membership.orgId, membership.userId)
+      certificateId = await issueCertificate(enrollmentId, membership.orgId, membership.userId)
+      const cert = certificateId
+        ? await prisma.certificateIssued.findUnique({
+            where: { id: certificateId },
+          })
+        : null
+
+      // Store hashed completion record for auditors
+      await recordCompletionInVault({
+        enrollmentId,
+        orgId: membership.orgId,
+        userId: membership.userId,
+        completedAt,
+        certificateId: cert?.id ?? null,
+        certificateNumber: cert?.certificateNumber ?? null,
+      })
     }
 
     // Log event
@@ -86,7 +104,7 @@ export async function POST(
       },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, certificateId: certificateId ?? undefined })
   } catch (error) {
     console.error("Error completing item:", error)
     return NextResponse.json(
